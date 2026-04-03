@@ -1,0 +1,147 @@
+# ---------- user_setting ----------
+doc/
+test/
+AGENTS.md
+# ---------- Python 字节码和缓存 ----------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# ---------- 虚拟环境 ----------
+venv/
+env/
+ENV/
+.venv/
+.conda/
+*.egg-info/
+.eggs/
+
+# ---------- 分发和打包 ----------
+dist/
+build/
+*.egg
+*.whl
+pip-wheel-metadata/
+
+# ---------- IDE 和编辑器 ----------
+# VS Code
+.vscode/
+*.code-workspace
+
+# PyCharm
+.idea/
+*.iml
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Spyder
+.spyderproject
+.spyproject
+
+# ---------- Jupyter Notebook ----------
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+*/.ipynb_checkpoints/*
+
+# ---------- 测试和覆盖率 ----------
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+
+# ---------- 日志和临时文件 ----------
+*.log
+*.tmp
+*.temp
+*.bak
+*.swp
+*~
+
+# ---------- 环境变量和配置 ----------
+.env
+.env.local
+.env.*.local
+*.env
+config.ini
+secrets.yaml
+credentials.json
+
+# ---------- 数据文件（GIS/地理数据）----------
+# 大型数据文件
+*.csv
+*.xlsx
+*.xls
+!sample_*.csv           # 保留示例数据
+
+# GIS 数据格式
+*.shp
+*.shx
+*.dbf
+*.prj
+*.cpg
+*.sbn
+*.sbx
+*.geojson
+*.gpkg
+*.gdb/
+*.tif
+*.tiff
+*.img
+
+# 缓存的OSM数据
+cache/
+osm_cache/
+*.osm
+*.pbf
+
+# 下载的卫星影像
+imagery/
+satellite_data/
+wayback_images/
+
+# ---------- 输出文件 ----------
+output/
+results/
+exports/
+*.png
+*.jpg
+*.jpeg
+*.pdf
+!docs/*.pdf             # 保留文档中的PDF
+
+# ---------- 系统文件 ----------
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
+
+# ---------- 其他 ----------
+# 数据库
+*.db
+*.sqlite
+*.sqlite3
+
+# 压缩文件
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# Node (如果有前端部分)
+node_modules/
+"""
