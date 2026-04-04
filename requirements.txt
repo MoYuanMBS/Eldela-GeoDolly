@@ -1,0 +1,4 @@
+httpx
+shapely
+pillow
+pyyaml

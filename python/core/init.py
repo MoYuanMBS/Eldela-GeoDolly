@@ -1,0 +1,1 @@
+"""GeoMCP core module placeholder."""

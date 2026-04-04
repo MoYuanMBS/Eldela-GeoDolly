@@ -1,0 +1,1 @@
+"""Tile manager placeholder."""

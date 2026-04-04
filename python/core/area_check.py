@@ -1,0 +1,1 @@
+"""Area check placeholder."""
