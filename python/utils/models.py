@@ -1,46 +1,44 @@
 """Shared dataclasses for GeoMCP Python-side payloads.
-
-Current authority source: `doc/GeoMCP 技术规范文档.md`.
 """
 
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from typing import Literal
+from typing import Literal, Protocol, TypeAlias, TypedDict, cast
 
 ToolType = Literal["tool_a", "tool_b"]
 BasemapType = Literal["osm", "satellite"]
 SearchStatus = Literal["needs_confirmation", "no_match"]
+JsonValue: TypeAlias = (
+    None | bool | int | float | str | list["JsonValue"] | dict[str, "JsonValue"]
+)
+JsonDict: TypeAlias = dict[str, JsonValue]
 
 
 @dataclass(slots=True)
 class LocationQuery:
-    """A single location search item from the AI request."""
+    """单个地点搜索项。"""
 
     query: str
     country_codes: list[str] | None = None
 
-    def to_dict(self) -> dict[str, object]:
-        return asdict(self)
+    def to_dict(self) -> JsonDict:
+        return cast(JsonDict, asdict(self))
 
 
 @dataclass(slots=True)
 class SearchRequest:
-    """Top-level search request.
-
-    The protocol reserves a list for future expansion, while the current
-    implementation only supports one query item.
-    """
+    """顶层搜索请求。"""
 
     queries: list[LocationQuery]
 
-    def to_dict(self) -> dict[str, object]:
+    def to_dict(self) -> JsonDict:
         return {"queries": [query.to_dict() for query in self.queries]}
 
 
 @dataclass(slots=True)
 class Candidate:
-    """A normalized candidate item returned from the search stage."""
+    """搜索阶段产出的标准候选项。"""
 
     index: int
     osm_type: str | None = None
@@ -53,15 +51,15 @@ class Candidate:
     importance: float | None = None
     address: dict[str, str] | None = None
     boundingbox: list[float] | None = None
-    geojson: dict[str, object] | None = None
+    geojson: JsonDict | None = None  # Python 内部保留；TS 回给 AI 时要屏蔽
 
-    def to_dict(self) -> dict[str, object]:
-        return asdict(self)
+    def to_dict(self) -> JsonDict:
+        return cast(JsonDict, asdict(self))
 
 
 @dataclass(slots=True)
 class SearchResponse:
-    """Search response forwarded to TypeScript for confirmation handling."""
+    """Python 传给 TypeScript 的搜索响应。"""
 
     status: SearchStatus
     session_id: str
@@ -70,13 +68,13 @@ class SearchResponse:
     instruction: str | None = None
     message: str | None = None
 
-    def to_dict(self) -> dict[str, object]:
-        return asdict(self)
+    def to_dict(self) -> JsonDict:
+        return cast(JsonDict, asdict(self))
 
 
 @dataclass(slots=True)
 class SelectionRequest:
-    """AI confirmation payload for tool routing."""
+    """AI 确认候选后的工具路由请求。"""
 
     session_id: str
     selected_indices: list[int]
@@ -84,22 +82,40 @@ class SelectionRequest:
     ai_attention_token: str | None = None
     basemap: BasemapType | None = None
 
-    def to_dict(self) -> dict[str, object]:
-        return asdict(self)
+    def to_dict(self) -> JsonDict:
+        return cast(JsonDict, asdict(self))
 
 
-@dataclass(slots=True)
-class AppError(Exception):
-    """Structured application error placeholder for later pipeline reuse."""
+class TransferTypes:
+    """桥接层统一使用的结构化数据类型。"""
 
-    code: str
-    message: str
-    details: dict[str, object] = field(default_factory=dict)
+    @dataclass(slots=True)
+    class AppError(Exception):
+        """桥接层统一使用的结构化异常。"""
 
-    def to_dict(self) -> dict[str, object]:
-        return {
-            "error": True,
-            "code": self.code,
-            "message": self.message,
-            "details": self.details,
-        }
+        code: str
+        message: str
+        details: JsonValue = None
+
+        def to_dict(self) -> JsonDict:
+            return {
+                "code": self.code,
+                "message": self.message,
+                "details": self.details,
+            }
+
+    class SupportsToDict(Protocol):
+        """带 `to_dict()` 的结果对象协议。"""
+
+        def to_dict(self) -> JsonDict: ...
+
+    Data: TypeAlias = JsonDict | SupportsToDict
+
+    class DataToTypeScript(TypedDict):
+        """桥接层互传数据结构。"""
+
+        ok: bool
+        data: JsonDict | None
+        error: JsonDict | None
+
+######################################
