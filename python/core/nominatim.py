@@ -1,5 +1,4 @@
-"""Nominatim search helpers.
-"""
+"""Nominatim 搜索辅助函数。"""
 
 from __future__ import annotations
 
@@ -13,7 +12,7 @@ import httpx
 if __package__ in (None, ""):
     sys.path.append(str(Path(__file__).resolve().parents[2]))
 
-from python.utils.models import Candidate, JsonDict, LocationQuery, SearchRequest, SearchResponse
+from python.utils.models import NominatimData, TransferTypes, JsonDict
 
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 LOCATION_LIMIT = 30
@@ -22,7 +21,7 @@ CONFIRMATION_INSTRUCTION = ("Reply with JSON containing session_id, selected_ind
 
 
 def _to_optional_string(value: Any) -> str | None:
-    """Convert upstream values into optional non-empty strings."""
+    """把上游值转换为可选的非空字符串。"""
     if value is None:
         return None
 
@@ -31,7 +30,7 @@ def _to_optional_string(value: Any) -> str | None:
 
 
 def _to_optional_float(value: Any) -> float | None:
-    """Convert upstream numeric-like values into floats when possible."""
+    """尽量把上游的数字类值转换为浮点数。"""
     if value in (None, ""):
         return None
 
@@ -42,7 +41,7 @@ def _to_optional_float(value: Any) -> float | None:
 
 
 def _normalize_address(value: Any) -> dict[str, str] | None:
-    """Keep only string-like address fields from the upstream payload."""
+    """只保留上游 payload 中可转为字符串的地址字段。"""
     if not isinstance(value, dict):
         return None
 
@@ -57,7 +56,7 @@ def _normalize_address(value: Any) -> dict[str, str] | None:
 
 
 def _normalize_boundingbox(value: Any) -> list[float] | None:
-    """Convert the upstream boundingbox into a list of floats."""
+    """把上游 boundingbox 转换为浮点数列表。"""
     if not isinstance(value, list):
         return None
 
@@ -71,9 +70,9 @@ def _normalize_boundingbox(value: Any) -> list[float] | None:
     return normalized_coordinates or None
 
 
-def _build_candidate(raw_result: dict[str, Any], index: int) -> Candidate:
-    """Map one raw Nominatim result into the shared Candidate model."""
-    return Candidate(
+def _build_candidate(raw_result: dict[str, Any], index: int) -> NominatimData.Candidate:
+    """把单条原始 Nominatim 结果映射为共享的 Candidate 模型。"""
+    return NominatimData.Candidate(
         index=index,
         osm_type=_to_optional_string(raw_result.get("osm_type")),
         name=_to_optional_string(raw_result.get("name")),
@@ -92,7 +91,7 @@ def _build_candidate(raw_result: dict[str, Any], index: int) -> Candidate:
 
 
 def search_location(query: str, country_codes: str = "") -> list[dict[str, Any]]:
-    """Fetch raw Nominatim search results for one query string."""
+    """根据单条查询文本拉取原始 Nominatim 搜索结果。"""
     params = {
         "q": query,
         "format": "jsonv2",
@@ -114,58 +113,43 @@ def search_location(query: str, country_codes: str = "") -> list[dict[str, Any]]
         response.raise_for_status()
         payload = response.json()
     except httpx.HTTPError as error:
-        print(f"HTTP error occurred: {error}")
-        return []
-
+        raise TransferTypes.AppError("HTTP_ERROR","failed to fetch location candidates from Nominatim",str(error))
     if not isinstance(payload, list):
         return []
-
     return [item for item in payload if isinstance(item, dict)]
 
-
-def build_search_response(search_request: SearchRequest) -> SearchResponse:
-    """Execute one search request and convert the results into SearchResponse."""
-    current_query: LocationQuery = search_request.queries[0]
+def query_requset(search_request: NominatimData.SearchRequest) -> NominatimData.SearchResponse:
+    """执行一次搜索请求，并把结果转换为 SearchResponse。"""
+    current_query: NominatimData.LocationQuery = search_request.queries[0]
     query_text = current_query.query
     country_codes = ",".join(current_query.country_codes) if current_query.country_codes else ""
     raw_results = search_location(query_text, country_codes)
 
-    candidates = [
-        _build_candidate(raw_result, index)
-        for index, raw_result in enumerate(raw_results, start=1)
-    ]
+    candidates = [_build_candidate(raw_result, index)for index, raw_result in enumerate(raw_results, start=1)]
 
     if candidates:
-        return SearchResponse(
+        return NominatimData.SearchResponse(
             status="needs_confirmation",
-            session_id=uuid.uuid4().hex[:8],
+            session_id=str(uuid.uuid4()).split("-")[0],
             query=query_text,
             candidates=candidates,
             instruction=CONFIRMATION_INSTRUCTION,
         )
 
-    return SearchResponse(
+    return NominatimData.SearchResponse(
         status="no_match",
-        session_id=uuid.uuid4().hex[:8],
+        session_id=str(uuid.uuid4()).split("-")[0],
         query=query_text,
         candidates=[],
         message="No results found for the given query and country codes.",
     )
 
-
-def query_requset(search_request: SearchRequest) -> SearchResponse:
-    """Backward-compatible wrapper for the previous misspelled function name."""
-    return build_search_response(search_request)
-
-
 if __name__ == "__main__":
     test_query = "square one"
     test_country_code = "ca"
     raw_results = search_location(test_query, test_country_code)
-    example_request = SearchRequest(
-        queries=[LocationQuery(query=test_query, country_codes=[test_country_code])]
-    )
-    search_response = build_search_response(example_request)
+    example_request = NominatimData.SearchRequest(queries=[NominatimData.LocationQuery(query=test_query, country_codes=[test_country_code])])
+    search_response = query_requset(example_request)
 
     print(raw_results)
     print("#" * 50)

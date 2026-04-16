@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from typing import Literal, Protocol, TypeAlias, TypedDict, cast
+from typing import Any, Literal, Protocol, TypeAlias, TypeGuard, TypedDict, cast
 
 ToolType = Literal["tool_a", "tool_b"]
 BasemapType = Literal["osm", "satellite"]
@@ -14,76 +14,79 @@ JsonValue: TypeAlias = (
 )
 JsonDict: TypeAlias = dict[str, JsonValue]
 
+def is_list_of_str(value: Any) -> TypeGuard[list[str]]:
+    return isinstance(value, list) and all(isinstance(x, str) for x in value)
 
-@dataclass(slots=True)
-class LocationQuery:
-    """单个地点搜索项。"""
+class NominatimData:
+    @dataclass(slots=True)
+    class LocationQuery:
+        """单个地点搜索项。"""
 
-    query: str
-    country_codes: list[str] | None = None
+        query: str
+        country_codes: list[str] | None = None
 
-    def to_dict(self) -> JsonDict:
-        return cast(JsonDict, asdict(self))
-
-
-@dataclass(slots=True)
-class SearchRequest:
-    """顶层搜索请求。"""
-
-    queries: list[LocationQuery]
-
-    def to_dict(self) -> JsonDict:
-        return {"queries": [query.to_dict() for query in self.queries]}
+        def to_dict(self) -> JsonDict:
+            return cast(JsonDict, asdict(self))
 
 
-@dataclass(slots=True)
-class Candidate:
-    """搜索阶段产出的标准候选项。"""
+    @dataclass(slots=True)
+    class SearchRequest:
+        """顶层搜索请求。"""
 
-    index: int
-    osm_type: str | None = None
-    name: str | None = None
-    display_name: str | None = None
-    lat: float | None = None
-    lon: float | None = None
-    category: str | None = None
-    type: str | None = None
-    importance: float | None = None
-    address: dict[str, str] | None = None
-    boundingbox: list[float] | None = None
-    geojson: JsonDict | None = None  # Python 内部保留；TS 回给 AI 时要屏蔽
+        queries: list[NominatimData.LocationQuery]
 
-    def to_dict(self) -> JsonDict:
-        return cast(JsonDict, asdict(self))
+        def to_dict(self) -> JsonDict:
+            return {"queries": [query.to_dict() for query in self.queries]}
 
 
-@dataclass(slots=True)
-class SearchResponse:
-    """Python 传给 TypeScript 的搜索响应。"""
+    @dataclass(slots=True)
+    class Candidate:
+        """搜索阶段产出的标准候选项。"""
 
-    status: SearchStatus
-    session_id: str
-    query: str
-    candidates: list[Candidate]
-    instruction: str | None = None
-    message: str | None = None
+        index: int
+        osm_type: str | None = None
+        name: str | None = None
+        display_name: str | None = None
+        lat: float | None = None
+        lon: float | None = None
+        category: str | None = None
+        type: str | None = None
+        importance: float | None = None
+        address: dict[str, str] | None = None
+        boundingbox: list[float] | None = None
+        geojson: JsonDict | None = None  # Python 内部保留；TS 回给 AI 时要屏蔽
 
-    def to_dict(self) -> JsonDict:
-        return cast(JsonDict, asdict(self))
+        def to_dict(self) -> JsonDict:
+            return cast(JsonDict, asdict(self))
 
 
-@dataclass(slots=True)
-class SelectionRequest:
-    """AI 确认候选后的工具路由请求。"""
+    @dataclass(slots=True)
+    class SearchResponse:
+        """Python 传给 TypeScript 的搜索响应。"""
 
-    session_id: str
-    selected_indices: list[int]
-    tool: ToolType
-    ai_attention_token: str | None = None
-    basemap: BasemapType | None = None
+        status: SearchStatus
+        session_id: str
+        query: str
+        candidates: list[NominatimData.Candidate]
+        instruction: str | None = None
+        message: str | None = None
 
-    def to_dict(self) -> JsonDict:
-        return cast(JsonDict, asdict(self))
+        def to_dict(self) -> JsonDict:
+            return cast(JsonDict, asdict(self))
+
+
+    @dataclass(slots=True)
+    class SelectionRequest:
+        """AI 确认候选后的工具路由请求。"""
+
+        session_id: str
+        selected_indices: list[int]
+        tool: ToolType
+        ai_attention_token: str | None = None
+        basemap: BasemapType | None = None
+
+        def to_dict(self) -> JsonDict:
+            return cast(JsonDict, asdict(self))
 
 
 class TransferTypes:
@@ -110,12 +113,16 @@ class TransferTypes:
         def to_dict(self) -> JsonDict: ...
 
     Data: TypeAlias = JsonDict | SupportsToDict
+    Action: TypeAlias = Literal["search_location", "tool_a", "tool_b",'error']
 
-    class DataToTypeScript(TypedDict):
+    class ApiDataResponse(TypedDict):
         """桥接层互传数据结构。"""
-
         ok: bool
         data: JsonDict | None
         error: JsonDict | None
-
+    
+    class ApiRequestData(TypedDict):
+        """从 TypeScript 传入 Python 的数据结构。"""
+        action: TransferTypes.Action
+        data: JsonDict | None
 ######################################
