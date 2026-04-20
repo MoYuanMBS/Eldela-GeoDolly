@@ -1,46 +1,40 @@
-"""Shared dataclasses for GeoMCP Python-side payloads.
-"""
+"""Shared models for GeoMCP Python-side payloads."""
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
-from typing import Any, Literal, Protocol, TypeAlias, TypeGuard, TypedDict, cast
+from typing import Literal, Protocol, TypeAlias, cast
+
+from pydantic import BaseModel, ConfigDict, Field
 
 ToolType = Literal["tool_a", "tool_b"]
 BasemapType = Literal["osm", "satellite"]
 SearchStatus = Literal["needs_confirmation", "no_match"]
-JsonValue: TypeAlias = (
-    None | bool | int | float | str | list["JsonValue"] | dict[str, "JsonValue"]
-)
-JsonDict: TypeAlias = dict[str, JsonValue]
+type JsonPrimitive = None | bool | int | float | str
+type JsonValue = JsonPrimitive | list[JsonValue] | dict[str, JsonValue]
+type JsonDict = dict[str, JsonValue]
 
-def is_list_of_str(value: Any) -> TypeGuard[list[str]]:
-    return isinstance(value, list) and all(isinstance(x, str) for x in value)
+class StrictModel(BaseModel):
+    """bridge 边界默认使用严格校验。"""
+
+    model_config = ConfigDict(strict=True, extra="forbid")
+
+    def to_dict(self) -> JsonDict:
+        return cast(JsonDict, self.model_dump(mode="python"))
+
 
 class NominatimData:
-    @dataclass(slots=True)
-    class LocationQuery:
+    class LocationQuery(StrictModel):
         """单个地点搜索项。"""
 
         query: str
         country_codes: list[str] | None = None
 
-        def to_dict(self) -> JsonDict:
-            return cast(JsonDict, asdict(self))
-
-
-    @dataclass(slots=True)
-    class SearchRequest:
+    class SearchRequest(StrictModel):
         """顶层搜索请求。"""
 
-        queries: list[NominatimData.LocationQuery]
+        queries: list[NominatimData.LocationQuery] = Field(min_length=1)
 
-        def to_dict(self) -> JsonDict:
-            return {"queries": [query.to_dict() for query in self.queries]}
-
-
-    @dataclass(slots=True)
-    class Candidate:
+    class Candidate(StrictModel):
         """搜索阶段产出的标准候选项。"""
 
         index: int
@@ -56,12 +50,7 @@ class NominatimData:
         boundingbox: list[float] | None = None
         geojson: JsonDict | None = None  # Python 内部保留；TS 回给 AI 时要屏蔽
 
-        def to_dict(self) -> JsonDict:
-            return cast(JsonDict, asdict(self))
-
-
-    @dataclass(slots=True)
-    class SearchResponse:
+    class SearchResponse(StrictModel):
         """Python 传给 TypeScript 的搜索响应。"""
 
         status: SearchStatus
@@ -71,34 +60,29 @@ class NominatimData:
         instruction: str | None = None
         message: str | None = None
 
-        def to_dict(self) -> JsonDict:
-            return cast(JsonDict, asdict(self))
-
-
-    @dataclass(slots=True)
-    class SelectionRequest:
+    class SelectionRequest(StrictModel):
         """AI 确认候选后的工具路由请求。"""
 
         session_id: str
-        selected_indices: list[int]
+        selected_indices: list[int] = Field(min_length=1)
         tool: ToolType
         ai_attention_token: str | None = None
         basemap: BasemapType | None = None
-
-        def to_dict(self) -> JsonDict:
-            return cast(JsonDict, asdict(self))
 
 
 class TransferTypes:
     """桥接层统一使用的结构化数据类型。"""
 
-    @dataclass(slots=True)
+    Action: TypeAlias = Literal["search_location", "tool_a", "tool_b", "error"]
+
     class AppError(Exception):
         """桥接层统一使用的结构化异常。"""
 
-        code: str
-        message: str
-        details: JsonValue = None
+        def __init__(self, code: str, message: str, details: JsonValue = None):
+            super().__init__(message)
+            self.code = code
+            self.message = message
+            self.details = details
 
         def to_dict(self) -> JsonDict:
             return {
@@ -112,17 +96,17 @@ class TransferTypes:
 
         def to_dict(self) -> JsonDict: ...
 
-    Data: TypeAlias = JsonDict | SupportsToDict
-    Action: TypeAlias = Literal["search_location", "tool_a", "tool_b",'error']
+    class ApiRequestData(StrictModel):
+        """从 TypeScript 传入 Python 的请求模型。"""
 
-    class ApiDataResponse(TypedDict):
-        """桥接层互传数据结构。"""
+        action: TransferTypes.Action
+        data: JsonDict
+
+    class ApiDataResponse(StrictModel):
+        """桥接层标准响应模型。"""
+
         ok: bool
         data: JsonDict | None
         error: JsonDict | None
-    
-    class ApiRequestData(TypedDict):
-        """从 TypeScript 传入 Python 的数据结构。"""
-        action: TransferTypes.Action
-        data: JsonDict | None
-######################################
+
+    Data: TypeAlias = JsonDict | SupportsToDict

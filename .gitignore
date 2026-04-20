@@ -1,6 +1,7 @@
 # ---------- user_setting ----------
 doc/
 test/
+local_test/
 test.py
 test2.py
 test3.py
