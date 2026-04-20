@@ -118,7 +118,7 @@ def search_location(query: str, country_codes: str = "") -> list[dict[str, Any]]
         return []
     return [item for item in payload if isinstance(item, dict)]
 
-def query_requset(search_request: NominatimData.SearchRequest) -> NominatimData.SearchResponse:
+def query_request(search_request: NominatimData.SearchRequest) -> NominatimData.SearchResponse:
     """执行一次搜索请求，并把结果转换为 SearchResponse。"""
     current_query: NominatimData.LocationQuery = search_request.queries[0]
     query_text = current_query.query
@@ -149,7 +149,7 @@ if __name__ == "__main__":
     test_country_code = "ca"
     raw_results = search_location(test_query, test_country_code)
     example_request = NominatimData.SearchRequest(queries=[NominatimData.LocationQuery(query=test_query, country_codes=[test_country_code])])
-    search_response = query_requset(example_request)
+    search_response = query_request(example_request)
 
     print(raw_results)
     print("#" * 50)
