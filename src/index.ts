@@ -17,11 +17,18 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 
 import {
   searchRequestSchema,
+  SearchResponseRaw,
   searchResponseRawSchema,
-  toolAInputSchema,
-  toolBInputSchema,
+  toolInputSchema,
 } from "./utils/bridge-models.js";
-import { callBridge, sanitizeSearchResponseForAI } from "./utils/python-bridge.js";
+import {
+  callBridge,
+  exportToolsQueryForPython,
+  sanitizeSearchResponseForAI,
+} from "./utils/python-bridge.js";
+
+//#################################################################################
+const searchResultCache = new Map<string, SearchResponseRaw>();
 
 function createTextToolResult(text: string, isError = false) {
   return {
@@ -44,6 +51,16 @@ function createErrorToolResult(error: unknown) {
   return createTextToolResult(message, true);
 }
 
+function getCachedSearchResponse(sessionId: string): SearchResponseRaw {
+  const cachedResponse = searchResultCache.get(sessionId);
+
+  if (!cachedResponse) {
+    throw new Error(`search session not found for session_id: ${sessionId}`);
+  }
+
+  return cachedResponse;
+}
+
 function buildServer() {
   const server = new McpServer({
     name: "geomcp",
@@ -63,6 +80,7 @@ function buildServer() {
         const rawResponse = searchResponseRawSchema.parse(
           await callBridge("search_location", args),
         );
+        searchResultCache.set(rawResponse.session_id, rawResponse);
         const responseForAI = sanitizeSearchResponseForAI(rawResponse);
 
         return createTextToolResult(JSON.stringify(responseForAI, null, 2));
@@ -78,13 +96,19 @@ function buildServer() {
       title: "Road And Traffic Analysis",
       description:
         "Heavy road and traffic analysis. Call location_search first, then pass the confirmed session and selection.",
-      inputSchema: toolAInputSchema,
+      inputSchema: toolInputSchema,
     },
-    async (_args) =>
-      createTextToolResult(
-        "tool_a MCP entry is registered, but the tool_a execution pipeline is not implemented yet.",
-        true,
-      ),
+    async (args) => {
+      try {
+        const cachedResponse = getCachedSearchResponse(args.session_id);
+        const pythonQuery = exportToolsQueryForPython(cachedResponse, args);
+        const toolResponse = await callBridge("tool_a", pythonQuery);
+
+        return createTextToolResult(JSON.stringify(toolResponse, null, 2));
+      } catch (error) {
+        return createErrorToolResult(error);
+      }
+    },
   );
 
   server.registerTool(
@@ -93,13 +117,19 @@ function buildServer() {
       title: "Area And Facility Analysis",
       description:
         "Heavy area and facility analysis. Call location_search first, then pass the confirmed session and selection.",
-      inputSchema: toolBInputSchema,
+      inputSchema: toolInputSchema,
     },
-    async (_args) =>
-      createTextToolResult(
-        "tool_b MCP entry is registered, but the tool_b execution pipeline is not implemented yet.",
-        true,
-      ),
+    async (args) => {
+      try {
+        const cachedResponse = getCachedSearchResponse(args.session_id);
+        const pythonQuery = exportToolsQueryForPython(cachedResponse, args);
+        const toolResponse = await callBridge("tool_b", pythonQuery);
+
+        return createTextToolResult(JSON.stringify(toolResponse, null, 2));
+      } catch (error) {
+        return createErrorToolResult(error);
+      }
+    },
   );
 
   return server;

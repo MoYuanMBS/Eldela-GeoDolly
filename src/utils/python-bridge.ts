@@ -20,12 +20,15 @@ import {
   type BridgeAction,
   type JsonDict,
   type JsonValue,
+  type PythonToolQuery,
   type SearchResponseForAI,
   type SearchResponseRaw,
+  type ToolInput,
   createApiDataResponseSchema,
   createApiRequestDataSchema,
   searchResponseForAiSchema,
-  BridgeActionsRegistry
+  BridgeActionsRegistry,
+  toPythonToolResponseSchema
 } from "./bridge-models.js";
 
 const PYTHON_ENTRYPOINT = "python/main.py";
@@ -155,7 +158,7 @@ export function sanitizeSearchResponseForAI(
  * 这里不额外写 `async/await`，而是直接返回 Promise：
  * child_process 本身就是事件驱动模型，最终在 `close` 时 resolve/reject 即可。
  */
-export function callPython<
+function callPython<
   TRequestSchema extends z.ZodType<JsonDict>,
   TResponseSchema extends z.ZodTypeAny,
 >(
@@ -166,34 +169,21 @@ export function callPython<
 ): Promise<z.infer<TResponseSchema>> {
   const pythonExecutable = resolvePythonExecutable();
 
-  // 第一道防线：先校验原始 payload 是否符合当前 action 对应的请求 schema。
-  // 如果这里就不合法，会直接抛出 ZodError，不会启动 Python 进程。
+  // 验原始 payload 是否符合当前 action 对应的请求 schema。。
   const validatedPayload = requestSchema.parse(payload);
 
   // 把业务 payload 包成 bridge 统一约定的 envelope：
-  // {
-  //   action: "...",
-  //   data: { ...validatedPayload }
-  // }
-  //
-  // 这里再次用 schema.parse 一次，不是重复劳动，而是确保“包装后的完整请求”
-  // 也符合 bridge 协议，而不仅仅是内部 data 合法。
   const requestEnvelope = createApiRequestDataSchema(requestSchema).parse(
     buildApiRequestData(action, validatedPayload),
   );
 
   return new Promise((resolve, reject) => {
     // 启动 Python 入口程序。
-    // stdio 全部使用 pipe，表示：
-    // - stdin:  TS 往 Python 写 JSON 请求
-    // - stdout: Python 回传 JSON 响应
-    // - stderr: Python 输出调试/报错上下文
     const child = spawn(pythonExecutable, [PYTHON_ENTRYPOINT], {
       stdio: ["pipe", "pipe", "pipe"],
     });
 
     // Node 的 stream 会分块收到数据，所以这里先累计到字符串里，
-    // 等进程结束后再一次性解析。
     let stdout = "";
     let stderr = "";
 
@@ -209,10 +199,7 @@ export function callPython<
       stderr += chunk.toString();
     });
 
-    // 这里处理的是“进程级错误”，例如：
-    // - python 可执行文件不存在
-    // - 进程启动失败
-    // 这类错误甚至可能发生在 Python 代码真正运行之前。
+    // 这里处理的是“进程级错误”
     child.on("error", (error) => {
       reject(error);
     });
@@ -231,7 +218,7 @@ export function callPython<
       }
 
       try {
-        // 第二道防线：把 stdout 当成 JSON 响应 envelope 来解析。
+        // 把 stdout 当成 JSON 响应 envelope 来解析。
         // parseApiDataResponse 会做两件事：
         // 1. JSON.parse(stdout)
         // 2. 用 responseSchema 校验外层 ok/data/error 以及内部 data 结构
@@ -242,13 +229,7 @@ export function callPython<
         // - ok=false -> 把 Python 返回的结构化错误包装成 PythonBridgeError 再抛出
         resolve(unwrapApiDataResponse(responseEnvelope));
       } catch (error) {
-        // 这里只兜底“响应处理失败”的情况，例如：
-        // - stdout 不是合法 JSON
-        // - Python 返回结构与 schema 不匹配
-        // - ok=false 且被 unwrap 转成了 PythonBridgeError
-        //
-        // 最终把 error / stderr / stdout 一起附上，方便同时看到：
-        // “JS 这边为什么解析失败” + “Python 实际输出了什么”。
+        // 兜底“响应处理失败”的情况
         reject(
           new Error(
             `failed to handle python bridge response: ${String(error)}\nstderr: ${stderr.trim()}\nstdout: ${stdout.trim()}`,
@@ -257,10 +238,7 @@ export function callPython<
       }
     });
 
-    // 真正把请求送给 Python：
-    // 1. 序列化成 JSON 字符串
-    // 2. 写入 stdin
-    // 3. 立刻 end()，告诉 Python“输入已经发完，可以开始处理了”
+    // 把请求送给 Python：
     child.stdin.write(JSON.stringify(requestEnvelope));
     child.stdin.end();
   });
@@ -278,4 +256,23 @@ export function callBridge(
   const registryEntry = BridgeActionsRegistry[action];
 
   return callPython(action, registryEntry.requestSchema, registryEntry.responseSchema, payload);
+}
+
+export function exportToolsQueryForPython(
+  cachedSelection: SearchResponseRaw,
+  query: ToolInput,
+): PythonToolQuery {
+  const selectedIndex = query.selected_indices[0];
+  const selected = cachedSelection.candidates.find((candidate) => candidate.index === selectedIndex);
+
+  if (!selected) {
+    throw new Error(`selected candidate index ${selectedIndex} not found in cached search response`);
+  }
+
+  return toPythonToolResponseSchema.parse({
+    session_id: query.session_id,
+    selected_candidate: selected,
+    basemap: query.basemap,
+    ai_attention_token: query.ai_attention_token,
+  });
 }
