@@ -15,11 +15,11 @@ export type ToolType = z.infer<typeof toolTypeSchema>;
 export type BasemapType = z.infer<typeof basemapTypeSchema>;
 export type SearchStatus = z.infer<typeof searchStatusSchema>;
 
-export type JsonPrimitive = null | boolean | number | string;
-export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
-export type JsonDict = { [key: string]: JsonValue };
+export type JsonPrimitiveType = null | boolean | number | string;
+export type JsonValueType = JsonPrimitiveType | JsonValueType[] | { [key: string]: JsonValueType };
+export type JsonDictType = { [key: string]: JsonValueType };
 
-export const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
+export const jsonValueSchema: z.ZodType<JsonValueType> = z.lazy(() =>
   z.union([
     z.null(),
     z.boolean(),
@@ -32,7 +32,7 @@ export const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
 
 export const jsonDictSchema = z.record(z.string(), jsonValueSchema);
 
-export const locationQuerySchema = z
+export const locSearchQuerySchema = z
   .object({
     query: z.string(),
     country_codes: z.array(z.string()).nullable().optional(),
@@ -40,15 +40,15 @@ export const locationQuerySchema = z
   .strict();
 
 // `location_search` 的 MCP 输入。
-export const searchRequestSchema = z
+export const locSearchQueryReqSchema = z
   .object({
-    queries: z.array(locationQuerySchema).min(1),
+    queries: z.array(locSearchQuerySchema).min(1),
   })
   .strict();
 
 // 搜索阶段的完整候选结构。
 // 这份 raw 结构会被 TS 缓存起来，供后续 tool_a / tool_b join 使用。
-export const candidateRawSchema = z
+export const locSearchCandidateRawSchema = z
   .object({
     index: z.number().int(),
     osm_type: z.string().nullable().optional(),
@@ -65,48 +65,38 @@ export const candidateRawSchema = z
   })
   .strict();
 
-export const candidateForAiSchema = candidateRawSchema.omit({
+export const locSearchCandidateSchema = locSearchCandidateRawSchema.omit({
   geojson: true,
 });
 
 // Python 在 `search_location` 阶段回给 TS 的业务数据结构。
 // 注意：这只是 bridge envelope 里 `data` 字段的内部结构，
 // 不包含外层 `{ ok, data, error }`。
-export const searchResponseRawSchema = z
+export const locSearchReplyRawSchema = z
   .object({
     status: searchStatusSchema,
     session_id: z.string(),
     query: z.string(),
-    candidates: z.array(candidateRawSchema),
+    candidates: z.array(locSearchCandidateRawSchema),
     instruction: z.string().nullable().optional(),
     message: z.string().nullable().optional(),
   })
   .strict();
 
-export const searchResponseForAiSchema = z
+export const locSearchReplySchema = z
   .object({
     status: searchStatusSchema,
     session_id: z.string(),
     query: z.string(),
-    candidates: z.array(candidateForAiSchema),
+    candidates: z.array(locSearchCandidateSchema),
     instruction: z.string().nullable().optional(),
     message: z.string().nullable().optional(),
-  })
-  .strict();
-
-export const selectionRequestSchema = z
-  .object({
-    session_id: z.string(),
-    selected_indices: z.array(z.number().int()).min(1),
-    tool: toolTypeSchema,
-    ai_attention_token: z.string().nullable().optional(),
-    basemap: basemapTypeSchema.nullable().optional(),
   })
   .strict();
 
 // `tool_a` / `tool_b` 暴露给 AI 的 MCP 输入。
 // 这一层仍然是轻量确认信息，不包含 `selected_candidate`。
-export const toolInputSchema = z
+export const AitoolInputReqSchema = z
   .object({
     session_id: z.string(),
     selected_indices: z.array(z.number().int()).min(1),
@@ -131,7 +121,7 @@ export const bridgeActionSchema = z.enum([
 ]);
 
 // Python 执行 `tool_a` / `tool_b` 后回给 TS 的业务数据结构。
-export const toolResponseSchema = z
+export const toolResSchema = z
   .object({
     session_id: z.string(),
     result: jsonValueSchema,
@@ -140,16 +130,16 @@ export const toolResponseSchema = z
 
 // TS 在 tool_a / tool_b handler 里完成 join 后，
 // 真正发给 Python 的 `data` 结构。
-export const toPythonToolResponseSchema = z
+export const pyToolReqSchema = z
     .object({
       session_id: z.string(),
-      selected_candidate: candidateRawSchema,
+      selected_candidate: locSearchCandidateRawSchema,
       basemap: basemapTypeSchema.nullable().optional(),
       ai_attention_token: z.string().nullable().optional(),
     })
     .strict();
 
-export function createApiRequestDataSchema<T extends z.ZodType<JsonDict>>(dataSchema: T) {
+export function bridgeRequestSchemaFn<T extends z.ZodType<JsonDictType>>(dataSchema: T) {
   // 创建发往 Python 的标准 envelope：
   // {
   //   action: "...",
@@ -163,7 +153,7 @@ export function createApiRequestDataSchema<T extends z.ZodType<JsonDict>>(dataSc
     .strict();
 }
 
-export function createApiDataResponseSchema<T extends z.ZodTypeAny>(dataSchema: T) {
+export function bridgeResponseSchemaFn<T extends z.ZodTypeAny>(dataSchema: T) {
   // 创建 Python 回给 TS 的标准 envelope：
   // {
   //   ok: true/false,
@@ -171,7 +161,7 @@ export function createApiDataResponseSchema<T extends z.ZodTypeAny>(dataSchema: 
   //   error: {...} | null
   // }
   //
-  // 所以 `toolResponseSchema` / `searchResponseRawSchema`
+  // 所以 `toolResSchema` / `locSearchReplyRawSchema`
   // 都是在描述这里面 `data` 的内部结构。
   return z
     .object({
@@ -182,38 +172,37 @@ export function createApiDataResponseSchema<T extends z.ZodTypeAny>(dataSchema: 
     .strict();
 }
 
-export type LocationQuery = z.infer<typeof locationQuerySchema>;
-export type SearchRequest = z.infer<typeof searchRequestSchema>;
-export type CandidateRaw = z.infer<typeof candidateRawSchema>;
-export type CandidateForAI = z.infer<typeof candidateForAiSchema>;
-export type SearchResponseRaw = z.infer<typeof searchResponseRawSchema>;
-export type SearchResponseForAI = z.infer<typeof searchResponseForAiSchema>;
-export type SelectionRequest = z.infer<typeof selectionRequestSchema>;
-export type ToolInput = z.infer<typeof toolInputSchema>;
-export type PythonToolQuery = z.infer<typeof toPythonToolResponseSchema>;
-export type AppError = z.infer<typeof appErrorSchema>;
-export type BridgeAction = z.infer<typeof bridgeActionSchema>;
-export type ApiRequestData<T extends JsonDict> = {
-  action: BridgeAction;
+export type LocSearchQueryType = z.infer<typeof locSearchQuerySchema>;
+export type LocSearchQueryReqType = z.infer<typeof locSearchQueryReqSchema>;
+export type LocSearchCandidateRawType = z.infer<typeof locSearchCandidateRawSchema>;
+export type LocSearchCandidateType = z.infer<typeof locSearchCandidateSchema>;
+export type LocSearchReplyRawType = z.infer<typeof locSearchReplyRawSchema>;
+export type LocSearchReplyType = z.infer<typeof locSearchReplySchema>;
+export type AiToolInputReqType = z.infer<typeof AitoolInputReqSchema>;
+export type PyToolReqType = z.infer<typeof pyToolReqSchema>;
+export type AppErrorType = z.infer<typeof appErrorSchema>;
+export type BridgeActionType = z.infer<typeof bridgeActionSchema>;
+export type BridgeRequestType<T extends JsonDictType> = {
+  action: BridgeActionType;
   data: T;
 };
-export type ApiDataResponse<T> = {
+export type BridgeResponseType<T> = {
   ok: boolean;
   data: T | null;
-  error: AppError | null;
+  error: AppErrorType | null;
 };
 
 export const BridgeActionsRegistry = {
   search_location: {
-    requestSchema: searchRequestSchema,
-    responseSchema: searchResponseRawSchema,
+    requestSchema: locSearchQueryReqSchema,
+    responseSchema: locSearchReplyRawSchema,
   },
   tool_a: {
-    requestSchema: toPythonToolResponseSchema,
-    responseSchema: toolResponseSchema,
+    requestSchema: pyToolReqSchema,
+    responseSchema: toolResSchema,
   },
   tool_b: {
-    requestSchema: toPythonToolResponseSchema,
-    responseSchema: toolResponseSchema,
+    requestSchema: pyToolReqSchema,
+    responseSchema: toolResSchema,
   },
 };

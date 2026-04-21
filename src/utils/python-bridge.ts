@@ -14,21 +14,21 @@ import path from "node:path";
 import { z } from "zod";
 
 import {
-  type ApiDataResponse,
-  type ApiRequestData,
-  type AppError,
-  type BridgeAction,
-  type JsonDict,
-  type JsonValue,
-  type PythonToolQuery,
-  type SearchResponseForAI,
-  type SearchResponseRaw,
-  type ToolInput,
-  createApiDataResponseSchema,
-  createApiRequestDataSchema,
-  searchResponseForAiSchema,
+  type AppErrorType,
+  type BridgeActionType,
+  type BridgeRequestType,
+  type BridgeResponseType,
+  type JsonDictType,
+  type JsonValueType,
+  type LocSearchReplyRawType,
+  type LocSearchReplyType,
+  type PyToolReqType,
+  type AiToolInputReqType,
+  bridgeResponseSchemaFn,
+  bridgeRequestSchemaFn,
+  locSearchReplySchema,
   BridgeActionsRegistry,
-  toPythonToolResponseSchema
+  pyToolReqSchema
 } from "./bridge-models.js";
 
 const PYTHON_ENTRYPOINT = "python/main.py";
@@ -72,9 +72,9 @@ export function resolvePythonExecutable(): string {
 
 export class PythonBridgeError extends Error {
   readonly code: string;
-  readonly details: JsonValue | undefined;
+  readonly details: JsonValueType | undefined;
 
-  constructor(error: AppError) {
+  constructor(error: AppErrorType) {
     super(error.message);
     this.name = "PythonBridgeError";
     this.code = error.code;
@@ -85,10 +85,10 @@ export class PythonBridgeError extends Error {
 /**
  * 按 Python bridge 约定，把业务数据包装成统一请求 envelope。
  */
-export function buildApiRequestData<T extends JsonDict>(
-  action: BridgeAction,
+export function buildBridgeRequestData<T extends JsonDictType>(
+  action: BridgeActionType,
   data: T,
-): ApiRequestData<T> {
+): BridgeRequestType<T> {
   return {
     action,
     data,
@@ -98,12 +98,12 @@ export function buildApiRequestData<T extends JsonDict>(
 /**
  * 解析 Python stdout，并按 `ok + data + error` 结构做校验。
  */
-export function parseApiDataResponse<T extends z.ZodTypeAny>(
+export function parseBridgeResponseData<T extends z.ZodTypeAny>(
   stdout: string,
   dataSchema: T,
-): ApiDataResponse<z.infer<T>> {
+): BridgeResponseType<z.infer<T>> {
   const parsedJson = JSON.parse(stdout) as unknown;
-  const responseEnvelope = createApiDataResponseSchema(dataSchema).parse(parsedJson) as ApiDataResponse<
+  const responseEnvelope = bridgeResponseSchemaFn(dataSchema).parse(parsedJson) as BridgeResponseType<
     z.infer<T>
   >;
 
@@ -115,7 +115,7 @@ export function parseApiDataResponse<T extends z.ZodTypeAny>(
  * - `ok=false` 时抛出结构化 bridge 错误
  * - `ok=true` 时返回内部 `data`
  */
-export function unwrapApiDataResponse<T>(response: ApiDataResponse<T>): T {
+export function unwrapBridgeResponseData<T>(response: BridgeResponseType<T>): T {
   if (!response.ok) {
     if (response.error) {
       throw new PythonBridgeError(response.error);
@@ -136,14 +136,14 @@ export function unwrapApiDataResponse<T>(response: ApiDataResponse<T>): T {
  * 返回给 AI 前必须裁掉该字段，其余字段保持不变。
  */
 export function sanitizeSearchResponseForAI(
-  rawResponse: SearchResponseRaw,
-): SearchResponseForAI {
+  rawResponse: LocSearchReplyRawType,
+): LocSearchReplyType {
   const sanitized = {
     ...rawResponse,
     candidates: rawResponse.candidates.map(({ geojson: _geojson, ...candidate }) => candidate),
   };
 
-  return searchResponseForAiSchema.parse(sanitized);
+  return locSearchReplySchema.parse(sanitized);
 }
 
 /**
@@ -159,10 +159,10 @@ export function sanitizeSearchResponseForAI(
  * child_process 本身就是事件驱动模型，最终在 `close` 时 resolve/reject 即可。
  */
 function callPython<
-  TRequestSchema extends z.ZodType<JsonDict>,
+  TRequestSchema extends z.ZodType<JsonDictType>,
   TResponseSchema extends z.ZodTypeAny,
 >(
-  action: BridgeAction,
+  action: BridgeActionType,
   requestSchema: TRequestSchema,
   responseSchema: TResponseSchema,
   payload: unknown,
@@ -173,8 +173,8 @@ function callPython<
   const validatedPayload = requestSchema.parse(payload);
 
   // 把业务 payload 包成 bridge 统一约定的 envelope：
-  const requestEnvelope = createApiRequestDataSchema(requestSchema).parse(
-    buildApiRequestData(action, validatedPayload),
+  const requestEnvelope = bridgeRequestSchemaFn(requestSchema).parse(
+    buildBridgeRequestData(action, validatedPayload),
   );
 
   return new Promise((resolve, reject) => {
@@ -219,15 +219,15 @@ function callPython<
 
       try {
         // 把 stdout 当成 JSON 响应 envelope 来解析。
-        // parseApiDataResponse 会做两件事：
+        // parseBridgeResponseData 会做两件事：
         // 1. JSON.parse(stdout)
         // 2. 用 responseSchema 校验外层 ok/data/error 以及内部 data 结构
-        const responseEnvelope = parseApiDataResponse(stdout, responseSchema);
+        const responseEnvelope = parseBridgeResponseData(stdout, responseSchema);
 
-        // unwrapApiDataResponse 会按 bridge 约定解开 envelope：
+        // unwrapBridgeResponseData 会按 bridge 约定解开 envelope：
         // - ok=true  -> 返回内部 data
         // - ok=false -> 把 Python 返回的结构化错误包装成 PythonBridgeError 再抛出
-        resolve(unwrapApiDataResponse(responseEnvelope));
+        resolve(unwrapBridgeResponseData(responseEnvelope));
       } catch (error) {
         // 兜底“响应处理失败”的情况
         reject(
@@ -245,9 +245,9 @@ function callPython<
 }
 
 export function callBridge(
-  action: BridgeAction,
+  action: BridgeActionType,
   payload: unknown,
-): Promise<JsonValue> {
+): Promise<JsonValueType> {
   // `error` 只保留给协议层类型对齐，不允许作为主动调用的 bridge action。
   if (action === "error") {
     throw new Error("cannot call bridge with action 'error'");
@@ -259,9 +259,9 @@ export function callBridge(
 }
 
 export function exportToolsQueryForPython(
-  cachedSelection: SearchResponseRaw,
-  query: ToolInput,
-): PythonToolQuery {
+  cachedSelection: LocSearchReplyRawType,
+  query: AiToolInputReqType,
+): PyToolReqType {
   const selectedIndex = query.selected_indices[0];
   const selected = cachedSelection.candidates.find((candidate) => candidate.index === selectedIndex);
 
@@ -269,7 +269,7 @@ export function exportToolsQueryForPython(
     throw new Error(`selected candidate index ${selectedIndex} not found in cached search response`);
   }
 
-  return toPythonToolResponseSchema.parse({
+  return pyToolReqSchema.parse({
     session_id: query.session_id,
     selected_candidate: selected,
     basemap: query.basemap,

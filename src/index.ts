@@ -16,10 +16,10 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 
 import {
-  searchRequestSchema,
-  SearchResponseRaw,
-  searchResponseRawSchema,
-  toolInputSchema,
+  type LocSearchReplyRawType,
+  locSearchQueryReqSchema,
+  locSearchReplyRawSchema,
+  AitoolInputReqSchema,
 } from "./utils/bridge-models.js";
 import {
   callBridge,
@@ -28,7 +28,7 @@ import {
 } from "./utils/python-bridge.js";
 
 //#################################################################################
-const searchResultCache = new Map<string, SearchResponseRaw>();
+const searchResultCache = new Map<string, LocSearchReplyRawType>();
 
 function createTextToolResult(text: string, isError = false) {
   return {
@@ -51,7 +51,7 @@ function createErrorToolResult(error: unknown) {
   return createTextToolResult(message, true);
 }
 
-function getCachedSearchResponse(sessionId: string): SearchResponseRaw {
+function getCachedSearchResponse(sessionId: string): LocSearchReplyRawType {
   const cachedResponse = searchResultCache.get(sessionId);
 
   if (!cachedResponse) {
@@ -73,11 +73,11 @@ function buildServer() {
       title: "Location Search",
       description:
         "Search and shortlist a location candidate before any heavy analysis. Call this tool first.",
-      inputSchema: searchRequestSchema,
+      inputSchema: locSearchQueryReqSchema,
     },
     async (args) => {
       try {
-        const rawResponse = searchResponseRawSchema.parse(
+        const rawResponse = locSearchReplyRawSchema.parse(
           await callBridge("search_location", args),
         );
         searchResultCache.set(rawResponse.session_id, rawResponse);
@@ -96,7 +96,7 @@ function buildServer() {
       title: "Road And Traffic Analysis",
       description:
         "Heavy road and traffic analysis. Call location_search first, then pass the confirmed session and selection.",
-      inputSchema: toolInputSchema,
+      inputSchema: AitoolInputReqSchema,
     },
     async (args) => {
       try {
@@ -117,7 +117,7 @@ function buildServer() {
       title: "Area And Facility Analysis",
       description:
         "Heavy area and facility analysis. Call location_search first, then pass the confirmed session and selection.",
-      inputSchema: toolInputSchema,
+      inputSchema: AitoolInputReqSchema,
     },
     async (args) => {
       try {

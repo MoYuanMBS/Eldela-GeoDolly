@@ -8,33 +8,33 @@ from pydantic import BaseModel, ConfigDict, Field
 
 ToolType = Literal["tool_a", "tool_b"]
 BasemapType = Literal["osm", "satellite"]
-SearchStatus = Literal["needs_confirmation", "no_match"]
-type JsonPrimitive = None | bool | int | float | str
-type JsonValue = JsonPrimitive | list[JsonValue] | dict[str, JsonValue]
-type JsonDict = dict[str, JsonValue]
+LocSearchStatusType = Literal["needs_confirmation", "no_match"]
+type JsonPrimitiveType = None | bool | int | float | str
+type JsonValueType = JsonPrimitiveType | list[JsonValueType] | dict[str, JsonValueType]
+type JsonDictType = dict[str, JsonValueType]
 
 class StrictModel(BaseModel):
     """bridge 边界默认使用严格校验。"""
 
     model_config = ConfigDict(strict=True, extra="forbid")
 
-    def to_dict(self) -> JsonDict:
-        return cast(JsonDict, self.model_dump(mode="python"))
+    def to_dict(self) -> JsonDictType:
+        return cast(JsonDictType, self.model_dump(mode="python"))
 
 
 class NominatimData:
-    class LocationQuery(StrictModel):
+    class LocSearchQuery(StrictModel):
         """单个地点搜索项。"""
 
         query: str
         country_codes: list[str] | None = None
 
-    class SearchRequest(StrictModel):
+    class LocSearchQueryReq(StrictModel):
         """顶层搜索请求。"""
 
-        queries: list[NominatimData.LocationQuery] = Field(min_length=1)
+        queries: list[NominatimData.LocSearchQuery] = Field(min_length=1)
 
-    class Candidate(StrictModel):
+    class LocSearchCandidate(StrictModel):
         """搜索阶段产出的标准候选项。"""
 
         index: int
@@ -48,27 +48,17 @@ class NominatimData:
         importance: float | None = None
         address: dict[str, str] | None = None
         boundingbox: list[float] | None = None
-        geojson: JsonDict | None = None  # Python 内部保留；TS 回给 AI 时要屏蔽
+        geojson: JsonDictType | None = None  # Python 内部保留；TS 回给 AI 时要屏蔽
 
-    class SearchResponse(StrictModel):
+    class LocSearchReply(StrictModel):
         """Python 传给 TypeScript 的搜索响应。"""
 
-        status: SearchStatus
+        status: LocSearchStatusType
         session_id: str
         query: str
-        candidates: list[NominatimData.Candidate]
+        candidates: list[NominatimData.LocSearchCandidate]
         instruction: str | None = None
         message: str | None = None
-
-    class SelectionRequest(StrictModel):
-        """AI 确认候选后的工具路由请求。"""
-
-        session_id: str
-        selected_indices: list[int] = Field(min_length=1)
-        tool: ToolType
-        ai_attention_token: str | None = None
-        basemap: BasemapType | None = None
-
 
 class TransferTypes:
     """桥接层统一使用的结构化数据类型。"""
@@ -78,13 +68,13 @@ class TransferTypes:
     class AppError(Exception):
         """桥接层统一使用的结构化异常。"""
 
-        def __init__(self, code: str, message: str, details: JsonValue = None):
+        def __init__(self, code: str, message: str, details: JsonValueType = None):
             super().__init__(message)
             self.code = code
             self.message = message
             self.details = details
 
-        def to_dict(self) -> JsonDict:
+        def to_dict(self) -> JsonDictType:
             return {
                 "code": self.code,
                 "message": self.message,
@@ -94,19 +84,28 @@ class TransferTypes:
     class SupportsToDict(Protocol):
         """带 `to_dict()` 的结果对象协议。"""
 
-        def to_dict(self) -> JsonDict: ...
+        def to_dict(self) -> JsonDictType: ...
 
-    class ApiRequestData(StrictModel):
+    class BridgeRequest(StrictModel):
         """从 TypeScript 传入 Python 的请求模型。"""
 
         action: TransferTypes.Action
-        data: JsonDict
+        data: JsonDictType
 
-    class ApiDataResponse(StrictModel):
+    class BridgeResponse(StrictModel):
         """桥接层标准响应模型。"""
 
         ok: bool
-        data: JsonDict | None
-        error: JsonDict | None
+        data: JsonDictType | None
+        error: JsonDictType | None
 
-    Data: TypeAlias = JsonDict | SupportsToDict
+    BridgeData: TypeAlias = JsonDictType | SupportsToDict
+
+class Tools:
+    """ToolA/B输入输出模型。"""
+    class PyToolReq(StrictModel):
+        """AI 确认候选后的选定地点级信息"""
+        session_id: str
+        selected_candidate: NominatimData.LocSearchCandidate
+        ai_attention_token: str | None = None
+        basemap: BasemapType | None = None

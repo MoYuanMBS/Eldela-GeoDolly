@@ -12,12 +12,12 @@ import httpx
 if __package__ in (None, ""):
     sys.path.append(str(Path(__file__).resolve().parents[2]))
 
-from python.utils.models import NominatimData, TransferTypes, JsonDict
+from python.utils.models import NominatimData, TransferTypes, JsonDictType
 
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 LOCATION_LIMIT = 30
 USER_AGENT = "geomcp/test"
-CONFIRMATION_INSTRUCTION = ("Reply with JSON containing session_id, selected_indices, tool, and optional ai_attention_token and basemap.")
+CONFIRMATION_INSTRUCTION = ("Call tool_a or tool_b with JSON containing session_id, selected_indices, and optional ai_attention_token and basemap.")
 
 
 def _to_optional_string(value: Any) -> str | None:
@@ -70,9 +70,9 @@ def _normalize_boundingbox(value: Any) -> list[float] | None:
     return normalized_coordinates or None
 
 
-def _build_candidate(raw_result: dict[str, Any], index: int) -> NominatimData.Candidate:
+def _build_candidate(raw_result: dict[str, Any], index: int) -> NominatimData.LocSearchCandidate:
     """把单条原始 Nominatim 结果映射为共享的 Candidate 模型。"""
-    return NominatimData.Candidate(
+    return NominatimData.LocSearchCandidate(
         index=index,
         osm_type=_to_optional_string(raw_result.get("osm_type")),
         name=_to_optional_string(raw_result.get("name")),
@@ -84,7 +84,7 @@ def _build_candidate(raw_result: dict[str, Any], index: int) -> NominatimData.Ca
         importance=_to_optional_float(raw_result.get("importance")),
         address=_normalize_address(raw_result.get("address")),
         boundingbox=_normalize_boundingbox(raw_result.get("boundingbox")),
-        geojson=cast(JsonDict, raw_result.get("geojson"))
+        geojson=cast(JsonDictType, raw_result.get("geojson"))
         if isinstance(raw_result.get("geojson"), dict)
         else None,
     )
@@ -118,9 +118,9 @@ def search_location(query: str, country_codes: str = "") -> list[dict[str, Any]]
         return []
     return [item for item in payload if isinstance(item, dict)]
 
-def query_request(search_request: NominatimData.SearchRequest) -> NominatimData.SearchResponse:
+def query_request(search_request: NominatimData.LocSearchQueryReq) -> NominatimData.LocSearchReply:
     """执行一次搜索请求，并把结果转换为 SearchResponse。"""
-    current_query: NominatimData.LocationQuery = search_request.queries[0]
+    current_query: NominatimData.LocSearchQuery = search_request.queries[0]
     query_text = current_query.query
     country_codes = ",".join(current_query.country_codes) if current_query.country_codes else ""
     raw_results = search_location(query_text, country_codes)
@@ -128,7 +128,7 @@ def query_request(search_request: NominatimData.SearchRequest) -> NominatimData.
     candidates = [_build_candidate(raw_result, index)for index, raw_result in enumerate(raw_results, start=1)]
 
     if candidates:
-        return NominatimData.SearchResponse(
+        return NominatimData.LocSearchReply(
             status="needs_confirmation",
             session_id=str(uuid.uuid4()).split("-")[0],
             query=query_text,
@@ -136,7 +136,7 @@ def query_request(search_request: NominatimData.SearchRequest) -> NominatimData.
             instruction=CONFIRMATION_INSTRUCTION,
         )
 
-    return NominatimData.SearchResponse(
+    return NominatimData.LocSearchReply(
         status="no_match",
         session_id=str(uuid.uuid4()).split("-")[0],
         query=query_text,
@@ -148,7 +148,7 @@ if __name__ == "__main__":
     test_query = "square one"
     test_country_code = "ca"
     raw_results = search_location(test_query, test_country_code)
-    example_request = NominatimData.SearchRequest(queries=[NominatimData.LocationQuery(query=test_query, country_codes=[test_country_code])])
+    example_request = NominatimData.LocSearchQueryReq(queries=[NominatimData.LocSearchQuery(query=test_query, country_codes=[test_country_code])])
     search_response = query_request(example_request)
 
     print(raw_results)

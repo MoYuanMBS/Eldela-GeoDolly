@@ -23,23 +23,23 @@ from python.utils.models import NominatimData, TransferTypes
 class PythonBridgeApp:
     """Python bridge 入口控制器。"""
     @staticmethod
-    def read_payload() -> tuple[TransferTypes.Action, TransferTypes.Data]:
+    def read_payload() -> tuple[TransferTypes.Action, TransferTypes.BridgeData]:
         """从 stdin 读取并解析 JSON 请求。"""
         raw_payload = sys.stdin.read().strip()
         try:
-            payload = TransferTypes.ApiRequestData.model_validate(json.loads(raw_payload))
+            payload = TransferTypes.BridgeRequest.model_validate(json.loads(raw_payload))
         except json.JSONDecodeError as error:
             raise TransferTypes.AppError("INVALID_JSON", "Failed to parse JSON payload", str(error))
 
         return payload.action, payload.data
     
     @staticmethod
-    def return_response_success(response: TransferTypes.Data) -> TransferTypes.ApiDataResponse:
+    def return_response_success(response: TransferTypes.BridgeData) -> TransferTypes.BridgeResponse:
         """把成功结果包装成统一 bridge 成功响应。"""
         if isinstance(response, dict):
-            return TransferTypes.ApiDataResponse(ok=True, data=response, error=None)
+            return TransferTypes.BridgeResponse(ok=True, data=response, error=None)
 
-        return TransferTypes.ApiDataResponse(ok=True, data=response.to_dict(), error=None)
+        return TransferTypes.BridgeResponse(ok=True, data=response.to_dict(), error=None)
 
     @staticmethod
     def normalize_exception(error: Exception) -> TransferTypes.AppError:
@@ -53,17 +53,17 @@ class PythonBridgeApp:
         return TransferTypes.AppError("INTERNAL_ERROR","unexpected python processing error",str(error))
 
     @staticmethod
-    def return_response_error(error: Exception) -> TransferTypes.ApiDataResponse:
+    def return_response_error(error: Exception) -> TransferTypes.BridgeResponse:
         """把异常包装成统一 bridge 错误响应。"""
         app_error = PythonBridgeApp.normalize_exception(error)
-        return TransferTypes.ApiDataResponse(ok=False, data=None, error=app_error.to_dict())
+        return TransferTypes.BridgeResponse(ok=False, data=None, error=app_error.to_dict())
 
     @staticmethod
     def return_repponse_decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         """装饰器：统一做成功响应包装与异常包装。"""
         if inspect.iscoroutinefunction(func):
             @wraps(func)
-            async def async_inner(*args: Any, **kwargs: Any) -> TransferTypes.ApiDataResponse:
+            async def async_inner(*args: Any, **kwargs: Any) -> TransferTypes.BridgeResponse:
                 try:
                     result = await func(*args, **kwargs)
                     return PythonBridgeApp.return_response_success(result)
@@ -72,7 +72,7 @@ class PythonBridgeApp:
             return async_inner
         else:
             @wraps(func)
-            def sync_inner(*args: Any, **kwargs: Any) -> TransferTypes.ApiDataResponse:
+            def sync_inner(*args: Any, **kwargs: Any) -> TransferTypes.BridgeResponse:
                 try:
                     result = func(*args, **kwargs)
                     return PythonBridgeApp.return_response_success(result)
@@ -83,9 +83,9 @@ class PythonBridgeApp:
 class MainHandler:
     @staticmethod
     @PythonBridgeApp.return_repponse_decorator
-    def handle_location_search(data: TransferTypes.Data):
+    def handle_location_search(data: TransferTypes.BridgeData):
         """基础定位搜索确认请求"""
-        search_request = NominatimData.SearchRequest.model_validate(data)
+        search_request = NominatimData.LocSearchQueryReq.model_validate(data)
 
         return nominatim.query_request(search_request)
 
@@ -98,7 +98,7 @@ class MainHandler:
     #     pass
 
     @staticmethod
-    async def dispatch() -> TransferTypes.ApiDataResponse:
+    async def dispatch() -> TransferTypes.BridgeResponse:
         """按 action 分发到对应 handler。"""
         action, data = PythonBridgeApp.read_payload()
         if action == "search_location":
