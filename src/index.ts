@@ -1,6 +1,4 @@
 /**
- * Current authority source: doc/GeoMCP 技术规范文档.md
- *
  * `src/index.ts` is the MCP server bootstrap entry:
  * - create the MCP server
  * - register tools
@@ -15,12 +13,13 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 
+import { getToolPromptsConfig } from "./utils/config-loader.js";
 import {
   type LocSearchReplyRawType,
   locSearchQueryReqSchema,
   locSearchReplyRawSchema,
   AitoolInputReqSchema,
-} from "./utils/bridge-models.js";
+} from "./models/bridge-models.js";
 import {
   callBridge,
   exportToolsQueryForPython,
@@ -62,6 +61,7 @@ function getCachedSearchResponse(sessionId: string): LocSearchReplyRawType {
 }
 
 function buildServer() {
+  const toolPromptsConfig = getToolPromptsConfig();
   const server = new McpServer({
     name: "geomcp",
     version: "0.1.0",
@@ -70,9 +70,8 @@ function buildServer() {
   server.registerTool(
     "location_search",
     {
-      title: "Location Search",
-      description:
-        "Search and shortlist a location candidate before any heavy analysis. Call this tool first.",
+      title: toolPromptsConfig.location_search.title,
+      description: toolPromptsConfig.location_search.description,
       inputSchema: locSearchQueryReqSchema,
     },
     async (args) => {
@@ -93,9 +92,8 @@ function buildServer() {
   server.registerTool(
     "tool_a",
     {
-      title: "Road And Traffic Analysis",
-      description:
-        "Heavy road and traffic analysis. Call location_search first, then pass the confirmed session and selection.",
+      title: toolPromptsConfig.tool_a.title,
+      description: toolPromptsConfig.tool_a.description,
       inputSchema: AitoolInputReqSchema,
     },
     async (args) => {
@@ -114,9 +112,8 @@ function buildServer() {
   server.registerTool(
     "tool_b",
     {
-      title: "Area And Facility Analysis",
-      description:
-        "Heavy area and facility analysis. Call location_search first, then pass the confirmed session and selection.",
+      title: toolPromptsConfig.tool_b.title,
+      description: toolPromptsConfig.tool_b.description,
       inputSchema: AitoolInputReqSchema,
     },
     async (args) => {

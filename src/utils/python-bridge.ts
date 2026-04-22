@@ -29,7 +29,7 @@ import {
   locSearchReplySchema,
   BridgeActionsRegistry,
   pyToolReqSchema
-} from "./bridge-models.js";
+} from "../models/bridge-models.js";
 
 const PYTHON_ENTRYPOINT = "python/main.py";
 

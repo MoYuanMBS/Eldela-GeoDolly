@@ -1,0 +1,41 @@
+# 轻量全局配置。
+# 当前权威来源: doc/GeoMCP 技术规范文档.md
+
+# MCP tool 对外文案。
+# 主要供 TypeScript 在注册 `location_search` / `tool_a` / `tool_b` 时读取。
+prompts:
+  location_search:
+    # 工具标题，显示给 MCP client / AI。
+    title: "Location Search"
+    # 工具说明文案。
+    # 建议保持英文，避免影响不同 AI / MCP client 的理解。
+    description: >
+      Search and shortlist a location candidate before any heavy analysis.
+      Call this tool first.
+  tool_a:
+    # Tool A 的展示标题。
+    title: "Road And Traffic Analysis"
+    # Tool A 的说明文案。
+    description: >
+      Heavy road and traffic analysis.
+      Call location_search first, then pass the confirmed session and selection.
+  tool_b:
+    # Tool B 的展示标题。
+    title: "Area And Facility Analysis"
+    # Tool B 的说明文案。
+    description: >
+      Heavy area and facility analysis.
+      Call location_search first, then pass the confirmed session and selection.
+
+# Nominatim 运行参数。
+# 主要供 Python 侧 `nominatim.py` 使用。
+nominatim:
+  # 单次搜索返回的最大候选数量。
+  # 调大可能增加 AI 的选择负担；调小可能漏掉候选。
+  location_limit: 30
+  # 发给 Nominatim 的 User-Agent。
+  # 部署时建议替换为正式服务标识，避免长期使用测试值。
+  user_agent: "geomcp/test"
+  # Nominatim HTTP 请求超时秒数。
+  # 超时后会进入上游 HTTP 错误处理流程。
+  timeout_seconds: 30.0

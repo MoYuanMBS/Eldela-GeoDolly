@@ -12,7 +12,7 @@ import {
   sanitizeSearchResponseForAI,
   unwrapBridgeResponseData,
 } from "../../src/utils/python-bridge.ts";
-import { locSearchReplyRawSchema } from "../../src/utils/bridge-models.ts";
+import { locSearchReplyRawSchema } from "../../src/models/bridge-models.ts";
 
 test("resolvePythonExecutable prefers PYTHON_PATH from the environment", () => {
   const originalPythonPath = process.env.PYTHON_PATH;
@@ -77,7 +77,6 @@ test("parseBridgeResponseData parses a successful Python stdout payload", () => 
       session_id: "abc123",
       query: "Toronto Pearson Airport",
       candidates: [],
-      instruction: null,
       message: null,
     },
     error: null,
@@ -95,7 +94,6 @@ test("unwrapBridgeResponseData returns inner data for a successful envelope", ()
     session_id: "abc123",
     query: "Toronto Pearson Airport",
     candidates: [],
-    instruction: null,
     message: null,
   };
 
@@ -154,7 +152,6 @@ test("sanitizeSearchResponseForAI strips geojson but keeps the rest of the candi
         },
       },
     ],
-    instruction: "Reply with JSON containing session_id and selected_indices.",
     message: null,
   };
 

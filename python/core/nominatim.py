@@ -17,7 +17,6 @@ from python.utils.models import NominatimData, TransferTypes, JsonDictType
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 LOCATION_LIMIT = 30
 USER_AGENT = "geomcp/test"
-CONFIRMATION_INSTRUCTION = ("Call tool_a or tool_b with JSON containing session_id, selected_indices, and optional ai_attention_token and basemap.")
 
 
 def _to_optional_string(value: Any) -> str | None:
@@ -133,7 +132,6 @@ def query_request(search_request: NominatimData.LocSearchQueryReq) -> NominatimD
             session_id=str(uuid.uuid4()).split("-")[0],
             query=query_text,
             candidates=candidates,
-            instruction=CONFIRMATION_INSTRUCTION,
         )
 
     return NominatimData.LocSearchReply(

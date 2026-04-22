@@ -78,7 +78,6 @@ export const locSearchReplyRawSchema = z
     session_id: z.string(),
     query: z.string(),
     candidates: z.array(locSearchCandidateRawSchema),
-    instruction: z.string().nullable().optional(),
     message: z.string().nullable().optional(),
   })
   .strict();
@@ -89,7 +88,6 @@ export const locSearchReplySchema = z
     session_id: z.string(),
     query: z.string(),
     candidates: z.array(locSearchCandidateSchema),
-    instruction: z.string().nullable().optional(),
     message: z.string().nullable().optional(),
   })
   .strict();
@@ -128,7 +126,6 @@ export const toolResSchema = z
   })
   .strict();
 
-// TS 在 tool_a / tool_b handler 里完成 join 后，
 // 真正发给 Python 的 `data` 结构。
 export const pyToolReqSchema = z
     .object({
@@ -141,10 +138,6 @@ export const pyToolReqSchema = z
 
 export function bridgeRequestSchemaFn<T extends z.ZodType<JsonDictType>>(dataSchema: T) {
   // 创建发往 Python 的标准 envelope：
-  // {
-  //   action: "...",
-  //   data: <dataSchema>
-  // }
   return z
     .object({
       action: bridgeActionSchema,
@@ -155,14 +148,6 @@ export function bridgeRequestSchemaFn<T extends z.ZodType<JsonDictType>>(dataSch
 
 export function bridgeResponseSchemaFn<T extends z.ZodTypeAny>(dataSchema: T) {
   // 创建 Python 回给 TS 的标准 envelope：
-  // {
-  //   ok: true/false,
-  //   data: <dataSchema> | null,
-  //   error: {...} | null
-  // }
-  //
-  // 所以 `toolResSchema` / `locSearchReplyRawSchema`
-  // 都是在描述这里面 `data` 的内部结构。
   return z
     .object({
       ok: z.boolean(),

@@ -57,7 +57,6 @@ class NominatimData:
         session_id: str
         query: str
         candidates: list[NominatimData.LocSearchCandidate]
-        instruction: str | None = None
         message: str | None = None
 
 class TransferTypes:

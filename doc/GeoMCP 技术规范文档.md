@@ -45,6 +45,7 @@ GeoMCP 是一个基于 MCP (Model Context Protocol) 的地理信息分析工具�
 │  MCP Server 入口    │  TypeScript + @modelcontextprotocol  │
 ├─────────────────────────────────────────────────────────────┤
 │  TS Bridge 校验层    │  Zod (bridge 输入输出运行时校验)     │
+│                     │  yaml (轻量配置解析)                 │
 ├─────────────────────────────────────────────────────────────┤
 │  数据处理层         │  Python 3.11+                        │
 │                     │  ├─ httpx (异步 HTTP)                │
@@ -68,14 +69,17 @@ GeoMCP 是一个基于 MCP (Model Context Protocol) 的地理信息分析工具�
 geomcp/
 ├── src/                          # TypeScript 源码
 │   ├── index.ts                  # MCP Server 入口
+│   ├── models/                   # TS 共享 schema / 类型定义
+│   │   ├── bridge-models.ts      # TS bridge 协议模型与 Zod schema
+│   │   └── config-models.ts      # TS 配置 schema 与类型
 │   ├── tools/                    # Tool 定义
 │   │   ├── tool-a.ts             # Tool A: 道路/交通分析
 │   │   └── tool-b.ts             # Tool B: 区域/设施分析
 │   ├── renderer/                 # 渲染模块
 │   │   └── leaflet-renderer.ts   # Leaflet 渲染器
 │   └── utils/                    # 工具函数
-│       ├── bridge-models.ts      # TS bridge 协议模型与 Zod schema
-│       └── python-bridge.ts      # Python 调用桥接
+│       ├── python-bridge.ts      # Python 调用桥接
+│       └── config-loader.ts      # 配置加载器
 │
 ├── python/                       # Python 源码
 │   ├── main.py                   # Python 入口 (CLI)
@@ -93,6 +97,7 @@ geomcp/
 │       └── coord_utils.py        # 坐标工具
 │
 ├── config/                       # 配置文件
+│   ├── app.yaml                  # 轻量全局配置
 │   ├── filters.yaml              # 过滤规则
 │   ├── experts.yaml              # 专家字典
 │   ├── tiles.yaml                # 瓦片源配置
@@ -151,9 +156,6 @@ geomcp/
 │  │        "boundingbox": [41.97, 41.98, -87.91, -87.90],               │   │
 │  │        "geojson": null }                                            │   │
 │  │    ],                                                               │   │
-│  │    "instruction": "Call tool_a or tool_b with JSON containing       │   │
-│  │                    session_id, selected_indices, and optional       │   │
-│  │                    ai_attention_token and basemap."                 │   │
 │  │  }                                                                  │   │
 │  └──────────────────────────────┬──────────────────────────────────────┘   │
 │     AI 调用 tool_a / tool_b:                                               │
@@ -412,6 +414,15 @@ Pydantic 使用约束：
 - Python 与 TypeScript 之间通信方式仍固定为 stdin/stdout JSON，不因引入 Pydantic 改变协议边界
 - 如果某个内部模块只做中间数据传递、且不直接面向 bridge 输入输出，优先继续使用标准 dataclass 或普通类型
 
+Python 配置加载约束：
+
+- `config/app.yaml` 属于轻量基础配置，允许在 `main.py` 启动阶段加载一次
+- `python/utils/config_loader.py` 负责 Python 侧配置加载入口，不应由 `nominatim.py`、`geometry.py`、`expert_matcher.py` 等业务模块各自直接读取 YAML 文件
+- Python 侧 YAML 解析统一使用 `PyYAML`
+- heavy config 不应默认全量加载；尤其 `experts.yaml` 必须为按需加载设计
+- `filters.yaml`、`tiles.yaml` 这类配置是否一次性加载，取决于体量与调用频率；规范允许后续按实际需要调整
+- 专家配置加载必须支持“一次命中多个专家”的可能，但不应把全量专家库作为每次请求的默认上下文向下传递
+
 ```python
 #!/usr/bin/env python3
 """
@@ -622,20 +633,30 @@ class TileManager:
 // 处理工具调用
 // 启动 Server
 ```
-### 5.2 Python 桥接模块 (python-bridge.ts / bridge-models.ts)
+### 5.2 TypeScript 模型与桥接模块 (models/ + python-bridge.ts)
 ```typescript
-`python-bridge.ts` 负责 TypeScript 与 Python 之间的协议边界适配，`bridge-models.ts` 负责与 Python `models.py` 对齐的协议模型和 Zod schema。TypeScript 侧允许使用 Zod 对 MCP tool 入参、bridge envelope、Python 返回结果做运行时校验，但应保持最小化处理原则。
+`src/models/bridge-models.ts` 负责与 Python `models.py` 对齐的协议模型和 Zod schema，`src/utils/python-bridge.ts` 负责 TypeScript 与 Python 之间的协议边界适配。共享的 schema / 类型定义应集中放在 `src/models/`，`src/utils/` 保持桥接、加载和辅助逻辑职责。TypeScript 侧允许使用 Zod 对 MCP tool 入参、bridge envelope、Python 返回结果做运行时校验，但应保持最小化处理原则。
 
 TypeScript bridge 使用约束：
 
-- 允许在 `src/utils/python-bridge.ts` 及其直接关联的 bridge 类型模块中使用 Zod
-- 允许对 `BridgeRequestType`、`BridgeResponseType`、`LocSearchQueryReqType`、`LocSearchReplyType`、`ToolInputReqType`、`PyToolReqType` 做运行时校验
+- 允许在 `src/models/bridge-models.ts`、`src/utils/python-bridge.ts` 及其直接关联的边界模块中使用 Zod
+- 允许对 `BridgeRequestType`、`BridgeResponseType`、`LocSearchQueryReqType`、`LocSearchReplyType`、`AiToolInputReqType`、`PyToolReqType` 做运行时校验
 - TypeScript 发送给 Python 时，必须把 MCP tool 输入包装为 `action + data`
 - TypeScript 接收 Python 响应时，必须先按 `ok + data + error` envelope 解析，再还原为内部 `data`
 - `location_search` 返回给 AI 时必须移除 `geojson`，除此之外不应额外改写 `SearchResponse` 语义
 - `location_search` 返回后，TypeScript 必须按 `session_id` 暂存完整 `SearchResponseRaw`
 - `tool_a` / `tool_b` 被调用时，TypeScript 必须先从缓存中命中原始候选，再组装 `selected_candidate` 后发给 Python
 - Zod 的使用范围默认限于协议边界层；Leaflet 渲染实例、内部中间对象和非 bridge 普通处理逻辑不要求全面引入 Zod
+
+TypeScript 配置加载约束：
+
+- TypeScript 侧必须使用独立配置模块加载 `config/app.yaml`，不得把配置读取逻辑直接写入 `src/index.ts` 或 `src/utils/python-bridge.ts`
+- 推荐目录：
+  - `src/models/config-models.ts`：配置 schema 与类型
+  - `src/utils/config-loader.ts`：配置读取、校验、缓存入口
+- TypeScript 侧 YAML 解析统一使用 `yaml` 包，不应手写 YAML 解析逻辑
+- `config/app.yaml` 属于轻量基础配置，TypeScript 侧允许在进程启动后读取一次并做进程内缓存
+- MCP tool 的 `title`、`description` 以及后续稳定的 AI-facing 文案，应优先由配置驱动，便于部署后与其他 MCP tools 或不同 AI 环境联调
 ```
 
 #### Bridge 命名约定：
@@ -712,7 +733,45 @@ Python 同步要求：
  */
 ```
 ## 6. 配置文件规范
-### 6.1 过滤规则 (filters.yaml)
+### 6.1 全局基础配置 (app.yaml)
+```yaml
+# config/app.yaml
+
+prompts:
+  location_search:
+    title: "Location Search"
+    description: >
+      Search and shortlist a location candidate before any heavy analysis.
+      Call this tool first.
+  tool_a:
+    title: "Road And Traffic Analysis"
+    description: >
+      Heavy road and traffic analysis.
+      Call location_search first, then pass the confirmed session and selection.
+  tool_b:
+    title: "Area And Facility Analysis"
+    description: >
+      Heavy area and facility analysis.
+      Call location_search first, then pass the confirmed session and selection.
+
+nominatim:
+  location_limit: 30
+  user_agent: "geomcp/test"
+  timeout_seconds: 30.0
+```
+
+约束说明：
+
+- `app.yaml` 仅用于轻量、全局、经常被访问的基础配置
+- 当前明确纳入的首批配置项包括：
+  - `nominatim.location_limit`
+  - `nominatim.user_agent`
+  - `nominatim.timeout_seconds`
+  - TypeScript 侧 MCP tool 的稳定 prompt 文案，如 `title` / `description`
+- 不要求为未来模块预留空分组；新增配置应在真实使用时再补入 `app.yaml`
+- 非核心、短生命周期、协议不依赖的提示文案不应强制进入配置
+
+### 6.2 过滤规则 (filters.yaml)
 ```yaml
 # config/filters.yaml
 # 数据清洗配置
@@ -775,7 +834,7 @@ low_priority_tags:
   - tracktype
   - incline
 ```
-### 6.2 专家字典 (experts.yaml)
+### 6.3 专家字典 (experts.yaml)
 ```yaml
 # config/experts.yaml
 # 专家知识配置
@@ -839,7 +898,7 @@ experts:
         css_class: "expert-railway-spur"
 
 ```
-### 6.3 瓦片源配置 (tiles.yaml)
+### 6.4 瓦片源配置 (tiles.yaml)
 ```yaml
 # config/tiles.yaml
 # 瓦片源配置
@@ -893,7 +952,7 @@ download:
   retry: 3              # 重试次数
   max_tiles: 64         # 单次请求最大瓦片数
 ```
-### 6.4 渲染样式 (styles.css)
+### 6.5 渲染样式 (styles.css)
 ```yaml
 /* config/styles.css */
 /* Leaflet 渲染样式定义 */
@@ -1044,7 +1103,6 @@ TypeScript 在回传给 AI 时，必须屏蔽 `geojson` 字段；返回给 AI �
       "geojson": { "type": "Polygon", "coordinates": [] }
     }
   ],
-  "instruction": "Call tool_a or tool_b with JSON containing session_id, selected_indices, and optional ai_attention_token and basemap."
 }
 ```
 
@@ -1068,7 +1126,6 @@ TypeScript 在回传给 AI 时，必须屏蔽 `geojson` 字段；返回给 AI �
 | `session_id` | `str` | 是 | 本次检索会话 ID，由系统生成 |
 | `query` | `str` | 是 | 原始查询文本 |
 | `candidates` | `list[Candidate]` | 是 | 候选列表；TS 回传给 AI 时需移除 `geojson` |
-| `instruction` | `str \| null` | 否 | 给 AI 的英文回复格式提示 |
 | `message` | `str \| null` | 否 | 英文说明文本，常用于空结果或提醒 |
 
 `Candidate`:
@@ -1287,7 +1344,8 @@ limits:
     "@modelcontextprotocol/sdk": "^1.0.0",
     "leaflet": "^1.9.4",
     "canvas": "^2.11.0",
-    "jsdom": "^24.0.0"
+    "jsdom": "^24.0.0",
+    "yaml": "^2.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
@@ -1307,7 +1365,7 @@ PyYAML>=6.0.0
 pydantic>=2.0.0
 ```
 #### TS 依赖
-TypeScript: @modelcontextprotocol/sdk, child_process, leaflet, canvas, jsdom, zod
+TypeScript: @modelcontextprotocol/sdk, child_process, leaflet, canvas, jsdom, zod, yaml
 
 ### 10.3 tsconfig.json
 ```json

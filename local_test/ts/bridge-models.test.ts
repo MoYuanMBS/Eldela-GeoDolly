@@ -7,7 +7,7 @@ import {
   locSearchQueryReqSchema,
   locSearchReplySchema,
   locSearchReplyRawSchema,
-} from "../../src/utils/bridge-models.ts";
+} from "../../src/models/bridge-models.ts";
 
 test("locSearchQueryReqSchema accepts the Python-aligned request shape", () => {
   const payload = {
@@ -66,7 +66,6 @@ test("bridgeResponseSchemaFn parses the Python response envelope", () => {
       session_id: "abc123",
       query: "Toronto Pearson Airport",
       candidates: [],
-      instruction: "Reply with JSON containing session_id and selected_indices.",
       message: null,
     },
     error: null,
