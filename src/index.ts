@@ -13,13 +13,13 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 
-import { getToolPromptsConfig } from "./utils/config-loader.js";
 import {
   type LocSearchReplyRawType,
   locSearchQueryReqSchema,
   locSearchReplyRawSchema,
   AitoolInputReqSchema,
 } from "./models/bridge-models.js";
+import { getToolPromptsConfigWithHints } from "./utils/prompt-hints.js";
 import {
   callBridge,
   exportToolsQueryForPython,
@@ -61,7 +61,7 @@ function getCachedSearchResponse(sessionId: string): LocSearchReplyRawType {
 }
 
 function buildServer() {
-  const toolPromptsConfig = getToolPromptsConfig();
+  const toolPromptsConfig = getToolPromptsConfigWithHints();
   const server = new McpServer({
     name: "geomcp",
     version: "0.1.0",

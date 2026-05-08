@@ -1,1 +1,18 @@
-# GeoMCP experts configuration placeholder
+# GeoMCP experts configuration
+# 当前权威来源: doc/GeoMCP 技术规范文档.md
+
+example_expert:
+  name: "example_expert"
+  hints:
+    - "osm_tag = value 表示含义"
+    - "example_tag = example_value 示例"
+
+  ai_focus_tags:
+    - osm_tag_key
+    - example_tag_key
+
+  leaflet_extra_tags:
+    - tag: "osm_tag_key=value"
+      css_class: "expert-osm-tag"
+    - tag: "example_tag_key=example_value"
+      css_class: "example-tag"

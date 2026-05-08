@@ -99,7 +99,7 @@ export const AitoolInputReqSchema = z
     session_id: z.string(),
     selected_indices: z.array(z.number().int()).min(1),
     basemap: basemapTypeSchema.nullable().optional(),
-    ai_attention_token: z.string().nullable().optional(),
+    attention_experts: z.array(z.string()).nullable().optional(),
   })
   .strict();
 
@@ -132,7 +132,7 @@ export const pyToolReqSchema = z
       session_id: z.string(),
       selected_candidate: locSearchCandidateRawSchema,
       basemap: basemapTypeSchema.nullable().optional(),
-      ai_attention_token: z.string().nullable().optional(),
+      attention_experts: z.array(z.string()).nullable().optional(),
     })
     .strict();
 

@@ -23,3 +23,4 @@ export const toolPromptsConfigSchema = z
 
 export type ToolPromptConfigType = z.infer<typeof toolPromptConfigSchema>;
 export type ToolPromptsConfigType = z.infer<typeof toolPromptsConfigSchema>;
+

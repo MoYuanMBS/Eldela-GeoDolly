@@ -13,11 +13,9 @@ if __package__ in (None, ""):
     sys.path.append(str(Path(__file__).resolve().parents[2]))
 
 from python.utils.models import NominatimData, TransferTypes, JsonDictType
+from python.utils.config_loader import config
 
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
-LOCATION_LIMIT = 30
-USER_AGENT = "geomcp/test"
-
 
 def _to_optional_string(value: Any) -> str | None:
     """把上游值转换为可选的非空字符串。"""
@@ -91,10 +89,13 @@ def _build_candidate(raw_result: dict[str, Any], index: int) -> NominatimData.Lo
 
 def search_location(query: str, country_codes: str = "") -> list[dict[str, Any]]:
     """根据单条查询文本拉取原始 Nominatim 搜索结果。"""
+    # 从配置中读取 Nominatim 相关参数，构造请求并获取结果
+    nom = config.nominatim
+    
     params = {
         "q": query,
         "format": "jsonv2",
-        "limit": LOCATION_LIMIT,
+        "limit": nom.location_limit,
         "addressdetails": 1,
         "polygon_geojson": 1,
     }
@@ -106,8 +107,8 @@ def search_location(query: str, country_codes: str = "") -> list[dict[str, Any]]
         response = httpx.get(
             NOMINATIM_URL,
             params=params,
-            headers={"User-Agent": USER_AGENT},
-            timeout=30.0,
+            headers={"User-Agent": nom.user_agent},
+            timeout=nom.timeout_seconds,
         )
         response.raise_for_status()
         payload = response.json()

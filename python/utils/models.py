@@ -106,5 +106,5 @@ class Tools:
         """AI 确认候选后的选定地点级信息"""
         session_id: str
         selected_candidate: NominatimData.LocSearchCandidate
-        ai_attention_token: str | None = None
+        attention_experts: list[str] | None = None
         basemap: BasemapType | None = None
