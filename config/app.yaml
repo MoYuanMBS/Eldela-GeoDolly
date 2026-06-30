@@ -38,4 +38,31 @@ nominatim:
   user_agent: "geomcp/test"
   # Nominatim HTTP 请求超时秒数。
   # 超时后会进入上游 HTTP 错误处理流程。
-  timeout_seconds: 30.0
+  timeout_seconds: 30.00
+
+# Geometry 模块统一运行参数。
+geometry:
+  # 预处理距离单位统一为米。
+  # LineString / MultiLineString 投影到本地米制 CRS 后的 buffer 距离。
+  line_buffer_meter: 5.00
+  # Tool A 查询 bbox 的扩展距离。
+  tool_a_bbox_expand_meter: 5.00
+  # Tool B tile bbox 的扩展距离。
+  tool_b_bbox_expand_meter: 5.00
+
+  # --- Compression 运行参数 ---
+  # tolerance 预测公式内部的算法调参常量仍定义在 compression.py 文件头。
+  # coverage_simplify 的 tolerance 下界与上界，单位为米。
+  base_tolerance_meter: 10.00
+  max_tolerance_meter: 200.00
+  # 全部 exterior open-ring 节点数的最终硬上限。
+  max_node: 150
+  # 初始预测失败后的最大反馈修正次数。
+  max_retry: 3
+  # --- Tool 面积限制 ---
+  # 配置单位为 km²；面积模块内部统一换算为 m²。
+  # Tool A 是 Tool B 超限后的宽松内部查询模式。
+  tool_a_max_area_km2: 180.00
+  tool_b_max_area_km2: 150.00
+  # Overpass core polygon 的独立面积上限，不与最终 tile bbox 面积共用。
+  max_core_area_km2: 120.00

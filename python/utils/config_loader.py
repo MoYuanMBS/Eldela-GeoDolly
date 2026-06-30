@@ -14,7 +14,7 @@ if __package__ in (None, ""):
 
 from python.utils.models import TransferTypes
 from python.utils.internal_models.experts import ExpertConfig, ExpertRegistryType
-from python.utils.internal_models.static import AppConfig, FiltersConfig, NominatimConfig, TilesConfig
+from python.utils.internal_models.static import AppConfig, FiltersConfig, GeometryConfig, NominatimConfig, TilesConfig
 
 type YamlMapType = dict[str, Any]
 
@@ -97,6 +97,7 @@ class _ConfigLoader:
         raw_app_config = self._yaml_store.load_static_yaml("app.yaml")
         return AppConfig.model_validate({
             "nominatim": raw_app_config.get("nominatim"),
+            "geometry": raw_app_config.get("geometry"),
         })
 
     @cached_property
@@ -143,6 +144,10 @@ class ConfigHub:
     @property
     def nominatim(self) -> NominatimConfig:
         return self._loader.app.nominatim
+
+    @property
+    def geometry(self) -> GeometryConfig:
+        return self._loader.app.geometry
 
     @property
     def filters(self) -> FiltersConfig:

@@ -6,6 +6,8 @@ from __future__ import annotations
 import asyncio
 import inspect
 import json
+import logging
+import os
 import sys
 from functools import wraps
 from pathlib import Path
@@ -13,11 +15,31 @@ from typing import Any, Callable
 
 import httpx
 
-if __package__ in (None, ""):
-    sys.path.append(str(Path(__file__).resolve().parents[1]))
-
 import python.core.nominatim as nominatim
 from python.utils.models import NominatimData, TransferTypes
+
+event_logger = logging.getLogger("geomcp.event")
+warning_logger = logging.getLogger("geomcp.warning")
+
+
+class GeomcpJsonFormatter(logging.Formatter):
+    """把 geomcp_extra 合并成一行 JSON 日志。"""
+
+    def format(self, record: logging.LogRecord) -> str:
+        payload: dict[str, Any] = {
+            "ts": self.formatTime(record, "%Y-%m-%d %H:%M:%S"),
+            "level": record.levelname,
+            "logger": record.name,
+            "event": record.getMessage(),
+        }
+        geomcp_extra = getattr(record, "geomcp_extra", None)
+        if isinstance(geomcp_extra, dict):
+            payload.update(geomcp_extra)
+        elif geomcp_extra is not None:
+            payload["extra"] = geomcp_extra
+        if record.exc_info:
+            payload["exception"] = self.formatException(record.exc_info)
+        return json.dumps(payload, ensure_ascii=False, default=str)
 
 
 class PythonBridgeApp:
@@ -56,7 +78,24 @@ class PythonBridgeApp:
     def return_response_error(error: Exception) -> TransferTypes.BridgeResponse:
         """把异常包装成统一 bridge 错误响应。"""
         app_error = PythonBridgeApp.normalize_exception(error)
+        warning_logger.warning(
+            "bridge_error_response",
+            extra={"geomcp_extra": {"status": "failed", "error_code": app_error.code, "reason": app_error.message}}
+        )
         return TransferTypes.BridgeResponse(ok=False, data=None, error=app_error.to_dict())
+
+    @staticmethod
+    def configure_logging() -> None:
+        """配置 Python 侧结构化日志，日志走 stderr，避免污染 bridge stdout。"""
+        log_level_name = os.getenv("GEOMCP_LOG_LEVEL", "WARNING").upper()
+        log_level = getattr(logging, log_level_name, logging.WARNING)
+        handler = logging.StreamHandler(sys.stderr)
+        handler.setFormatter(GeomcpJsonFormatter())
+        logging.basicConfig(
+            level=log_level,
+            handlers=[handler],
+            force=True
+        )
 
     @staticmethod
     def return_repponse_decorator(func: Callable[..., Any]) -> Callable[..., Any]:
@@ -101,6 +140,7 @@ class MainHandler:
     async def dispatch() -> TransferTypes.BridgeResponse:
         """按 action 分发到对应 handler。"""
         action, data = PythonBridgeApp.read_payload()
+        event_logger.info("bridge_dispatch", extra={"geomcp_extra": {"action": action, "status": "started"}})
         if action == "search_location":
             return MainHandler.handle_location_search(data)
         # elif action == "tool_a":
@@ -112,8 +152,10 @@ class MainHandler:
 
 def main() -> int:
     """同步入口，内部跑 async 主流程。"""
+    PythonBridgeApp.configure_logging()
     try:
         response = asyncio.run(MainHandler.dispatch())
+        event_logger.info("bridge_completed", extra={"geomcp_extra": {"ok": response.ok, "status": "completed"}})
         print(json.dumps(response.model_dump(), ensure_ascii=False), flush=True)
         return 0
     except Exception as error:

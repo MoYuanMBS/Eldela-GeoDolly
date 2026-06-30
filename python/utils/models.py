@@ -38,7 +38,7 @@ class NominatimData:
         """搜索阶段产出的标准候选项。"""
 
         index: int
-        osm_type: str | None = None
+        osm_type: Literal["node", "way", "relation"] | None = None
         name: str | None = None
         display_name: str | None = None
         lat: float | None = None

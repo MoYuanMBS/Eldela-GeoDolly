@@ -206,6 +206,10 @@ function callPython<
     });
 
     child.on("close", (code) => {
+      if (stderr.trim()) {
+        process.stderr.write(stderr);
+      }
+
       // Python 正常结束后，理论上 stdout 必须至少有一份 JSON 响应。
       // 如果完全没有 stdout，说明 Python 没按 bridge 协议返回结果，
       // 这时把 exit code 和 stderr 一起带出去，方便定位问题。

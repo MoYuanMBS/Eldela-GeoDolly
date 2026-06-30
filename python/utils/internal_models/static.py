@@ -12,13 +12,29 @@ class NominatimConfig(StrictModel):
 
     location_limit: int = Field(gt=0, le=50)
     user_agent: str = Field(min_length=1)
-    timeout_seconds: float = Field(gt=0)
+    timeout_seconds: float = Field(gt=0, multiple_of=0.01)
+
+
+class GeometryConfig(StrictModel):
+    """Geometry 模块统一运行配置。"""
+
+    line_buffer_meter: float = Field(ge=0, multiple_of=0.01)
+    tool_a_bbox_expand_meter: float = Field(ge=0, multiple_of=0.01)
+    tool_b_bbox_expand_meter: float = Field(ge=0, multiple_of=0.01)
+    base_tolerance_meter: float = Field(ge=0, multiple_of=0.01)
+    max_tolerance_meter: float = Field(gt=0, multiple_of=0.01)
+    max_node: int = Field(gt=0)
+    max_retry: int = Field(ge=0)
+    tool_a_max_area_km2: float = Field(gt=0, multiple_of=0.01)
+    tool_b_max_area_km2: float = Field(gt=0, multiple_of=0.01)
+    max_core_area_km2: float = Field(gt=0, multiple_of=0.01)
 
 
 class AppConfig(StrictModel):
     """`config/app.yaml` 中 Python 侧会使用的轻量配置。"""
 
     nominatim: NominatimConfig
+    geometry: GeometryConfig
 
 
 class FiltersConfig(StrictModel):

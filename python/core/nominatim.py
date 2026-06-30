@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 import uuid
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, cast, Literal
 
 import httpx
 
@@ -36,6 +36,16 @@ def _to_optional_float(value: Any) -> float | None:
     except (TypeError, ValueError):
         return None
 
+def _normalize_osm_type(raw_type: Any) -> Literal["node", "way", "relation"] | None:
+    """把上游 osm_type 转换为严格的枚举值。"""
+    if not isinstance(raw_type, str):
+        return None
+
+    normalized = raw_type.strip().lower()
+    if normalized in ("node", "way", "relation"):
+        return normalized  # type: ignore
+
+    return None
 
 def _normalize_address(value: Any) -> dict[str, str] | None:
     """只保留上游 payload 中可转为字符串的地址字段。"""
@@ -71,7 +81,7 @@ def _build_candidate(raw_result: dict[str, Any], index: int) -> NominatimData.Lo
     """把单条原始 Nominatim 结果映射为共享的 Candidate 模型。"""
     return NominatimData.LocSearchCandidate(
         index=index,
-        osm_type=_to_optional_string(raw_result.get("osm_type")),
+        osm_type=_normalize_osm_type(raw_result.get("osm_type")),
         name=_to_optional_string(raw_result.get("name")),
         display_name=_to_optional_string(raw_result.get("display_name")),
         lat=_to_optional_float(raw_result.get("lat")),
@@ -145,7 +155,7 @@ def query_request(search_request: NominatimData.LocSearchQueryReq) -> NominatimD
 
 if __name__ == "__main__":
     test_query = "square one"
-    test_country_code = "ca"
+    test_country_code = "CA"
     raw_results = search_location(test_query, test_country_code)
     example_request = NominatimData.LocSearchQueryReq(queries=[NominatimData.LocSearchQuery(query=test_query, country_codes=[test_country_code])])
     search_response = query_request(example_request)

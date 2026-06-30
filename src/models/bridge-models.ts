@@ -10,10 +10,12 @@ import { z } from "zod";
 export const toolTypeSchema = z.enum(["tool_a", "tool_b"]);
 export const basemapTypeSchema = z.enum(["osm", "satellite"]);
 export const searchStatusSchema = z.enum(["needs_confirmation", "no_match"]);
+export const osmTypeSchema = z.enum(["node", "way", "relation"]);
 
 export type ToolType = z.infer<typeof toolTypeSchema>;
 export type BasemapType = z.infer<typeof basemapTypeSchema>;
 export type SearchStatus = z.infer<typeof searchStatusSchema>;
+export type OsmType = z.infer<typeof osmTypeSchema>;
 
 export type JsonPrimitiveType = null | boolean | number | string;
 export type JsonValueType = JsonPrimitiveType | JsonValueType[] | { [key: string]: JsonValueType };
@@ -51,7 +53,7 @@ export const locSearchQueryReqSchema = z
 export const locSearchCandidateRawSchema = z
   .object({
     index: z.number().int(),
-    osm_type: z.string().nullable().optional(),
+    osm_type: osmTypeSchema.nullable().optional(),
     name: z.string().nullable().optional(),
     display_name: z.string().nullable().optional(),
     lat: z.number().nullable().optional(),
