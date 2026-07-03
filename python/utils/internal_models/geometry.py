@@ -9,8 +9,6 @@ from typing import Literal, TypeAlias, TypedDict
 
 from shapely.geometry import MultiPolygon, Polygon
 
-from python.utils.models import StrictModel
-
 BBox: TypeAlias = tuple[float, float, float, float]
 MetricPolygon: TypeAlias = Polygon | MultiPolygon
 CompressionStatus: TypeAlias = Literal["applied", "not_needed", "bbox_fallback", "tool_a_fallback"]
@@ -27,10 +25,3 @@ class AdaptedPolygonPart(TypedDict):
 
 
 AdaptedMultiPolygon: TypeAlias = list[AdaptedPolygonPart]
-
-
-class CompressionResult(StrictModel):
-    """Geometry 最终输出。"""
-
-    geometry: AdaptedMultiPolygon | BBox | None
-    status: CompressionStatus

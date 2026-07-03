@@ -6,6 +6,8 @@ from typing import Literal, Protocol, TypeAlias, cast
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from python.utils.internal_models.geometry import AdaptedMultiPolygon, BBox, CompressionStatus
+
 ToolType = Literal["tool_a", "tool_b"]
 BasemapType = Literal["osm", "satellite"]
 LocSearchStatusType = Literal["needs_confirmation", "no_match"]
@@ -21,7 +23,14 @@ class StrictModel(BaseModel):
     def to_dict(self) -> JsonDictType:
         return cast(JsonDictType, self.model_dump(mode="python"))
 
+################### geometry输出格式 ##############################################
+class GeometryCompressionResult(StrictModel):
+    """Geometry 最终输出。"""
 
+    geometry: AdaptedMultiPolygon | BBox | None
+    status: CompressionStatus
+
+################### NominatimData 所有格式 ##############################################
 class NominatimData:
     class LocSearchQuery(StrictModel):
         """单个地点搜索项。"""

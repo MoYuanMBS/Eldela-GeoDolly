@@ -16,8 +16,8 @@ import python.core.geometry.area_check as area_check
 import python.core.geometry.compression as compression
 import python.core.geometry.preprocess as preprocess
 from python.utils.config_loader import config
-from python.utils.internal_models.geometry import BBox, CompressionResult
-from python.utils.models import JsonDictType, TransferTypes
+from python.utils.internal_models.geometry import BBox
+from python.utils.models import GeometryCompressionResult, JsonDictType, TransferTypes
 
 event_logger = logging.getLogger("geomcp.event")
 warning_logger = logging.getLogger("geomcp.warning")
@@ -121,7 +121,7 @@ def bbox_core_result(
     bbox: BBox,
     bbox_area_m2: float,
     status: Literal["not_needed", "bbox_fallback"]
-) -> CompressionResult:
+) -> GeometryCompressionResult:
     """按 core area 上限检查 bbox；面积超限交给 tools 降级。"""
     max_core_area_m2 = config.geometry.max_core_area_km2 * 1_000_000.00
     if area_check.area_check(bbox_area_m2, max_core_area_m2):
@@ -130,15 +130,15 @@ def bbox_core_result(
                 "geometry_bbox_fallback",
                 extra={"geomcp_extra": {"status": "bbox_fallback"}}
             )
-        return CompressionResult(geometry=bbox, status=status)
+        return GeometryCompressionResult(geometry=bbox, status=status)
     warning_logger.warning(
         "geometry_tool_a_fallback",
         extra={"geomcp_extra": {"status": "tool_a_fallback", "reason": "area_limit_exceeded"}}
     )
-    return CompressionResult(geometry=None, status="tool_a_fallback")
+    return GeometryCompressionResult(geometry=None, status="tool_a_fallback")
 
 
-def process_geometry(geojson: JsonDictType | None, boundingbox: list[float] | None) -> CompressionResult:
+def process_geometry(geojson: JsonDictType | None, boundingbox: list[float] | None) -> GeometryCompressionResult:
     """处理 tools 分发的 GeoJSON 与 Nominatim boundingbox。"""
     if boundingbox is None:
         raise TransferTypes.AppError(code="invalid_bbox", message="bbox is required")
@@ -183,7 +183,7 @@ def process_geometry(geojson: JsonDictType | None, boundingbox: list[float] | No
         )
         return bbox_core_result(bbox, raw_bbox_area_m2, "bbox_fallback")
 
-    return CompressionResult(geometry=adapted_geometry, status=compression_status)
+    return GeometryCompressionResult(geometry=adapted_geometry, status=compression_status)
 
 
 if __name__ == "__main__":
@@ -270,12 +270,12 @@ if __name__ == "__main__":
             print("  ".join("-" * width for width in column_widths))
 
 
-    # example_request = NominatimData.LocSearchQueryReq(queries=[NominatimData.LocSearchQuery(query=test_query, country_codes=[test_country_code])])
-    # result = query_request(example_request)
-    # candidate = result.candidates[0] if result.candidates else None
-    # print(f"{result.session_id}, {result.status}")
-    # if candidate:
+    example_request = NominatimData.LocSearchQueryReq(queries=[NominatimData.LocSearchQuery(query=test_query, country_codes=[test_country_code])])
+    result = query_request(example_request)
+    candidate = result.candidates[0] if result.candidates else None
+    print(f"{result.session_id}, {result.status}")
+    if candidate:
 
-    #     output = process_geometry(candidate.geojson, candidate.boundingbox)
-        # print('#' * 40)
-        # print(output)
+        output = process_geometry(candidate.geojson, candidate.boundingbox)
+        print('#' * 40)
+        print(output)
