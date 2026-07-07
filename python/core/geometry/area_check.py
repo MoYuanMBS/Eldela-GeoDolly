@@ -7,12 +7,13 @@ from __future__ import annotations
 
 from pyproj import Geod
 
-from python.utils.internal_models.geometry import BBox, MetricPolygon
+from python.utils.internal_models.geometry import MetricPolygon
+from python.utils.models import Geometry
 
 GEOD = Geod(ellps="WGS84")
 
 
-def bbox_area_m2(bbox: BBox) -> float:
+def bbox_area_m2(bbox: Geometry.BBox) -> float:
     """计算 WGS84 bbox 的椭球面积，bbox 顺序为 (south, west, north, east)。"""
     south, west, north, east = bbox
     lons = [west, east, east, west, west]
@@ -21,7 +22,7 @@ def bbox_area_m2(bbox: BBox) -> float:
     return abs(float(area_m2))
 
 
-def metric_bbox_area_m2(bbox: BBox) -> float:
+def metric_bbox_area_m2(bbox: Geometry.BBox) -> float:
     """计算本地米制 CRS bbox 的平面面积，bbox 顺序为 (south, west, north, east)。"""
     south, west, north, east = bbox
     return abs(float((north - south) * (east - west)))

@@ -16,8 +16,7 @@ import python.core.geometry.area_check as area_check
 import python.core.geometry.compression as compression
 import python.core.geometry.preprocess as preprocess
 from python.utils.config_loader import config
-from python.utils.internal_models.geometry import BBox
-from python.utils.models import GeometryCompressionResult, JsonDictType, TransferTypes
+from python.utils.models import Geometry, JsonDictType, TransferTypes
 
 event_logger = logging.getLogger("geomcp.event")
 warning_logger = logging.getLogger("geomcp.warning")
@@ -118,10 +117,10 @@ def geojson_to_metric_multipolygon(
 
 
 def bbox_core_result(
-    bbox: BBox,
+    bbox: Geometry.BBox,
     bbox_area_m2: float,
     status: Literal["not_needed", "bbox_fallback"]
-) -> GeometryCompressionResult:
+) -> Geometry.CompressionResult:
     """按 core area 上限检查 bbox；面积超限交给 tools 降级。"""
     max_core_area_m2 = config.geometry.max_core_area_km2 * 1_000_000.00
     if area_check.area_check(bbox_area_m2, max_core_area_m2):
@@ -130,15 +129,15 @@ def bbox_core_result(
                 "geometry_bbox_fallback",
                 extra={"geomcp_extra": {"status": "bbox_fallback"}}
             )
-        return GeometryCompressionResult(geometry=bbox, status=status)
+        return Geometry.CompressionResult(geometry=bbox, status=status)
     warning_logger.warning(
         "geometry_tool_a_fallback",
         extra={"geomcp_extra": {"status": "tool_a_fallback", "reason": "area_limit_exceeded"}}
     )
-    return GeometryCompressionResult(geometry=None, status="tool_a_fallback")
+    return Geometry.CompressionResult(geometry=None, status="tool_a_fallback")
 
 
-def process_geometry(geojson: JsonDictType | None, boundingbox: list[float] | None) -> GeometryCompressionResult:
+def process_geometry(geojson: JsonDictType | None, boundingbox: list[float] | None) -> Geometry.CompressionResult:
     """处理 tools 分发的 GeoJSON 与 Nominatim boundingbox。"""
     if boundingbox is None:
         raise TransferTypes.AppError(code="invalid_bbox", message="bbox is required")
@@ -146,7 +145,7 @@ def process_geometry(geojson: JsonDictType | None, boundingbox: list[float] | No
         if len(boundingbox) != 4:
             raise TransferTypes.AppError(code="invalid_bbox", message="bbox must have 4 coordinates")   
         south, north, west, east = boundingbox
-        bbox: BBox = (south, west, north, east)
+        bbox: Geometry.BBox = (south, west, north, east)
         raw_bbox_area_m2 = area_check.bbox_area_m2(bbox)
     except Exception as error:
         raise TransferTypes.AppError(code="invalid_bbox", message="bbox area calculation failed", details=str(error)) from error
@@ -183,7 +182,7 @@ def process_geometry(geojson: JsonDictType | None, boundingbox: list[float] | No
         )
         return bbox_core_result(bbox, raw_bbox_area_m2, "bbox_fallback")
 
-    return GeometryCompressionResult(geometry=adapted_geometry, status=compression_status)
+    return Geometry.CompressionResult(geometry=adapted_geometry, status=compression_status)
 
 
 if __name__ == "__main__":

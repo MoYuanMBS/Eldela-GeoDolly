@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Literal, Protocol, TypeAlias, cast
+from typing import Literal, Protocol, TypeAlias, TypedDict, cast
 
 from pydantic import BaseModel, ConfigDict, Field
-
-from python.utils.internal_models.geometry import AdaptedMultiPolygon, BBox, CompressionStatus
 
 ToolType = Literal["tool_a", "tool_b"]
 BasemapType = Literal["osm", "satellite"]
@@ -24,11 +22,24 @@ class StrictModel(BaseModel):
         return cast(JsonDictType, self.model_dump(mode="python"))
 
 ################### geometry输出格式 ##############################################
-class GeometryCompressionResult(StrictModel):
-    """Geometry 最终输出。"""
+class Geometry:
+    BBox: TypeAlias = tuple[float, float, float, float]
+    Coordinate: TypeAlias = tuple[float, float]
+    CompressionStatus: TypeAlias = Literal["applied", "not_needed", "bbox_fallback", "tool_a_fallback"]
 
-    geometry: AdaptedMultiPolygon | BBox | None
-    status: CompressionStatus
+    class AdaptedPolygonPart(TypedDict):
+        """WGS84 polygon adapter 的单个 part。"""
+
+        exterior: list[Geometry.Coordinate]
+        holes: list[list[Geometry.Coordinate]]
+
+    AdaptedMultiPolygon: TypeAlias = list[AdaptedPolygonPart]
+
+    class CompressionResult(StrictModel):
+        """Geometry 最终输出。"""
+
+        geometry: Geometry.AdaptedMultiPolygon | Geometry.BBox | None
+        status: Geometry.CompressionStatus
 
 ################### NominatimData 所有格式 ##############################################
 class NominatimData:

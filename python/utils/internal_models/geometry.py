@@ -5,23 +5,10 @@
 
 from __future__ import annotations
 
-from typing import Literal, TypeAlias, TypedDict
+from typing import Literal, TypeAlias
 
 from shapely.geometry import MultiPolygon, Polygon
 
-BBox: TypeAlias = tuple[float, float, float, float]
 MetricPolygon: TypeAlias = Polygon | MultiPolygon
-CompressionStatus: TypeAlias = Literal["applied", "not_needed", "bbox_fallback", "tool_a_fallback"]
 InternalCompressionStatus: TypeAlias = Literal["applied", "not_needed", "degraded"]
 CompressionReason: TypeAlias = Literal["passed", "not_needed", "bbox_fallback", "max_node_not_reached", "area_limit_exceeded", "calculation_error"]
-Coordinate: TypeAlias = tuple[float, float]
-
-
-class AdaptedPolygonPart(TypedDict):
-    """WGS84 polygon adapter 的单个 part。"""
-
-    exterior: list[Coordinate]
-    holes: list[list[Coordinate]]
-
-
-AdaptedMultiPolygon: TypeAlias = list[AdaptedPolygonPart]

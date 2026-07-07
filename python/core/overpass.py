@@ -1,1 +1,0 @@
-"""Overpass query placeholder."""

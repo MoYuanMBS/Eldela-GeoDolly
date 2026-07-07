@@ -1,0 +1,26 @@
+{
+  "deny_object_rules": {
+    "boundary": [
+      "administrative",
+      "military",
+      "military_district"
+    ],
+    "landuse": [
+      "military"
+    ],
+    "military": [
+      "*"
+    ]
+  },
+  "remove_tag_rules": {
+    "military_service": [
+      "*"
+    ],
+    "bunker_type": [
+      "*"
+    ],
+    "gun_emplacement_type": [
+      "*"
+    ]
+  }
+}
