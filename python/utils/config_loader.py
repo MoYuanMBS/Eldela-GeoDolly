@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from functools import cached_property
+import logging
 from pathlib import Path
 import sys
 from typing import Any
@@ -17,6 +18,7 @@ from python.utils.internal_models.experts import ExpertConfig, ExpertRegistryTyp
 from python.utils.internal_models.static import AppConfig, FiltersConfig, GeometryConfig, NominatimConfig, TilesConfig
 
 type YamlMapType = dict[str, Any]
+warning_logger = logging.getLogger("geomcp.warning")
 
 
 class _YamlStore:
@@ -75,6 +77,11 @@ class _YamlStore:
         if node_names:
             data = self.load_static_yaml(file_name)
             result.update({name: data[name] for name in node_names if name in data})
+            for missing_name in sorted(node_names - result.keys()):
+                warning_logger.warning(
+                    "skip_missing_expert_config",
+                    extra={"geomcp_extra": {"status": "skipped", "reason": "expert_not_found", "expert_name": missing_name}}
+                )
         # 对于 expert/ 目录的专家名称，单独加载对应 YAML 文件并添加到结果里。    
         for file in dir_names:
             data = self.load_static_yaml(f"expert/{file}.yaml")
