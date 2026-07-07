@@ -7,12 +7,14 @@ example_expert:
     - "osm_tag = value 表示含义"
     - "example_tag = example_value 示例"
 
-  ai_focus_tags:
-    - osm_tag_key
-    - example_tag_key
+  overpass_tags:
+    - osm_tag=*
+    - example_tag=example_value
 
-  leaflet_extra_tags:
-    - tag: "osm_tag_key=value"
-      css_class: "expert-osm-tag"
-    - tag: "example_tag_key=example_value"
-      css_class: "example-tag"
+  overlay_rules:
+    - match: "osm_tag=*"
+    - match: "example_tag=example_value"
+
+  tag_annotations:
+    - match: "example_tag=example_value"
+      annotation: "示例专家 tag"

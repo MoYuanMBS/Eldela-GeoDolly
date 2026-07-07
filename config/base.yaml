@@ -1,0 +1,21 @@
+# GeoMCP base Overpass rules
+# 当前权威来源: doc/GeoMCP 技术规范文档.md
+
+context:
+  name: "context"
+  hints:
+    - "Tool A 与 Outer/context 共用的默认基础查询规则"
+
+  overpass_tags:
+    - highway=*
+    - railway=*
+    - public_transport=*
+    - route=bus
+    - route=train
+
+  overlay_rules:
+    - match: "highway=*"
+    - match: "railway=*"
+    - match: "public_transport=*"
+
+  tag_annotations: []

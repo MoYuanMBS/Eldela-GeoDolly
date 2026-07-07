@@ -12,11 +12,17 @@ from pydantic import Field
 from python.utils.models import StrictModel
 
 
-class LeafletExtraTagConfig(StrictModel):
-    """专家命中的 OSM tag 与 Leaflet CSS class 对应关系。"""
+class OverlayRuleConfig(StrictModel):
+    """Overlay 选择规则，只决定对象是否进入 Overlay。"""
 
-    tag: str = Field(min_length=1)
-    css_class: str = Field(min_length=1)
+    match: str = Field(min_length=1)
+
+
+class TagAnnotationConfig(StrictModel):
+    """AI output 中使用的 tag 注释规则。"""
+
+    match: str = Field(min_length=1)
+    annotation: str = Field(min_length=1)
 
 
 class ExpertConfig(StrictModel):
@@ -27,8 +33,9 @@ class ExpertConfig(StrictModel):
 
     name: str = Field(min_length=1)
     hints: list[str] = Field(default_factory=list)
-    ai_focus_tags: list[str] = Field(default_factory=list)
-    leaflet_extra_tags: list[LeafletExtraTagConfig] = Field(default_factory=list)
+    overpass_tags: list[str] = Field(default_factory=list)
+    overlay_rules: list[OverlayRuleConfig] = Field(default_factory=list)
+    tag_annotations: list[TagAnnotationConfig] = Field(default_factory=list)
 
 
 ExpertRegistryType: TypeAlias = dict[str, ExpertConfig]

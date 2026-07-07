@@ -127,6 +127,13 @@ class _ConfigLoader:
             for expert_name, raw_expert in raw_experts.items()
         }
 
+    def get_base(self) -> ExpertConfig:
+        """从 base.yaml 加载固定的 context Base 规则，并复用 ExpertConfig 校验。"""
+        raw_base_config = self._yaml_store.load_static_yaml("base.yaml")
+        if "context" not in raw_base_config:
+            raise TransferTypes.AppError(code="invalid_config", message="base.yaml must contain context")
+        return ExpertConfig.model_validate(raw_base_config["context"])
+
     def reset_cache(self) -> None:
         """清除 cached_property 写入实例 __dict__ 的配置缓存。"""
         for config_name in ("app", "filters", "tiles"):
@@ -156,10 +163,14 @@ class ConfigHub:
     @property
     def tiles(self) -> TilesConfig:
         return self._loader.tiles
-
     def get_experts(self, expert_names: list[str]) -> ExpertRegistryType:
         """按专家名称读取专家配置。"""
         return self._loader.get_experts(expert_names)
+
+    def get_base(self) -> ExpertConfig:
+        """读取固定的 Base context 规则配置。"""
+        return self._loader.get_base()
+
     
     def reset_cache(self) -> None:
         self._loader.reset_cache()
@@ -175,4 +186,5 @@ if __name__ == "__main__":
     print("Nominatim Config:", config.nominatim)
     print("Filters Config:", config.filters)
     print("Tiles Config:", config.tiles)
+    print("Base Config:", config.get_base())
     print("Experts Config:", config.get_experts(["example_expert"]))
