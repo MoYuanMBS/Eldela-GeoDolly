@@ -51,36 +51,59 @@ async def fetch_initial_bodies(
 
 if __name__ == "__main__":
 
-    from python.core.geometry.geometry import process_geometry
+    from python.core.geometry.geometry import process_geometry, process_bbox
     from python.core.nominatim import query_request
     from python.utils.models import NominatimData
     import python.core.geometry.preprocess as preprocess
     import time
 
-    test_query = "Square One"
-    test_country_code = "CA"
+    test_query = "Disneyland Paris"
+    test_country_code = "fr"
     example_request = NominatimData.LocSearchQueryReq(queries=[NominatimData.LocSearchQuery(query=test_query, country_codes=[test_country_code])])
     req = query_request(example_request)
     candidate = req.candidates[0]
     gemo = candidate.geojson
     bbox = candidate.boundingbox
+    print(f'place_id: {candidate.index}, name: {candidate.name}, address: {candidate.address}')
 
     from pathlib import Path
     import json
+    import os
+    import python.core.overpass.overpass as overpass
+
     file_path = Path(__file__).parent.parent.parent.parent / "test" / "test_output.json"
 
     if bbox and gemo :
         start_time = time.time()
         geometry_result = process_geometry(gemo, bbox)
-        south, north, west, east = bbox
-        bbox_tuple: Geometry.BBox = (south, west, north, east)
-        final_bbox = preprocess.crs_to_overpass_bbox(preprocess.bbox_to_crs(bbox_tuple))
+        result, final_bbox = process_bbox(bbox, 30.00, 120.00)
         end_time = time.time()
         print(f"Geometry processing time: {end_time - start_time:.2f} seconds")
-        start_time = time.time()
-        result = asyncio.run(fetch_initial_bodies(geometry_result.geometry, final_bbox, experts=["example_expert"], include_base=True))
-        end_time = time.time()
-        print(f"Overpass fetch time: {end_time - start_time:.2f} seconds")
-        with open(file_path, "w") as f:
-            json.dump(result, f, indent=2)
-            f.flush() 
+
+        print(f"Final bbox: {final_bbox}") 
+        print(f"Geometry result: {geometry_result.geometry}") 
+
+        if final_bbox and geometry_result.geometry:
+
+            a = overpass.build_out_body_query(final_bbox,None)
+            print(f"Overpass query: {a}")
+            b = overpass.build_out_body_query(geometry_result.geometry,None)
+            print(f"Overpass query: {b}")
+            tokens = b.split()
+            print(len(tokens))
+            start_time = time.time()
+            result = asyncio.run(fetch_initial_bodies(geometry_result.geometry, final_bbox, experts=["example_expert"], include_base=True))
+            
+            # result =  asyncio.run(fetch_bbox_body(final_bbox, experts=["example_expert"], include_base=True))
+
+            end_time = time.time()
+            print(f"Overpass fetch time: {end_time - start_time:.2f} seconds")
+            with open(file_path, "w") as f:
+                json.dump(result, f, indent=2)
+                f.flush()
+                size_bytes = os.fstat(f.fileno()).st_size
+                size_mb = size_bytes / (1024 * 1024)
+                print(f"文件大小: {size_mb:.2f} MB")
+            print(f"Result written to {file_path} ({size_mb:.2f} MB)")
+
+            pass

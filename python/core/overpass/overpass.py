@@ -55,13 +55,14 @@ def _validate_coordinate(lon: float, lat: float) -> None:
 
 
 def _bbox_filter(bbox: Geometry.BBox) -> str:
-    """将项目内部 bbox 序列化为 Overpass bbox filter。
+    """将已经调好顺序的 Overpass bbox 序列化为 bbox filter。
 
-    项目与 Overpass 都使用 ``(south, west, north, east)`` 顺序，因此
-    这里只执行坐标范围、有限值和边界顺序校验，不交换 bbox 字段。
+    调用方传入的 bbox 必须已经是 Overpass 要求的
+    ``(south, west, north, east)`` 顺序。这里不能再按 Nominatim raw bbox
+    或 Shapely bounds 重新换位，只执行坐标范围、有限值和边界顺序校验。
 
     Args:
-        bbox: WGS84 bbox，格式固定为 ``(south, west, north, east)``。
+        bbox: Overpass WGS84 bbox，格式固定为 ``(south, west, north, east)``。
 
     Returns:
         可直接拼接到 Overpass element selector 后的 bbox 文本，例如
@@ -75,7 +76,7 @@ def _bbox_filter(bbox: Geometry.BBox) -> str:
     _validate_coordinate(west, south)
     _validate_coordinate(east, north)
     if south >= north or west >= east:
-        raise TransferTypes.AppError(code="invalid_bbox", message="Overpass bbox must satisfy south < north and west < east")
+        raise TransferTypes.AppError(code="invalid_bbox", message="Overpass bbox must be (south, west, north, east) and satisfy south < north, west < east")
     return f"({_format_number(south)},{_format_number(west)},{_format_number(north)},{_format_number(east)})"
 
 
@@ -119,7 +120,8 @@ def _core_poly_filters(core_geometry: Geometry.AdaptedMultiPolygon) -> list[str]
             # Overpass poly 与项目内部坐标顺序相反，要求 `lat lon`。
             poly_coordinates.extend((_format_number(lat_float), _format_number(lon_float)))
 
-        poly_filters.append(f'(poly:"{ "".join(poly_coordinates)}")')
+        poly_text = " ".join(poly_coordinates)
+        poly_filters.append(f'(poly:"{poly_text}")')
     return poly_filters
 
 
@@ -193,12 +195,12 @@ def _status_error(response: httpx.Response) -> TransferTypes.AppError:
     """
     details = {"http_status": response.status_code, "endpoint": str(response.request.url)}
     if response.status_code == 400:
-        return TransferTypes.AppError(code="overpass_invalid_query", message="Overpass rejected the query", details=details)
+        return TransferTypes.AppError(code=f"overpass_invalid_query_{response.status_code}", message="Overpass rejected the query", details=details)
     if response.status_code == 429:
-        return TransferTypes.AppError(code="overpass_rate_limited", message="Overpass rate limit exceeded", details=details)
+        return TransferTypes.AppError(code=f"overpass_rate_limited_{response.status_code}", message="Overpass rate limit exceeded", details=details)
     if response.status_code >= 500:
-        return TransferTypes.AppError(code="overpass_unavailable", message="Overpass service is unavailable", details=details)
-    return TransferTypes.AppError(code="overpass_query_failed", message="Overpass request failed", details=details)
+        return TransferTypes.AppError(code=f"overpass_server_error_{response.status_code}", message="Overpass service is unavailable", details=details)
+    return TransferTypes.AppError(code=f"overpass_query_failed_{response.status_code}", message="Overpass request failed", details=details)
 
 
 async def request_overpass(query: str) -> JsonDictType:
