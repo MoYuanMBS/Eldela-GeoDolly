@@ -4,18 +4,27 @@ from __future__ import annotations
 
 import asyncio
 
+from python.core.overpass.build_query import build_initial_query
 from python.core.overpass.filter_rules import build_bbox_tag_filters, build_core_tag_filters
-from python.core.overpass.overpass import fetch_out_body
+from python.core.overpass.overpass import request_overpass
 from python.utils.models import Geometry, JsonDictType
+
+
+async def fetch_initial_body(
+    area: Geometry.BBox | Geometry.AdaptedMultiPolygon,
+    tag_filters: tuple[str, ...]
+) -> JsonDictType:
+    """构建并执行初始 Overpass 轻量抓取。"""
+    return await request_overpass(build_initial_query(area, tag_filters))
 
 
 async def fetch_core_body(core_area: Geometry.BBox | Geometry.AdaptedMultiPolygon) -> JsonDictType:
     """执行 Core 初始 Overpass body 抓取。
 
     Core 查询由上层决定使用 bbox 还是 core polygon；本函数只负责套用 Core
-    专用 tag filters，并调用通用 Overpass `out body` 抓取。
+    专用 tag filters，并调用初始 Overpass 轻量抓取。
     """
-    return await fetch_out_body(core_area, build_core_tag_filters())
+    return await fetch_initial_body(core_area, build_core_tag_filters())
 
 
 async def fetch_bbox_body(
@@ -28,7 +37,7 @@ async def fetch_bbox_body(
     BBox 查询使用 Base 与当前 experts 的正向 overpass_tags，并叠加
     Internal deny_object_rules。实际 HTTP 请求仍由 `overpass.py` 负责。
     """
-    return await fetch_out_body(bbox, build_bbox_tag_filters(experts=experts, include_base=include_base))
+    return await fetch_initial_body(bbox, build_bbox_tag_filters(experts=experts, include_base=include_base))
 
 
 async def fetch_initial_bodies(
@@ -54,7 +63,6 @@ if __name__ == "__main__":
     from python.core.geometry.geometry import process_geometry, process_bbox
     from python.core.nominatim import query_request
     from python.utils.models import NominatimData
-    import python.core.geometry.preprocess as preprocess
     import time
 
     test_query = "Disneyland Paris"
@@ -69,7 +77,7 @@ if __name__ == "__main__":
     from pathlib import Path
     import json
     import os
-    import python.core.overpass.overpass as overpass
+    import python.core.overpass.build_query as build_query
 
     file_path = Path(__file__).parent.parent.parent.parent / "test" / "test_output.json"
 
@@ -85,9 +93,9 @@ if __name__ == "__main__":
 
         if final_bbox and geometry_result.geometry:
 
-            a = overpass.build_out_body_query(final_bbox,None)
+            a = build_query.build_initial_query(final_bbox, build_core_tag_filters())
             print(f"Overpass query: {a}")
-            b = overpass.build_out_body_query(geometry_result.geometry,None)
+            b = build_query.build_initial_query(geometry_result.geometry, build_core_tag_filters())
             print(f"Overpass query: {b}")
             tokens = b.split()
             print(len(tokens))
