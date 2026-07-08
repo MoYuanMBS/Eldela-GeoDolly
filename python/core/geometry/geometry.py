@@ -22,6 +22,28 @@ event_logger = logging.getLogger("geomcp.event")
 warning_logger = logging.getLogger("geomcp.warning")
 
 
+def nominatim_bbox_to_project_bbox(boundingbox: list[float] | None) -> Geometry.BBox:
+    """将 Nominatim boundingbox 转为项目内部 bbox 顺序。"""
+    if boundingbox is None:
+        raise TransferTypes.AppError(code="invalid_bbox", message="bbox is required")
+    if len(boundingbox) != 4:
+        raise TransferTypes.AppError(code="invalid_bbox", message="bbox must have 4 coordinates")
+    south, north, west, east = boundingbox
+    return (float(south), float(west), float(north), float(east))
+
+
+def process_bbox(boundingbox: list[float], expand_meter: float, max_area_km2: float) -> tuple[bool, Geometry.BBox | None]:
+    """生成指定 bbox stage 的 Overpass WGS84 bbox。"""
+
+    bbox = nominatim_bbox_to_project_bbox(boundingbox)
+    passed, overpass_bbox = preprocess.project_and_expand_bbox(
+        preprocess.bbox_to_crs(bbox),
+        expand_meter,
+        max_area_km2 * 1_000_000.00
+    )
+    return passed, overpass_bbox
+
+
 def warn_geojson_fallback(geometry_type: object, details: str) -> None:
     """记录 GeoJSON 降级原因，日志走 stderr。"""
     warning_logger.warning(
@@ -139,13 +161,8 @@ def bbox_core_result(
 
 def process_geometry(geojson: JsonDictType | None, boundingbox: list[float] | None) -> Geometry.CompressionResult:
     """处理 tools 分发的 GeoJSON 与 Nominatim boundingbox。"""
-    if boundingbox is None:
-        raise TransferTypes.AppError(code="invalid_bbox", message="bbox is required")
     try:
-        if len(boundingbox) != 4:
-            raise TransferTypes.AppError(code="invalid_bbox", message="bbox must have 4 coordinates")   
-        south, north, west, east = boundingbox
-        bbox: Geometry.BBox = (south, west, north, east)
+        bbox = nominatim_bbox_to_project_bbox(boundingbox)
         raw_bbox_area_m2 = area_check.bbox_area_m2(bbox)
     except Exception as error:
         raise TransferTypes.AppError(code="invalid_bbox", message="bbox area calculation failed", details=str(error)) from error
