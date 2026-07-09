@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any, TypeAlias
+from typing import Any, Literal, TypeAlias
 
 from pydantic import Field
 
@@ -35,6 +35,18 @@ class CompiledOverpassFilterRules(StrictModel):
 
     deny_object_rules: CompiledTagRuleSet = Field(default_factory=CompiledTagRuleSet)
     remove_tag_rules: CompiledTagRuleSet = Field(default_factory=CompiledTagRuleSet)
+
+
+class OsmElement(StrictModel):
+    """Overpass 返回的单个 OSM element 内部校验模型。"""
+
+    type: Literal["node", "way", "relation"]
+    id: int
+    tags: dict[str, str] | None = None
+    lat: float | None = None
+    lon: float | None = None
+    nodes: list[int] | None = None
+    members: list[dict[str, Any]] | None = None
 
 
 class TypedOsmMaps(StrictModel):
