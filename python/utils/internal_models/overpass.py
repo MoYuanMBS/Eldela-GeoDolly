@@ -23,14 +23,15 @@ class InternalFilterRulesConfig(StrictModel):
     remove_tag_rules: TagRuleMap = Field(default_factory=dict)
 
 
-class CompiledTagRuleSet(StrictModel):
+class TagFilterRule(StrictModel):
     """Filter 侧使用的轻量 tag 规则集合。"""
 
     wildcard_keys: set[str] = Field(default_factory=set)
-    exact_rules: set[tuple[str, str]] = Field(default_factory=set)
+    values_by_key: dict[str, set[str]] = Field(default_factory=dict)
+    drop_if_only_tags: dict[str, set[str]] = Field(default_factory=dict)
 
 
-class CompiledOverpassRules(StrictModel):
+class OverpassFilterRule(StrictModel):
     """Overpass selector 使用的平铺 include / deny 规则集合。"""
 
     include_wildcard_keys: set[str] = Field(default_factory=set)

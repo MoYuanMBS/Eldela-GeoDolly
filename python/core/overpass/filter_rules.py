@@ -16,7 +16,7 @@ if __package__ in (None, ""):
 
 from python.utils.config_loader import config
 from python.utils.internal_models.experts import ExpertConfig
-from python.utils.internal_models.overpass import CompiledOverpassRules, CompiledTagRuleSet, InternalFilterRulesConfig, TagRuleMap
+from python.utils.internal_models.overpass import TagFilterRule, OverpassFilterRule, InternalFilterRulesConfig, TagRuleMap
 from python.utils.models import TransferTypes
 
 ANY_TAG_FILTER = '[~"."~"."]'
@@ -40,9 +40,13 @@ class _OverpassRuleStore:
         self._internal_rules_path = Path(__file__).resolve().with_name("internal_rules.json")
         self.internal_config = self._load_internal_config()
         deny_rules = self._compile_tag_rules(self.internal_config.deny_object_rules)
-        self.deny_object_rules = CompiledOverpassRules(
+        deny_exact_rules: set[tuple[str, str]] = set()
+        for key, values in deny_rules.values_by_key.items():
+            for value in values:
+                deny_exact_rules.add((key, value))
+        self.deny_object_rules = OverpassFilterRule(
             deny_wildcard_keys=deny_rules.wildcard_keys,
-            deny_exact_rules=deny_rules.exact_rules,
+            deny_exact_rules=deny_exact_rules,
         )
         self.remove_tag_rules = self._compile_tag_rules(self.internal_config.remove_tag_rules)
         self._initialized = True
@@ -62,19 +66,19 @@ class _OverpassRuleStore:
         except ValidationError as error:
             raise TransferTypes.AppError(code="invalid_config", message="internal_rules.json format error", details=str(error)) from error
 
-    def _compile_tag_rules(self, raw_rules: TagRuleMap) -> CompiledTagRuleSet:
-        """把 `key=["*", "value"]` 格式编译成 wildcard/exact 两类规则。"""
+    def _compile_tag_rules(self, raw_rules: TagRuleMap) -> TagFilterRule:
+        """把 `key=["*", "value"]` 格式编译成 filter 侧 key 聚合规则。"""
         wildcard_keys: set[str] = set()
-        exact_rules: set[tuple[str, str]] = set()
+        values_by_key: dict[str, set[str]] = {}
 
         for key, values in raw_rules.items():
             if "*" in values:
                 wildcard_keys.add(key)
                 continue
             for value in values:
-                exact_rules.add((key, value))
+                values_by_key.setdefault(key, set()).add(value)
 
-        return CompiledTagRuleSet(wildcard_keys=wildcard_keys, exact_rules=exact_rules)
+        return TagFilterRule(wildcard_keys=wildcard_keys, values_by_key=values_by_key)
 
 class FilterRuleContext:
     """一次 Overpass / Filter 流程内可复用的合并规则上下文。"""
@@ -93,139 +97,150 @@ class FilterRuleContext:
         self.overlay_rules = self._merge_base_expert_overlay_rules(base_config, expert_configs)
         self.output_remove_tag_rules = self._merge_output_remove_tag_rules()
 
-    def _parse_tag_rule(self, tag_rule: str) -> tuple[str, str] | None:
+    def _parse_tag_rule(self, tag_rule: str, rule_source: str) -> tuple[str, str] | None:
         """解析 `key=*` 或 `key=value` 格式的 tag rule。"""
         key, separator, value = tag_rule.partition("=")
         key = key.strip()
         value = value.strip()
         if not separator or not key or not value:
             warning_logger.warning(
-                "skip_invalid_overpass_tag_rule",
-                extra={"geomcp_extra": {"status": "skipped", "reason": "invalid_overpass_tag_rule", "tag_rule": tag_rule}}
+                "skip_invalid_tag_rule",
+                extra={"geomcp_extra": {"status": "skipped", "reason": "invalid_tag_rule", "rule_source": rule_source, "tag_rule": tag_rule}}
             )
             return None
         return key, value
 
-    def _merge_tag_rule(self, target: CompiledTagRuleSet, key: str, value: str) -> None:
+    def _merge_tag_rule(self, target: TagFilterRule, key: str, value: str) -> None:
         """把单条 tag rule 合并进目标规则集合。"""
         if value == "*":
             target.wildcard_keys.add(key)
-            target.exact_rules = {rule for rule in target.exact_rules if rule[0] != key}
+            target.values_by_key.pop(key, None)
             return
         if key in target.wildcard_keys:
             return
-        target.exact_rules.add((key, value))
+        target.values_by_key.setdefault(key, set()).add(value)
 
-    def _merge_tag_strings(self, tag_rules: list[str]) -> CompiledTagRuleSet:
+    def _merge_tag_strings(self, tag_rules: list[str], rule_source: str) -> TagFilterRule:
         """合并 `key=*` / `key=value` 字符串规则。"""
-        merged_rules = CompiledTagRuleSet()
+        merged_rules = TagFilterRule()
         for tag_rule in tag_rules:
-            parsed_rule = self._parse_tag_rule(tag_rule)
+            parsed_rule = self._parse_tag_rule(tag_rule, rule_source)
             if parsed_rule is None:
                 continue
             key, value = parsed_rule
             self._merge_tag_rule(merged_rules, key, value)
         return merged_rules
 
-    def _merge_compiled_rules(self, target: CompiledTagRuleSet, source: CompiledTagRuleSet) -> None:
+    def _merge_compiled_rules(self, target: TagFilterRule, source: TagFilterRule) -> None:
         """把已编译规则合并进目标规则集合。"""
         for key in source.wildcard_keys:
             self._merge_tag_rule(target, key, "*")
-        for key, value in source.exact_rules:
-            self._merge_tag_rule(target, key, value)
-
-    def _merge_raw_tag_rule_map(self, target: CompiledTagRuleSet, raw_rules: object) -> None:
-        """合并 filters.yaml 这类 raw `key: [values]` 规则。"""
-        if not isinstance(raw_rules, dict):
-            return
-        for key, values in raw_rules.items():
-            if not isinstance(key, str) or not isinstance(values, list):
-                warning_logger.warning(
-                    "skip_invalid_filter_tag_rule",
-                    extra={"geomcp_extra": {"status": "skipped", "reason": "invalid_filter_tag_rule", "tag_key": key}}
-                )
-                continue
+        for key, values in source.values_by_key.items():
             for value in values:
-                if not isinstance(value, str):
-                    warning_logger.warning(
-                        "skip_invalid_filter_tag_rule",
-                        extra={"geomcp_extra": {"status": "skipped", "reason": "invalid_filter_tag_value", "tag_key": key, "tag_value": value}}
-                    )
-                    continue
                 self._merge_tag_rule(target, key, value)
 
-    def _remove_denied_rules(self, include_rules: CompiledTagRuleSet, deny_rules: CompiledTagRuleSet) -> CompiledTagRuleSet:
+    def _remove_denied_rules(self, include_rules: TagFilterRule, deny_rules: TagFilterRule) -> TagFilterRule:
         """反向屏蔽某一组 tag rules。"""
-        merged_rules = CompiledTagRuleSet(
+        merged_rules = TagFilterRule(
             wildcard_keys=set(include_rules.wildcard_keys),
-            exact_rules=set(include_rules.exact_rules),
+            values_by_key={key: set(values) for key, values in include_rules.values_by_key.items()},
         )
 
         for key in deny_rules.wildcard_keys:
-            if key in merged_rules.wildcard_keys or any(rule_key == key for rule_key, _ in merged_rules.exact_rules):
+            if key in merged_rules.wildcard_keys or key in merged_rules.values_by_key:
                 warning_logger.warning(
                     "skip_denied_positive_overpass_tag_rule",
                     extra={"geomcp_extra": {"status": "skipped", "reason": "internal_deny_wildcard", "tag_key": key}}
                 )
             merged_rules.wildcard_keys.discard(key)
-            merged_rules.exact_rules = {rule for rule in merged_rules.exact_rules if rule[0] != key}
+            merged_rules.values_by_key.pop(key, None)
 
-        for key, denied_value in deny_rules.exact_rules:
-            denied_rule = (key, denied_value)
-            if denied_rule not in merged_rules.exact_rules:
+        for key, denied_values in deny_rules.values_by_key.items():
+            if key not in merged_rules.values_by_key:
                 continue
-            merged_rules.exact_rules.discard(denied_rule)
-            warning_logger.warning(
-                "skip_denied_positive_overpass_tag_rule",
-                extra={"geomcp_extra": {"status": "skipped", "reason": "internal_deny_exact", "tag_key": key, "tag_value": denied_value}}
-            )
+            before_values = set(merged_rules.values_by_key[key])
+            merged_rules.values_by_key[key] -= denied_values
+            skipped_values = before_values - merged_rules.values_by_key[key]
+            for value in sorted(skipped_values):
+                warning_logger.warning(
+                    "skip_denied_positive_overpass_tag_rule",
+                    extra={"geomcp_extra": {"status": "skipped", "reason": "internal_deny_exact", "tag_key": key, "tag_value": value}}
+                )
+            if not merged_rules.values_by_key[key]:
+                merged_rules.values_by_key.pop(key)
 
         return merged_rules
 
-    def _overpass_deny_as_tag_rules(self) -> CompiledTagRuleSet:
+    def _overpass_deny_as_tag_rules(self) -> TagFilterRule:
         """把 Overpass deny 规则临时转换为 tag rules，供正向规则裁剪使用。"""
-        return CompiledTagRuleSet(
+        deny_values_by_key: dict[str, set[str]] = {}
+        for key, value in self.deny_object_rules.deny_exact_rules:
+            deny_values_by_key.setdefault(key, set()).add(value)
+        return TagFilterRule(
             wildcard_keys=set(self.deny_object_rules.deny_wildcard_keys),
-            exact_rules=set(self.deny_object_rules.deny_exact_rules),
+            values_by_key=deny_values_by_key,
         )
 
-    def _merge_expert_overpass_rules(self, expert_configs: list[ExpertConfig]) -> CompiledTagRuleSet:
+    def _merge_expert_overpass_rules(self, expert_configs: list[ExpertConfig]) -> TagFilterRule:
         """合并 Expert overpass_tags。"""
-        merged_rules = CompiledTagRuleSet()
+        merged_rules = TagFilterRule()
         for expert_config in expert_configs:
-            self._merge_compiled_rules(merged_rules, self._merge_tag_strings(expert_config.overpass_tags))
+            self._merge_compiled_rules(merged_rules, self._merge_tag_strings(expert_config.overpass_tags, "expert.overpass_tags"))
         return merged_rules
 
-    def _merge_base_expert_overpass_rules(self, base_config: ExpertConfig | None, expert_configs: list[ExpertConfig]) -> CompiledTagRuleSet:
+    def _merge_base_expert_overpass_rules(self, base_config: ExpertConfig | None, expert_configs: list[ExpertConfig]) -> TagFilterRule:
         """合并 Base / Expert overpass_tags。"""
-        merged_rules = CompiledTagRuleSet()
+        merged_rules = TagFilterRule()
         if base_config is not None:
-            self._merge_compiled_rules(merged_rules, self._merge_tag_strings(base_config.overpass_tags))
+            self._merge_compiled_rules(merged_rules, self._merge_tag_strings(base_config.overpass_tags, "base.overpass_tags"))
         self._merge_compiled_rules(merged_rules, self._merge_expert_overpass_rules(expert_configs))
         return merged_rules
 
-    def _merge_base_expert_overlay_rules(self, base_config: ExpertConfig | None, expert_configs: list[ExpertConfig]) -> CompiledTagRuleSet:
+    def _merge_base_expert_overlay_rules(self, base_config: ExpertConfig | None, expert_configs: list[ExpertConfig]) -> TagFilterRule:
         """合并 Base / Expert overlay_rules。"""
         overlay_matches: list[str] = []
         if base_config is not None:
             overlay_matches.extend(rule.match for rule in base_config.overlay_rules)
         for expert_config in expert_configs:
             overlay_matches.extend(rule.match for rule in expert_config.overlay_rules)
-        return self._merge_tag_strings(overlay_matches)
+        return self._merge_tag_strings(overlay_matches, "overlay_rules")
 
-    def _merge_output_remove_tag_rules(self) -> CompiledTagRuleSet:
+    def _merge_output_remove_tag_rules(self) -> TagFilterRule:
         """合并 filters.yaml 与 internal remove_tag_rules。"""
-        merged_rules = CompiledTagRuleSet()
-        self._merge_raw_tag_rule_map(merged_rules, self.config.filters.raw.get("remove_tag_rules"))
+        merged_rules = TagFilterRule()
+        self._merge_compiled_rules(merged_rules, self._merge_tag_strings(self.config.filters.remove_tags, "filters.remove_tags"))
         self._merge_compiled_rules(merged_rules, self.rule_store.remove_tag_rules)
+        # drop_if_only_tags 只来自 filters.yaml，独立编译后直接放入，不参与任何 tag rules merge。
+        merged_rules.drop_if_only_tags = self._compile_drop_if_only_tags(self.config.filters.drop_if_only_tags)
         return merged_rules
 
-    def _merge_context_overpass_rules(self, base_config: ExpertConfig | None, expert_configs: list[ExpertConfig]) -> CompiledOverpassRules:
+    def _compile_drop_if_only_tags(self, tag_rules: list[str]) -> dict[str, set[str]]:
+        """独立编译低信息量对象规则；只接受精确 `key=value`。"""
+        values_by_key: dict[str, set[str]] = {}
+        for tag_rule in tag_rules:
+            parsed_rule = self._parse_tag_rule(tag_rule, "filters.drop_if_only_tags")
+            if parsed_rule is None:
+                continue
+            key, value = parsed_rule
+            if value == "*":
+                warning_logger.warning(
+                    "skip_invalid_tag_rule",
+                    extra={"geomcp_extra": {"status": "skipped", "reason": "wildcard_not_allowed", "rule_source": "filters.drop_if_only_tags", "tag_rule": tag_rule}}
+                )
+                continue
+            values_by_key.setdefault(key, set()).add(value)
+        return values_by_key
+
+    def _merge_context_overpass_rules(self, base_config: ExpertConfig | None, expert_configs: list[ExpertConfig]) -> OverpassFilterRule:
         """合并 context 正向规则，并附加强制 deny_object_rules。"""
         include_rules = self._remove_denied_rules(self._merge_base_expert_overpass_rules(base_config, expert_configs), self._overpass_deny_as_tag_rules())
-        return CompiledOverpassRules(
+        include_exact_rules: set[tuple[str, str]] = set()
+        for key, values in include_rules.values_by_key.items():
+            for value in values:
+                include_exact_rules.add((key, value))
+        return OverpassFilterRule(
             include_wildcard_keys=include_rules.wildcard_keys,
-            include_exact_rules=include_rules.exact_rules,
+            include_exact_rules=include_exact_rules,
             deny_wildcard_keys=set(self.deny_object_rules.deny_wildcard_keys),
             deny_exact_rules=set(self.deny_object_rules.deny_exact_rules),
         )
@@ -250,7 +265,7 @@ def _build_exact_value_regex(values: set[str]) -> str:
     return f"^({'|'.join(escaped_values)})$"
 
 
-def _build_deny_filter_fragment(overpass_rules: CompiledOverpassRules) -> str:
+def _build_deny_filter_fragment(overpass_rules: OverpassFilterRule) -> str:
     """把 deny_object_rules 编译成可追加到 selector 的负向 filters。"""
     filters: list[str] = []
     for key in sorted(overpass_rules.deny_wildcard_keys):
@@ -264,7 +279,7 @@ def _build_deny_filter_fragment(overpass_rules: CompiledOverpassRules) -> str:
     return "".join(filters)
 
 
-def _build_positive_filter_fragments(overpass_rules: CompiledOverpassRules) -> tuple[str, ...]:
+def _build_positive_filter_fragments(overpass_rules: OverpassFilterRule) -> tuple[str, ...]:
     """把正向 rules 编译成 selector filter 片段。"""
     filters: list[str] = []
     for key in sorted(overpass_rules.include_wildcard_keys):
@@ -309,3 +324,9 @@ if __name__ == "__main__":
 
     print("\nParent relation tag filters:")
     print(build_overpass_tag_filters(expert_context))
+
+    print("\noverlay rules:")
+    print(expert_context.overlay_rules)
+
+    print("\noutput remove tag rules:")
+    print(expert_context.output_remove_tag_rules)

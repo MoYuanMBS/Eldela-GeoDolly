@@ -6,18 +6,20 @@ from functools import cached_property
 import logging
 from pathlib import Path
 import sys
-from typing import Any
+from typing import Any, TypeVar
 
 import yaml
+from pydantic import ValidationError
 
 if __package__ in (None, ""):
     sys.path.append(str(Path(__file__).resolve().parents[2]))
 
-from python.utils.models import TransferTypes
+from python.utils.models import StrictModel, TransferTypes
 from python.utils.internal_models.experts import ExpertConfig, ExpertRegistryType
 from python.utils.internal_models.static import AppConfig, FiltersConfig, GeometryConfig, NominatimConfig, TilesConfig
 
 type YamlMapType = dict[str, Any]
+ConfigModelType = TypeVar("ConfigModelType", bound=StrictModel)
 warning_logger = logging.getLogger("geomcp.warning")
 
 
@@ -44,8 +46,13 @@ class _YamlStore:
     def load_static_yaml(self, file_name: str) -> YamlMapType:
         """全量加载轻量静态配置。"""
         path = self._resolve_config_path(file_name)
-        with path.open("r", encoding="utf-8") as file:
-            loaded_yaml = yaml.safe_load(file)
+        try:
+            with path.open("r", encoding="utf-8") as file:
+                loaded_yaml = yaml.safe_load(file)
+        except yaml.YAMLError as error:
+            raise TransferTypes.AppError(code="invalid_config", message=f"config file YAML parse error: {path}", details=str(error)) from error
+        except (OSError, UnicodeError) as error:
+            raise TransferTypes.AppError(code="invalid_config", message=f"config file read error: {path}", details=str(error)) from error
 
         if loaded_yaml is None:
             return {}
@@ -98,30 +105,35 @@ class _ConfigLoader:
     def __init__(self):
         self._yaml_store = _YamlStore()
 
+    def _validate_config_model(self, model: type[ConfigModelType], raw_config: object, source: str) -> ConfigModelType:
+        """统一把配置模型校验错误转换为项目 AppError。"""
+        try:
+            return model.model_validate(raw_config)
+        except ValidationError as error:
+            raise TransferTypes.AppError(code="invalid_config", message=f"config model validation failed: {source}", details=str(error)) from error
+
     @cached_property
     def app(self) -> AppConfig:
         """首次访问时加载 app.yaml，并在当前 loader 实例内缓存。"""
         raw_app_config = self._yaml_store.load_static_yaml("app.yaml")
-        return AppConfig.model_validate({
+        return self._validate_config_model(AppConfig, {
             "nominatim": raw_app_config.get("nominatim"),
             "geometry": raw_app_config.get("geometry"),
-        })
+        }, "app.yaml")
 
     @cached_property
     def filters(self) -> FiltersConfig:
         """首次访问时加载 filters.yaml，并在当前 loader 实例内缓存。"""
         raw_filters_config = self._yaml_store.load_static_yaml("filters.yaml")
-        return FiltersConfig.model_validate({
-            "raw": raw_filters_config
-        })
+        return self._validate_config_model(FiltersConfig, raw_filters_config, "filters.yaml")
 
     @cached_property
     def tiles(self) -> TilesConfig:
         """首次访问时加载 tiles.yaml，并在当前 loader 实例内缓存。"""
         raw_tiles_config = self._yaml_store.load_static_yaml("tiles.yaml")
-        return TilesConfig.model_validate({
+        return self._validate_config_model(TilesConfig, {
             "raw": raw_tiles_config
-        })
+        }, "tiles.yaml")
 
     def get_experts(self, expert_names: list[str]) -> ExpertRegistryType:
         """从 YAML 按需加载 raw expert，并逐个校验成 ExpertConfig。"""
@@ -130,7 +142,7 @@ class _ConfigLoader:
             raise TransferTypes.AppError(code="invalid_config", message="config file format error: experts.yaml (expected mapping)")
 
         return {
-            expert_name: ExpertConfig.model_validate(raw_expert)
+            expert_name: self._validate_config_model(ExpertConfig, raw_expert, f"expert:{expert_name}")
             for expert_name, raw_expert in raw_experts.items()
         }
 
@@ -139,7 +151,7 @@ class _ConfigLoader:
         raw_base_config = self._yaml_store.load_static_yaml("base.yaml")
         if "context" not in raw_base_config:
             raise TransferTypes.AppError(code="invalid_config", message="base.yaml must contain context")
-        return ExpertConfig.model_validate(raw_base_config["context"])
+        return self._validate_config_model(ExpertConfig, raw_base_config["context"], "base.yaml:context")
 
     def reset_cache(self) -> None:
         """清除 cached_property 写入实例 __dict__ 的配置缓存。"""

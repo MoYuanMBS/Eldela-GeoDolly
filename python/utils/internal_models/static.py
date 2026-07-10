@@ -38,12 +38,10 @@ class AppConfig(StrictModel):
 
 
 class FiltersConfig(StrictModel):
-    """`config/filters.yaml` 配置模型占位。
+    """`config/filters.yaml` 的 AI Output 清理规则。"""
 
-    清洗规则格式等实现 filter_engine 时再正式补齐。
-    """
-
-    raw: dict[str, Any] = Field(default_factory=dict)
+    remove_tags: list[str] = Field(default_factory=list)
+    drop_if_only_tags: list[str] = Field(default_factory=list)
 
 
 class TilesConfig(StrictModel):

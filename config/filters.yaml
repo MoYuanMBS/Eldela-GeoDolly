@@ -1,1 +1,19 @@
-# GeoMCP filters configuration placeholder
+# GeoMCP AI Output 清理规则
+# 当前权威来源: doc/GeoMCP 技术规范文档.md
+
+# 无条件从 AI Output tags 中删除命中的 tag。
+remove_tags:
+  - note=*
+  - source=*
+  - description=*
+  - fixme=*
+  - created_by=*
+  - wikidata=*
+  - website=*
+
+# tag 清洗和 annotations 完成后，如果非 Overlay 普通 AI 对象的所有剩余 tags
+# 都命中本列表，且对象没有有效 annotation，则删除整个 AI Output 对象。
+drop_if_only_tags:
+  - building=yes
+  - area=yes
+  - type=multipolygon
