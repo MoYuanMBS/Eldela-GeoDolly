@@ -24,17 +24,19 @@ class InternalFilterRulesConfig(StrictModel):
 
 
 class CompiledTagRuleSet(StrictModel):
-    """编译后便于匹配的 tag 规则集合。"""
+    """Filter 侧使用的轻量 tag 规则集合。"""
 
     wildcard_keys: set[str] = Field(default_factory=set)
     exact_rules: set[tuple[str, str]] = Field(default_factory=set)
 
 
-class CompiledOverpassFilterRules(StrictModel):
-    """Overpass / Filter 编译后的内部规则集合。"""
+class CompiledOverpassRules(StrictModel):
+    """Overpass selector 使用的平铺 include / deny 规则集合。"""
 
-    deny_object_rules: CompiledTagRuleSet = Field(default_factory=CompiledTagRuleSet)
-    remove_tag_rules: CompiledTagRuleSet = Field(default_factory=CompiledTagRuleSet)
+    include_wildcard_keys: set[str] = Field(default_factory=set)
+    include_exact_rules: set[tuple[str, str]] = Field(default_factory=set)
+    deny_wildcard_keys: set[str] = Field(default_factory=set)
+    deny_exact_rules: set[tuple[str, str]] = Field(default_factory=set)
 
 
 class OsmElement(StrictModel):

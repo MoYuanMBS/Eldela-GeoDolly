@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
+import re
 import sys
 from typing import Any, ClassVar
 
@@ -15,7 +16,7 @@ if __package__ in (None, ""):
 
 from python.utils.config_loader import config
 from python.utils.internal_models.experts import ExpertConfig
-from python.utils.internal_models.overpass import CompiledOverpassFilterRules, CompiledTagRuleSet, InternalFilterRulesConfig, TagRuleMap
+from python.utils.internal_models.overpass import CompiledOverpassRules, CompiledTagRuleSet, InternalFilterRulesConfig, TagRuleMap
 from python.utils.models import TransferTypes
 
 ANY_TAG_FILTER = '[~"."~"."]'
@@ -38,10 +39,12 @@ class _OverpassRuleStore:
             return
         self._internal_rules_path = Path(__file__).resolve().with_name("internal_rules.json")
         self.internal_config = self._load_internal_config()
-        self.internal_rules = CompiledOverpassFilterRules(
-            deny_object_rules=self._compile_tag_rules(self.internal_config.deny_object_rules),
-            remove_tag_rules=self._compile_tag_rules(self.internal_config.remove_tag_rules),
+        deny_rules = self._compile_tag_rules(self.internal_config.deny_object_rules)
+        self.deny_object_rules = CompiledOverpassRules(
+            deny_wildcard_keys=deny_rules.wildcard_keys,
+            deny_exact_rules=deny_rules.exact_rules,
         )
+        self.remove_tag_rules = self._compile_tag_rules(self.internal_config.remove_tag_rules)
         self._initialized = True
 
     def _load_internal_config(self) -> InternalFilterRulesConfig:
@@ -73,11 +76,6 @@ class _OverpassRuleStore:
 
         return CompiledTagRuleSet(wildcard_keys=wildcard_keys, exact_rules=exact_rules)
 
-def _quote_ql_string(value: str) -> str:
-    """把 tag key/value 安全写成 Overpass QL 双引号字符串。"""
-    return json.dumps(value, ensure_ascii=False)
-
-
 class FilterRuleContext:
     """一次 Overpass / Filter 流程内可复用的合并规则上下文。"""
 
@@ -90,8 +88,8 @@ class FilterRuleContext:
         expert_configs = list(self.config.get_experts(self.expert_names).values()) if self.expert_names else []
 
         # 只缓存四组“已经合并好、后续会复用”的规则。
-        self.deny_object_rules = self.rule_store.internal_rules.deny_object_rules
-        self.context_overpass_rules = self._block_by_internal_rules(self._merge_base_expert_overpass_rules(base_config, expert_configs))
+        self.deny_object_rules = self.rule_store.deny_object_rules
+        self.context_overpass_rules = self._merge_context_overpass_rules(base_config, expert_configs)
         self.overlay_rules = self._merge_base_expert_overlay_rules(base_config, expert_configs)
         self.output_remove_tag_rules = self._merge_output_remove_tag_rules()
 
@@ -184,6 +182,13 @@ class FilterRuleContext:
 
         return merged_rules
 
+    def _overpass_deny_as_tag_rules(self) -> CompiledTagRuleSet:
+        """把 Overpass deny 规则临时转换为 tag rules，供正向规则裁剪使用。"""
+        return CompiledTagRuleSet(
+            wildcard_keys=set(self.deny_object_rules.deny_wildcard_keys),
+            exact_rules=set(self.deny_object_rules.deny_exact_rules),
+        )
+
     def _merge_expert_overpass_rules(self, expert_configs: list[ExpertConfig]) -> CompiledTagRuleSet:
         """合并 Expert overpass_tags。"""
         merged_rules = CompiledTagRuleSet()
@@ -212,36 +217,71 @@ class FilterRuleContext:
         """合并 filters.yaml 与 internal remove_tag_rules。"""
         merged_rules = CompiledTagRuleSet()
         self._merge_raw_tag_rule_map(merged_rules, self.config.filters.raw.get("remove_tag_rules"))
-        self._merge_compiled_rules(merged_rules, self.rule_store.internal_rules.remove_tag_rules)
+        self._merge_compiled_rules(merged_rules, self.rule_store.remove_tag_rules)
         return merged_rules
 
-    def _block_by_internal_rules(self, include_rules: CompiledTagRuleSet) -> CompiledTagRuleSet:
-        """使用 _OverpassRuleStore 的 deny_object_rules 屏蔽正向 rules。"""
-        return self._remove_denied_rules(include_rules, self.deny_object_rules)
+    def _merge_context_overpass_rules(self, base_config: ExpertConfig | None, expert_configs: list[ExpertConfig]) -> CompiledOverpassRules:
+        """合并 context 正向规则，并附加强制 deny_object_rules。"""
+        include_rules = self._remove_denied_rules(self._merge_base_expert_overpass_rules(base_config, expert_configs), self._overpass_deny_as_tag_rules())
+        return CompiledOverpassRules(
+            include_wildcard_keys=include_rules.wildcard_keys,
+            include_exact_rules=include_rules.exact_rules,
+            deny_wildcard_keys=set(self.deny_object_rules.deny_wildcard_keys),
+            deny_exact_rules=set(self.deny_object_rules.deny_exact_rules),
+        )
 
-def _build_deny_filter_fragment(deny_rules: CompiledTagRuleSet) -> str:
+
+def _quote_ql_string(value: str) -> str:
+    """把 tag key/value 安全写成 Overpass QL 双引号字符串。"""
+    return json.dumps(value, ensure_ascii=False)
+
+
+def _group_exact_rules(exact_rules: set[tuple[str, str]]) -> dict[str, set[str]]:
+    """按 key 聚合 exact rules，便于生成 Overpass regex selector。"""
+    grouped_rules: dict[str, set[str]] = {}
+    for key, value in exact_rules:
+        grouped_rules.setdefault(key, set()).add(value)
+    return grouped_rules
+
+
+def _build_exact_value_regex(values: set[str]) -> str:
+    """把同 key 的多个 value 压缩成 Overpass regex。"""
+    escaped_values = [re.escape(value) for value in sorted(values)]
+    return f"^({'|'.join(escaped_values)})$"
+
+
+def _build_deny_filter_fragment(overpass_rules: CompiledOverpassRules) -> str:
     """把 deny_object_rules 编译成可追加到 selector 的负向 filters。"""
     filters: list[str] = []
-    for key in sorted(deny_rules.wildcard_keys):
+    for key in sorted(overpass_rules.deny_wildcard_keys):
         filters.append(f'[!{_quote_ql_string(key)}]')
-    for key, value in sorted(deny_rules.exact_rules):
-        filters.append(f'[{_quote_ql_string(key)}!={_quote_ql_string(value)}]')
+    for key, values in sorted(_group_exact_rules(overpass_rules.deny_exact_rules).items()):
+        if len(values) == 1:
+            value = next(iter(values))
+            filters.append(f'[{_quote_ql_string(key)}!={_quote_ql_string(value)}]')
+        else:
+            filters.append(f'[{_quote_ql_string(key)}!~{_quote_ql_string(_build_exact_value_regex(values))}]')
     return "".join(filters)
 
 
-def _build_positive_filter_fragments(include_rules: CompiledTagRuleSet) -> tuple[str, ...]:
+def _build_positive_filter_fragments(overpass_rules: CompiledOverpassRules) -> tuple[str, ...]:
     """把正向 rules 编译成 selector filter 片段。"""
     filters: list[str] = []
-    for key in sorted(include_rules.wildcard_keys):
+    for key in sorted(overpass_rules.include_wildcard_keys):
         filters.append(f'[{_quote_ql_string(key)}]')
-    for key, value in sorted(include_rules.exact_rules):
-        filters.append(f'[{_quote_ql_string(key)}={_quote_ql_string(value)}]')
+    for key, values in sorted(_group_exact_rules(overpass_rules.include_exact_rules).items()):
+        if len(values) == 1:
+            value = next(iter(values))
+            filters.append(f'[{_quote_ql_string(key)}={_quote_ql_string(value)}]')
+        else:
+            filters.append(f'[{_quote_ql_string(key)}~{_quote_ql_string(_build_exact_value_regex(values))}]')
     return tuple(filters)
 
 
 def build_overpass_tag_filters(rule_context: FilterRuleContext, use_any_tag: bool = False, use_context_rules: bool = False) -> tuple[str, ...]:
     """构建 Overpass selector tag filters；deny_object_rules 强制追加。"""
-    deny_filter = _build_deny_filter_fragment(rule_context.deny_object_rules)
+    overpass_rules = rule_context.context_overpass_rules if use_context_rules else rule_context.deny_object_rules
+    deny_filter = _build_deny_filter_fragment(overpass_rules)
 
     if use_any_tag:
         return (ANY_TAG_FILTER + deny_filter,)
@@ -249,7 +289,7 @@ def build_overpass_tag_filters(rule_context: FilterRuleContext, use_any_tag: boo
     if not use_context_rules:
         return (deny_filter,)
 
-    positive_filters = _build_positive_filter_fragments(rule_context.context_overpass_rules)
+    positive_filters = _build_positive_filter_fragments(overpass_rules)
     if not positive_filters:
         raise TransferTypes.AppError(code="overpass_invalid_query", message="context Overpass query requires at least one positive tag filter")
     return tuple(f"{positive_filter}{deny_filter}" for positive_filter in positive_filters)
