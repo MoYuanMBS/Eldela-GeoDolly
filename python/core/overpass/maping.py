@@ -15,9 +15,10 @@ warning_logger = logging.getLogger("geomcp.warning")
 class TypedOsmMapStore:
     """一阶段 typed OSM object store。"""
 
-    def __init__(self,palyoad: JsonDictType):
+    def __init__(self,palyoad: JsonDictType|None = None):
         self.maps = TypedOsmMaps()
-        self.add_payload(palyoad)
+        if palyoad:
+            self.add_payload(palyoad)
 
     def add_payload(self, payload: JsonDictType) -> None:
         """从 Overpass JSON payload 加入 elements。"""

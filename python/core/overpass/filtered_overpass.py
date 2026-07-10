@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 
 from python.core.overpass.build_query import build_initial_query
-from python.core.overpass.filter_rules import build_bbox_tag_filters, build_core_tag_filters
+from python.core.overpass.filter_rules import FilterRuleContext, build_overpass_tag_filters
 from python.core.overpass.overpass import request_overpass
 from python.utils.models import Geometry, JsonDictType
 
@@ -18,42 +18,40 @@ async def fetch_initial_body(
     return await request_overpass(build_initial_query(area, tag_filters))
 
 
-async def fetch_core_body(core_area: Geometry.BBox | Geometry.AdaptedMultiPolygon) -> JsonDictType:
+async def fetch_core_body(core_area: Geometry.BBox | Geometry.AdaptedMultiPolygon, rule_context: FilterRuleContext) -> JsonDictType:
     """执行 Core 初始 Overpass body 抓取。
 
     Core 查询由上层决定使用 bbox 还是 core polygon；本函数只负责套用 Core
     专用 tag filters，并调用初始 Overpass 轻量抓取。
     """
-    return await fetch_initial_body(core_area, build_core_tag_filters())
+    return await fetch_initial_body(core_area, build_overpass_tag_filters(rule_context, use_any_tag=True))
 
 
 async def fetch_bbox_body(
     bbox: Geometry.BBox,
-    experts: list[str] | None = None,
-    include_base: bool = True
+    rule_context: FilterRuleContext
 ) -> JsonDictType:
     """执行 BBox / context 初始 Overpass body 抓取。
 
     BBox 查询使用 Base 与当前 experts 的正向 overpass_tags，并叠加
     Internal deny_object_rules。实际 HTTP 请求仍由 `overpass.py` 负责。
     """
-    return await fetch_initial_body(bbox, build_bbox_tag_filters(experts=experts, include_base=include_base))
+    return await fetch_initial_body(bbox, build_overpass_tag_filters(rule_context, use_context_rules=True))
 
 
 async def fetch_initial_bodies(
     core_area: Geometry.BBox | Geometry.AdaptedMultiPolygon | None,
     bbox: Geometry.BBox,
-    experts: list[str] | None = None,
-    include_base: bool = True
+    rule_context: FilterRuleContext
 ) -> dict[str, JsonDictType | None]:
     """并行执行可用的 Core 与 BBox / context 初始 Overpass body 抓取。"""
 
-    bbox_task = asyncio.create_task(fetch_bbox_body(bbox, experts=experts, include_base=include_base))
+    bbox_task = asyncio.create_task(fetch_bbox_body(bbox, rule_context))
     if core_area is None:
         return {"core": None, "bbox": await bbox_task}
 
     core_body, bbox_body = await asyncio.gather(
-        fetch_core_body(core_area),
+        fetch_core_body(core_area, rule_context),
         bbox_task,
     )
     return {"core": core_body, "bbox": bbox_body}
@@ -92,17 +90,18 @@ if __name__ == "__main__":
         print(f"Geometry result: {geometry_result.geometry}") 
 
         if final_bbox and geometry_result.geometry:
+            rule_context = FilterRuleContext(experts=["example_expert"], include_base=True)
 
-            a = build_query.build_initial_query(final_bbox, build_core_tag_filters())
+            a = build_query.build_initial_query(final_bbox, build_overpass_tag_filters(rule_context, use_any_tag=True))
             print(f"Overpass query: {a}")
-            b = build_query.build_initial_query(geometry_result.geometry, build_core_tag_filters())
+            b = build_query.build_initial_query(geometry_result.geometry, build_overpass_tag_filters(rule_context, use_any_tag=True))
             print(f"Overpass query: {b}")
             tokens = b.split()
             print(len(tokens))
             start_time = time.time()
-            result = asyncio.run(fetch_initial_bodies(geometry_result.geometry, final_bbox, experts=["example_expert"], include_base=True))
+            result = asyncio.run(fetch_initial_bodies(geometry_result.geometry, final_bbox, rule_context))
             
-            # result =  asyncio.run(fetch_bbox_body(final_bbox, experts=["example_expert"], include_base=True))
+            # result =  asyncio.run(fetch_bbox_body(final_bbox, rule_context))
 
             end_time = time.time()
             print(f"Overpass fetch time: {end_time - start_time:.2f} seconds")

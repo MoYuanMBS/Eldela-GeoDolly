@@ -27,7 +27,7 @@ class CompiledTagRuleSet(StrictModel):
     """编译后便于匹配的 tag 规则集合。"""
 
     wildcard_keys: set[str] = Field(default_factory=set)
-    exact_values_by_key: dict[str, set[str]] = Field(default_factory=dict)
+    exact_rules: set[tuple[str, str]] = Field(default_factory=set)
 
 
 class CompiledOverpassFilterRules(StrictModel):
