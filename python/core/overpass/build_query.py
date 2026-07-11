@@ -5,10 +5,8 @@ from __future__ import annotations
 import math
 from typing import Sequence
 
+from python.utils.config_loader import config
 from python.utils.models import Geometry, TransferTypes
-
-# Overpass query 配置模型接入前暂时使用模块常量，后续统一改从 config loader 获取。
-OVERPASS_QUERY_TIMEOUT_SECONDS = 60
 
 
 def _format_number(value: float) -> str:
@@ -159,7 +157,7 @@ def build_initial_query(
         for element_type in ("way", "rel")
     ]
     return (
-        f'[out:json][timeout:{OVERPASS_QUERY_TIMEOUT_SECONDS}];\n'
+        f'[out:json][timeout:{config.overpass.timeout_seconds}];\n'
         "(\n  " + "\n  ".join(node_statements) + "\n);\n"
         "out body;\n"
         "(\n  " + "\n  ".join(metadata_statements) + "\n);\n"

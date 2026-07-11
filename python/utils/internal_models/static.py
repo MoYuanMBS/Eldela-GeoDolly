@@ -30,11 +30,23 @@ class GeometryConfig(StrictModel):
     max_core_area_km2: float = Field(gt=0, multiple_of=0.01)
 
 
+class OverpassConfig(StrictModel):
+    """Overpass 运行配置。"""
+
+    relation_parent_depth: int = Field(ge=0)
+    endpoint: str = Field(min_length=1)
+    user_agent: str = Field(min_length=1)
+    timeout_seconds: float = Field(gt=0, multiple_of=0.01)
+    retry_attempts: int = Field(ge=0)
+    retry_delay_seconds: float = Field(ge=0, multiple_of=0.01)
+
+
 class AppConfig(StrictModel):
     """`config/app.yaml` 中 Python 侧会使用的轻量配置。"""
 
     nominatim: NominatimConfig
     geometry: GeometryConfig
+    overpass: OverpassConfig
 
 
 class FiltersConfig(StrictModel):

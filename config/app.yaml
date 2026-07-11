@@ -40,6 +40,21 @@ nominatim:
   # 超时后会进入上游 HTTP 错误处理流程。
   timeout_seconds: 30.00
 
+# Overpass 运行参数。
+overpass:
+  # Core expert-hit 对象向上反查 parent relation 的递归深度。
+  relation_parent_depth: 1
+  # Overpass API 请求地址。
+  endpoint: "https://overpass-api.de/api/interpreter"
+  # 发给 Overpass API 的 User-Agent。
+  user_agent: "geomcp/test"
+  # Overpass Query 与 HTTP 请求共用的超时秒数。
+  timeout_seconds: 60.00
+  # 请求失败后的重试次数。
+  retry_attempts: 3
+  # 每次重试前的基础等待秒数。
+  retry_delay_seconds: 1.00
+
 # Geometry 模块统一运行参数。
 geometry:
   # 预处理距离单位统一为米。

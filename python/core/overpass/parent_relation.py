@@ -2,16 +2,13 @@
 
 import logging
 
-from python.core.overpass.build_query import OVERPASS_QUERY_TIMEOUT_SECONDS
 from python.core.overpass.filter import filter_include_tags, filter_output_tags
 from python.core.overpass.filter_rules import FilterRuleContext, build_overpass_tag_filters
+from python.utils.config_loader import config
 from python.utils.internal_models.overpass import TypedOsmMaps
 from python.utils.models import TransferTypes
 
 warning_logger = logging.getLogger("geomcp.warning")
-
-# Overpass config 统一接入前暂时使用模块常量。
-RELATION_PARENT_DEPTH = 1
 
 
 def filter_parent_relation(osm_maps: TypedOsmMaps, rule_context: FilterRuleContext) -> TypedOsmMaps:
@@ -62,7 +59,7 @@ def filter_parent_relation_result(parent_maps: TypedOsmMaps, rule_context: Filte
 
 def build_parent_relation_query(osm_maps: TypedOsmMaps, rule_context: FilterRuleContext) -> str | None:
     """构建单次、固定向上递归深度的 parent relation tags 查询。"""
-    if RELATION_PARENT_DEPTH == 0:
+    if config.overpass.relation_parent_depth == 0:
         return None
     seed_maps = filter_parent_relation(osm_maps, rule_context)
     seed_groups = (
@@ -87,12 +84,12 @@ def build_parent_relation_query(osm_maps: TypedOsmMaps, rule_context: FilterRule
         return None
 
     parent_level_statements = ["(\n  " + "\n  ".join(first_level_statements) + "\n)->.parent_level_1;"]
-    for level in range(2, RELATION_PARENT_DEPTH + 1):
+    for level in range(2, config.overpass.relation_parent_depth + 1):
         parent_level_statements.append(f"rel(br.parent_level_{level - 1}){deny_filter}->.parent_level_{level};")
-    output_sets = "\n  ".join(f".parent_level_{level};" for level in range(1, RELATION_PARENT_DEPTH + 1))
+    output_sets = "\n  ".join(f".parent_level_{level};" for level in range(1, config.overpass.relation_parent_depth + 1))
 
     return (
-        f'[out:json][timeout:{OVERPASS_QUERY_TIMEOUT_SECONDS}];\n'
+        f'[out:json][timeout:{config.overpass.timeout_seconds}];\n'
         + "\n".join(seed_statements)
         + "\n"
         + "\n".join(parent_level_statements)

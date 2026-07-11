@@ -8,14 +8,9 @@ from typing import Any, cast
 
 import httpx
 
+from python.utils.config_loader import config
 from python.utils.models import JsonDictType, TransferTypes
 
-# Overpass 配置模型接入前暂时使用模块常量，后续统一改从 config loader 获取。
-OVERPASS_ENDPOINT = "https://overpass-api.de/api/interpreter"
-OVERPASS_USER_AGENT = "geomcp/test"
-OVERPASS_TIMEOUT_SECONDS = 60.00
-OVERPASS_RETRY_ATTEMPTS = 3
-OVERPASS_RETRY_DELAY_SECONDS = 1.00
 warning_logger = logging.getLogger("geomcp.warning")
 
 
@@ -53,8 +48,8 @@ def _warn_overpass_retry(reason: str, attempt: int, details: JsonDictType | None
         "status": "retrying",
         "reason": reason,
         "attempt": attempt,
-        "max_attempts": OVERPASS_RETRY_ATTEMPTS,
-        "endpoint": OVERPASS_ENDPOINT,
+        "max_attempts": config.overpass.retry_attempts,
+        "endpoint": config.overpass.endpoint,
     }
     if details:
         log_details["details"] = details
@@ -84,40 +79,40 @@ async def request_overpass(query: str) -> JsonDictType:
     if not query.strip():
         raise TransferTypes.AppError(code="overpass_invalid_query", message="Overpass query is empty")
 
-    for attempt in range(1, OVERPASS_RETRY_ATTEMPTS + 1):
+    for attempt in range(1, config.overpass.retry_attempts + 1):
         # Overpass 请求模块内部管理 client 生命周期，对外只暴露 query -> JSON 的爬取能力。
         request_client = httpx.AsyncClient(
-            headers={"User-Agent": OVERPASS_USER_AGENT},
-            timeout=OVERPASS_TIMEOUT_SECONDS
+            headers={"User-Agent": config.overpass.user_agent},
+            timeout=config.overpass.timeout_seconds
         )
         try:
             # 使用 POST 避免较长的 poly / tag 查询受到 URL 长度限制。
-            response = await request_client.post(OVERPASS_ENDPOINT, data={"data": query})
+            response = await request_client.post(config.overpass.endpoint, data={"data": query})
         except httpx.TransportError as error:
             is_timeout = isinstance(error, httpx.TimeoutException)
             error_code = "overpass_timeout" if is_timeout else "overpass_connection_error"
             error_message = "Overpass request timed out" if is_timeout else "Failed to connect to Overpass"
-            if attempt < OVERPASS_RETRY_ATTEMPTS:
+            if attempt < config.overpass.retry_attempts:
                 _warn_overpass_retry(error_code, attempt, {"error": str(error)})
-                await asyncio.sleep(OVERPASS_RETRY_DELAY_SECONDS)
+                await asyncio.sleep(config.overpass.retry_delay_seconds)
                 continue
-            raise TransferTypes.AppError(code=error_code, message=error_message, details={"endpoint": OVERPASS_ENDPOINT}) from error
+            raise TransferTypes.AppError(code=error_code, message=error_message, details={"endpoint": config.overpass.endpoint}) from error
         finally:
             await request_client.aclose()
 
         if not response.is_success:
-            if attempt < OVERPASS_RETRY_ATTEMPTS and _is_retryable_status(response.status_code):
+            if attempt < config.overpass.retry_attempts and _is_retryable_status(response.status_code):
                 _warn_overpass_retry("overpass_http_status", attempt, {"http_status": response.status_code})
-                await asyncio.sleep(OVERPASS_RETRY_DELAY_SECONDS)
+                await asyncio.sleep(config.overpass.retry_delay_seconds)
                 continue
             raise _status_error(response)
 
         try:
             payload: Any = response.json()
         except ValueError as error:
-            if attempt < OVERPASS_RETRY_ATTEMPTS:
+            if attempt < config.overpass.retry_attempts:
                 _warn_overpass_retry("overpass_invalid_json", attempt, {"error": str(error)})
-                await asyncio.sleep(OVERPASS_RETRY_DELAY_SECONDS)
+                await asyncio.sleep(config.overpass.retry_delay_seconds)
                 continue
             raise TransferTypes.AppError(code="overpass_invalid_response", message="Overpass returned invalid JSON") from error
         # Overpass 可能用 2xx + remark 表示运行期失败，必须优先于普通响应结构处理。
