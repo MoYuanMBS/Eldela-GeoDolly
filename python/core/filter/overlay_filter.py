@@ -2,8 +2,8 @@
 
 import logging
 
-from python.core.overpass.filter import filter_include_tags
-from python.core.overpass.filter_rules import FilterRuleContext
+from python.core.filter.filter import filter_include_tags
+from python.core.filter.filter_rules import FilterRuleContext
 from python.utils.internal_models.overpass import OsmElementMap, TagFilterRule, TypedOsmMaps
 
 warning_logger = logging.getLogger("geomcp.warning")

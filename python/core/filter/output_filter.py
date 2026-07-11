@@ -2,8 +2,8 @@
 
 import logging
 
-from python.core.overpass.filter import filter_output_tags
-from python.core.overpass.filter_rules import FilterRuleContext
+from python.core.filter.filter import filter_output_tags
+from python.core.filter.filter_rules import FilterRuleContext
 from python.core.overpass.maping import TypedOsmMapStore
 from python.utils.internal_models.overpass import OsmElementMap, TypedOsmMaps
 

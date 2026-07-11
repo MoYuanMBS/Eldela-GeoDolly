@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 
 from python.core.overpass.build_query import build_initial_query
-from python.core.overpass.filter_rules import FilterRuleContext, build_overpass_tag_filters
+from python.core.filter.filter_rules import FilterRuleContext, build_overpass_tag_filters
 from python.core.overpass.overpass import request_overpass
 from python.utils.models import Geometry, JsonDictType
 
@@ -56,6 +56,12 @@ async def fetch_initial_bodies(
     )
     return {"core": core_body, "bbox": bbox_body}
 
+
+
+
+
+
+#####################################测试调试用#########################################################
 if __name__ == "__main__":
 
     from python.core.geometry.geometry import process_geometry, process_bbox
