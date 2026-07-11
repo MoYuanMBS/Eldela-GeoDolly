@@ -2,73 +2,11 @@
 
 from __future__ import annotations
 
-import math
 from typing import Sequence
 
+from python.core.overpass.query_utils import build_bbox_filter, format_number, validate_coordinate
 from python.utils.config_loader import config
 from python.utils.models import Geometry, TransferTypes
-
-
-def _format_number(value: float) -> str:
-    """将浮点数转换为稳定且紧凑的 Overpass QL 数字文本。
-
-    使用 12 位有效数字，避免直接序列化浮点数时产生过长的小数，
-    同时为 WGS84 查询坐标保留足够精度。
-
-    Args:
-        value: 需要写入 Overpass QL 的浮点数。
-
-    Returns:
-        不使用科学计数法约束、最多保留 12 位有效数字的字符串。
-    """
-    return format(value, ".12g")
-
-
-def _validate_coordinate(lon: float, lat: float) -> None:
-    """校验单个 WGS84 经纬度坐标。
-
-    本函数统一使用项目内部的 ``(lon, lat)`` 顺序。它只检查数值是否
-    有限以及是否位于 WGS84 合法范围，不负责判断坐标是否组成有效
-    bbox、线或 polygon。
-
-    Args:
-        lon: 经度，合法范围为 ``[-180, 180]``。
-        lat: 纬度，合法范围为 ``[-90, 90]``。
-
-    Raises:
-        TransferTypes.AppError: 坐标包含 NaN/Infinity，或超出 WGS84 范围。
-    """
-    # 内部坐标保持 `(lon, lat)`，只有序列化 Overpass poly 时才转换成 `lat lon`。
-    if not math.isfinite(lon) or not math.isfinite(lat):
-        raise TransferTypes.AppError(code="invalid_geometry", message="Overpass coordinates must be finite")
-    if not -180.00 <= lon <= 180.00 or not -90.00 <= lat <= 90.00:
-        raise TransferTypes.AppError(code="invalid_geometry", message="Overpass coordinates are out of WGS84 range")
-
-
-def _bbox_filter(bbox: Geometry.BBox) -> str:
-    """将已经调好顺序的 Overpass bbox 序列化为 bbox filter。
-
-    调用方传入的 bbox 必须已经是 Overpass 要求的
-    ``(south, west, north, east)`` 顺序。这里不能再按 Nominatim raw bbox
-    或 Shapely bounds 重新换位，只执行坐标范围、有限值和边界顺序校验。
-
-    Args:
-        bbox: Overpass WGS84 bbox，格式固定为 ``(south, west, north, east)``。
-
-    Returns:
-        可直接拼接到 Overpass element selector 后的 bbox 文本，例如
-        ``(43,-80,44,-79)``。
-
-    Raises:
-        TransferTypes.AppError: 坐标非法，或 bbox 不满足
-            ``south < north``、``west < east``。
-    """
-    south, west, north, east = bbox
-    _validate_coordinate(west, south)
-    _validate_coordinate(east, north)
-    if south >= north or west >= east:
-        raise TransferTypes.AppError(code="invalid_bbox", message="Overpass bbox must be (south, west, north, east) and satisfy south < north, west < east")
-    return f"({_format_number(south)},{_format_number(west)},{_format_number(north)},{_format_number(east)})"
 
 
 def _core_poly_filters(core_geometry: Geometry.AdaptedMultiPolygon) -> list[str]:
@@ -107,9 +45,9 @@ def _core_poly_filters(core_geometry: Geometry.AdaptedMultiPolygon) -> list[str]
             if not isinstance(lon, (int, float)) or isinstance(lon, bool) or not isinstance(lat, (int, float)) or isinstance(lat, bool):
                 raise TransferTypes.AppError(code="invalid_geometry", message="Overpass core polygon coordinates must be numbers")
             lon_float, lat_float = float(lon), float(lat)
-            _validate_coordinate(lon_float, lat_float)
+            validate_coordinate(lon_float, lat_float)
             # Overpass poly 与项目内部坐标顺序相反，要求 `lat lon`。
-            poly_coordinates.extend((_format_number(lat_float), _format_number(lon_float)))
+            poly_coordinates.extend((format_number(lat_float), format_number(lon_float)))
 
         poly_text = " ".join(poly_coordinates)
         poly_filters.append(f'(poly:"{poly_text}")')
@@ -130,7 +68,7 @@ def build_initial_query(
 
     Args:
         area: WGS84 bbox，或 Geometry 模块输出的 WGS84 core geometry。
-        tag_filters: 由 ``filter_rules.py`` 编译好的 Overpass tag filters。
+        tag_filters: 由 ``query_utils.py`` 编译好的 Overpass tag filters。
 
     Returns:
         完整的 Overpass QL 文本，输出格式为 JSON。node 段使用
@@ -140,7 +78,7 @@ def build_initial_query(
         TransferTypes.AppError: area 无效。
     """
     # BBox 只产生一个空间过滤器；MultiPolygon 的每个 exterior 各产生一个 poly 过滤器。
-    spatial_filters = [_bbox_filter(area)] if isinstance(area, tuple) else _core_poly_filters(area)
+    spatial_filters = [build_bbox_filter(area)] if isinstance(area, tuple) else _core_poly_filters(area)
     normalized_tag_filters = tuple(tag_filters)
     if not normalized_tag_filters:
         raise TransferTypes.AppError(code="overpass_invalid_query", message="initial Overpass query requires tag filters")

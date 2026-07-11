@@ -8,10 +8,11 @@ import logging
 from python.core.filter.output_filter import filter_output, merge_parent_relations
 from python.core.filter.overlay_filter import filter_overlay
 from python.core.overpass.build_query import build_initial_query
-from python.core.filter.filter_rules import FilterRuleContext, build_overpass_tag_filters
+from python.core.filter.filter_rules import FilterRuleContext
 from python.core.overpass.maping import TypedOsmMapStore
 from python.core.overpass.overpass import request_overpass
 from python.core.overpass.parent_relation import build_parent_relation_query, filter_parent_relation_result
+from python.core.overpass.query_utils import build_overpass_tag_filters
 from python.utils.internal_models.overpass import FilteredOverpassResult, TypedOsmMaps
 from python.utils.models import Geometry, JsonDictType, TransferTypes
 
@@ -185,7 +186,8 @@ if __name__ == "__main__":
             tokens = b.split()
             print(len(tokens))
             start_time = time.time()
-            result = asyncio.run(fetch_initial_bodies(geometry_result.geometry, final_bbox, rule_context))
+            result = asyncio.run(run_filtered_overpass(geometry_result.geometry, final_bbox, rule_context))
+            
 
             # result = asyncio.run(fetch_initial_bodies(geometry_result.geometry, final_bbox, rule_context))
             
@@ -193,8 +195,8 @@ if __name__ == "__main__":
 
             end_time = time.time()
             print(f"Overpass fetch time: {end_time - start_time:.2f} seconds")
-            with open(file_path, "w") as f:
-                json.dump(result, f, indent=2)
+            with open(file_path, "w", encoding="utf-8") as f:
+                json.dump(result.model_dump(mode="json"),f,indent=2,ensure_ascii=False,)
                 f.flush()
                 size_bytes = os.fstat(f.fileno()).st_size
                 size_mb = size_bytes / (1024 * 1024)

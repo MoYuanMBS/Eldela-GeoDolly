@@ -3,7 +3,8 @@
 import logging
 
 from python.core.filter.filter import filter_include_tags, filter_output_tags
-from python.core.filter.filter_rules import FilterRuleContext, build_overpass_tag_filters
+from python.core.filter.filter_rules import FilterRuleContext
+from python.core.overpass.query_utils import build_overpass_tag_filters
 from python.utils.config_loader import config
 from python.utils.internal_models.overpass import TypedOsmMaps
 from python.utils.models import TransferTypes
