@@ -3,11 +3,19 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 
+from python.core.filter.output_filter import filter_output, merge_parent_relations
+from python.core.filter.overlay_filter import filter_overlay
 from python.core.overpass.build_query import build_initial_query
 from python.core.filter.filter_rules import FilterRuleContext, build_overpass_tag_filters
+from python.core.overpass.maping import TypedOsmMapStore
 from python.core.overpass.overpass import request_overpass
-from python.utils.models import Geometry, JsonDictType
+from python.core.overpass.parent_relation import build_parent_relation_query, filter_parent_relation_result
+from python.utils.internal_models.overpass import FilteredOverpassResult, TypedOsmMaps
+from python.utils.models import Geometry, JsonDictType, TransferTypes
+
+warning_logger = logging.getLogger("geomcp.warning")
 
 
 async def fetch_initial_body(
@@ -44,17 +52,89 @@ async def fetch_initial_bodies(
     bbox: Geometry.BBox,
     rule_context: FilterRuleContext
 ) -> dict[str, JsonDictType | None]:
-    """并行执行可用的 Core 与 BBox / context 初始 Overpass body 抓取。"""
+    """并行抓取 Core 与 BBox；双侧模式允许返回单侧成功结果。"""
 
     bbox_task = asyncio.create_task(fetch_bbox_body(bbox, rule_context))
     if core_area is None:
         return {"core": None, "bbox": await bbox_task}
 
-    core_body, bbox_body = await asyncio.gather(
+    core_result, bbox_result = await asyncio.gather(
         fetch_core_body(core_area, rule_context),
         bbox_task,
+        return_exceptions=True
     )
+
+    if isinstance(core_result, asyncio.CancelledError):
+        raise core_result
+    if isinstance(bbox_result, asyncio.CancelledError):
+        raise bbox_result
+
+    if isinstance(core_result, BaseException):
+        core_error: BaseException | None = core_result
+        core_body: JsonDictType | None = None
+    else:
+        core_error = None
+        core_body = core_result
+
+    if isinstance(bbox_result, BaseException):
+        bbox_error: BaseException | None = bbox_result
+        bbox_body: JsonDictType | None = None
+    else:
+        bbox_error = None
+        bbox_body = bbox_result
+    if core_error is not None and bbox_error is not None:
+        if isinstance(bbox_error, TransferTypes.AppError):
+            raise bbox_error
+        raise TransferTypes.AppError(code="overpass_query_failed", message="Core and BBox Overpass queries failed", details={"core": str(core_error), "bbox": str(bbox_error)}) from bbox_error
+
+    if core_error is not None:
+        warning_logger.warning(
+            "overpass_partial_success",
+            extra={"geomcp_extra": {"status": "partial", "failed_stage": "core", "reason": getattr(core_error, "code", type(core_error).__name__)}}
+        )
+    if bbox_error is not None:
+        warning_logger.warning(
+            "overpass_partial_success",
+            extra={"geomcp_extra": {"status": "partial", "failed_stage": "bbox", "reason": getattr(bbox_error, "code", type(bbox_error).__name__)}}
+        )
+
     return {"core": core_body, "bbox": bbox_body}
+
+
+async def run_filtered_overpass(
+    core_area: Geometry.BBox | Geometry.AdaptedMultiPolygon | None,
+    bbox: Geometry.BBox,
+    rule_context: FilterRuleContext
+) -> FilteredOverpassResult:
+    """执行第一阶段 Overpass、Parent 反查、typed mapping 与双层 Filter。"""
+    initial_bodies = await fetch_initial_bodies(core_area, bbox, rule_context)
+    core_maps = TypedOsmMapStore(initial_bodies["core"]).maps if initial_bodies["core"] else TypedOsmMaps()
+    bbox_maps = TypedOsmMapStore(initial_bodies["bbox"]).maps if initial_bodies["bbox"] else TypedOsmMaps()
+
+    parent_maps = TypedOsmMaps()
+    parent_query = build_parent_relation_query(core_maps, rule_context)
+    if parent_query:
+        try:
+            parent_payload = await request_overpass(parent_query)
+            parent_maps = filter_parent_relation_result(TypedOsmMapStore(parent_payload).maps, rule_context)
+        except TransferTypes.AppError as error:
+            warning_logger.warning(
+                "skip_parent_relation_query",
+                extra={"geomcp_extra": {"status": "partial", "reason": error.code}}
+            )
+
+    combined_store = TypedOsmMapStore()
+    combined_store.merge_stage1(core_maps)
+    combined_store.merge_stage1(bbox_maps)
+    combined_maps = combined_store.maps
+    overlay_maps = filter_overlay(combined_maps, rule_context)
+    output_maps = merge_parent_relations(filter_output(combined_maps, rule_context), parent_maps)
+
+    return FilteredOverpassResult.model_construct(
+        combined_maps=combined_maps,
+        overlay_maps=overlay_maps,
+        output_maps=output_maps
+    )
 
 
 
@@ -69,8 +149,8 @@ if __name__ == "__main__":
     from python.utils.models import NominatimData
     import time
 
-    test_query = "Disneyland Paris"
-    test_country_code = "fr"
+    test_query = "Square one"
+    test_country_code = "CA"
     example_request = NominatimData.LocSearchQueryReq(queries=[NominatimData.LocSearchQuery(query=test_query, country_codes=[test_country_code])])
     req = query_request(example_request)
     candidate = req.candidates[0]
@@ -83,7 +163,7 @@ if __name__ == "__main__":
     import os
     import python.core.overpass.build_query as build_query
 
-    file_path = Path(__file__).parent.parent.parent.parent / "test" / "test_output.json"
+    file_path = Path(__file__).parent.parent.parent.parent.parent / "test" / "test_output.json"
 
     if bbox and gemo :
         start_time = time.time()
@@ -106,6 +186,8 @@ if __name__ == "__main__":
             print(len(tokens))
             start_time = time.time()
             result = asyncio.run(fetch_initial_bodies(geometry_result.geometry, final_bbox, rule_context))
+
+            # result = asyncio.run(fetch_initial_bodies(geometry_result.geometry, final_bbox, rule_context))
             
             # result =  asyncio.run(fetch_bbox_body(final_bbox, rule_context))
 

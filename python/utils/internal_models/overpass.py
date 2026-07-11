@@ -58,3 +58,11 @@ class TypedOsmMaps(StrictModel):
     nodes_by_id: OsmElementMap = Field(default_factory=dict)
     ways_by_id: OsmElementMap = Field(default_factory=dict)
     relations_by_id: OsmElementMap = Field(default_factory=dict)
+
+
+class FilteredOverpassResult(StrictModel):
+    """Overpass / Filter 第一阶段可运行流程结果。"""
+
+    combined_maps: TypedOsmMaps
+    overlay_maps: TypedOsmMaps
+    output_maps: TypedOsmMaps

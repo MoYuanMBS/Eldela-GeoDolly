@@ -157,7 +157,7 @@ def build_initial_query(
         for element_type in ("way", "rel")
     ]
     return (
-        f'[out:json][timeout:{config.overpass.timeout_seconds}];\n'
+        f'[out:json][timeout:{config.overpass.timeout_seconds:g}];\n'
         "(\n  " + "\n  ".join(node_statements) + "\n);\n"
         "out body;\n"
         "(\n  " + "\n  ".join(metadata_statements) + "\n);\n"

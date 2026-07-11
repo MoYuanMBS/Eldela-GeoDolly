@@ -36,7 +36,7 @@ class OverpassConfig(StrictModel):
     relation_parent_depth: int = Field(ge=0)
     endpoint: str = Field(min_length=1)
     user_agent: str = Field(min_length=1)
-    timeout_seconds: float = Field(gt=0, multiple_of=0.01)
+    timeout_seconds: float = Field(gt=0, multiple_of=1)
     retry_attempts: int = Field(ge=0)
     retry_delay_seconds: float = Field(ge=0, multiple_of=0.01)
 

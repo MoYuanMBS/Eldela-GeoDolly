@@ -36,7 +36,6 @@ def filter_parent_relation(osm_maps: TypedOsmMaps, rule_context: FilterRuleConte
 
 def filter_parent_relation_result(parent_maps: TypedOsmMaps, rule_context: FilterRuleContext) -> TypedOsmMaps:
     """验证并清洗反查返回的 parent relation tags。"""
-    seed_rules = rule_context.output_remove_tag_rules
     selected_relations = {}
     for osm_id, element in parent_maps.relations_by_id.items():
         tags = element.get("tags")
@@ -45,8 +44,6 @@ def filter_parent_relation_result(parent_maps: TypedOsmMaps, rule_context: Filte
                 "skip_osm_element_without_tags",
                 extra={"geomcp_extra": {"status": "skipped", "reason": "missing_or_empty_tags", "filter_stage": "parent_relation_result", "osm_type": element.get("type"), "osm_id": osm_id}}
             )
-            continue
-        if filter_include_tags(tags, seed_rules) is None:
             continue
         filtered_tags = filter_output_tags(tags, rule_context.output_remove_tag_rules)
         if filtered_tags is None:
@@ -89,7 +86,7 @@ def build_parent_relation_query(osm_maps: TypedOsmMaps, rule_context: FilterRule
     output_sets = "\n  ".join(f".parent_level_{level};" for level in range(1, config.overpass.relation_parent_depth + 1))
 
     return (
-        f'[out:json][timeout:{config.overpass.timeout_seconds}];\n'
+        f'[out:json][timeout:{config.overpass.timeout_seconds:g}];\n'
         + "\n".join(seed_statements)
         + "\n"
         + "\n".join(parent_level_statements)

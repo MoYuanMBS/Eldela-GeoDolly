@@ -49,7 +49,7 @@ overpass:
   # 发给 Overpass API 的 User-Agent。
   user_agent: "geomcp/test"
   # Overpass Query 与 HTTP 请求共用的超时秒数。
-  timeout_seconds: 60.00
+  timeout_seconds: 60
   # 请求失败后的重试次数。
   retry_attempts: 3
   # 每次重试前的基础等待秒数。
