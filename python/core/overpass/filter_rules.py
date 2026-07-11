@@ -91,9 +91,10 @@ class FilterRuleContext:
         base_config = self.config.get_base() if include_base else None
         expert_configs = list(self.config.get_experts(self.expert_names).values()) if self.expert_names else []
 
-        # 只缓存四组“已经合并好、后续会复用”的规则。
+        # 缓存已经合并好、后续会复用的规则。
         self.deny_object_rules = self.rule_store.deny_object_rules
         self.context_overpass_rules = self._merge_context_overpass_rules(base_config, expert_configs)
+        self.parent_relation_rules = self._merge_expert_overpass_rules(expert_configs)
         self.overlay_rules = self._merge_base_expert_overlay_rules(base_config, expert_configs)
         self.output_remove_tag_rules = self._merge_output_remove_tag_rules()
 
