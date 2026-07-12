@@ -1,0 +1,16 @@
+[MAIN]
+load-plugins=pylint.extensions.private_import
+recursive=yes
+persistent=no
+
+[MESSAGES CONTROL]
+# 当前只检查私有成员访问边界，避免引入无关的格式与重构规则。
+disable=all
+enable=
+    protected-access,
+    import-private-name
+
+[CLASSES]
+# 不豁免任何以下划线开头的成员，并检查特殊方法中的访问。
+exclude-protected=
+check-protected-access-in-special-methods=yes

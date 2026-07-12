@@ -117,7 +117,7 @@ def _warn_overpass_retry(reason: str, attempt: int, wait_seconds: float, details
         "status": "retrying",
         "reason": reason,
         "attempt": attempt,
-        "max_attempts": config.overpass.retry_attempts,
+        "max_attempts": config.overpass.retry_attempts + 1,
         "endpoint": config.overpass.endpoint,
         "wait_seconds": wait_seconds
     }
@@ -149,7 +149,8 @@ async def request_overpass(query: str) -> JsonDictType:
     if not query.strip():
         raise TransferTypes.AppError(code="overpass_invalid_query", message="Overpass query is empty")
 
-    for attempt in range(1, config.overpass.retry_attempts + 1):
+    max_attempts = config.overpass.retry_attempts + 1
+    for attempt in range(1, max_attempts + 1):
         # Overpass 请求模块内部管理 client 生命周期，对外只暴露 query -> JSON 的爬取能力。
         request_client = httpx.AsyncClient(
             headers={"User-Agent": config.overpass.user_agent},
@@ -162,7 +163,7 @@ async def request_overpass(query: str) -> JsonDictType:
             is_timeout = isinstance(error, httpx.TimeoutException)
             error_code = "overpass_timeout" if is_timeout else "overpass_connection_error"
             error_message = "Overpass request timed out" if is_timeout else "Failed to connect to Overpass"
-            if attempt < config.overpass.retry_attempts:
+            if attempt < max_attempts:
                 wait_seconds = _retry_wait_seconds(attempt)
                 _warn_overpass_retry(error_code, attempt, wait_seconds, {"error": str(error), "query_length": len(query)})
                 await asyncio.sleep(wait_seconds)
@@ -172,7 +173,7 @@ async def request_overpass(query: str) -> JsonDictType:
             await request_client.aclose()
 
         if not response.is_success:
-            if attempt < config.overpass.retry_attempts and _is_retryable_status(response.status_code):
+            if attempt < max_attempts and _is_retryable_status(response.status_code):
                 wait_seconds = _retry_wait_seconds(attempt, response)
                 retry_details: JsonDictType = {"http_status": response.status_code, "query_length": len(query)}
                 retry_after = _response_header(response, "Retry-After")
@@ -186,7 +187,7 @@ async def request_overpass(query: str) -> JsonDictType:
         try:
             payload: Any = response.json()
         except ValueError as error:
-            if attempt < config.overpass.retry_attempts:
+            if attempt < max_attempts:
                 wait_seconds = _retry_wait_seconds(attempt)
                 _warn_overpass_retry("overpass_invalid_json", attempt, wait_seconds, {"error": str(error), "query_length": len(query)})
                 await asyncio.sleep(wait_seconds)

@@ -8,6 +8,7 @@ relation 提供 members，way 提供 node refs，node 提供坐标。原始 tags
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 from typing import Literal
 
 from python.core.overpass.maping import OverlayTopologyStore
@@ -32,32 +33,42 @@ def _chunk_osm_ids(osm_ids: set[int], batch_size: int) -> list[tuple[int, ...]]:
 async def _fetch_relation_topology(relation_ids: set[int]) -> OverlayTopology:
     """抓取同一递归层的 relation members，并立即校验成 topology。"""
     # relation Query 不带 bbox，因为 out skel 必须完整返回 member list。
-    payload = await request_overpass(build_overlay_relation_skel_query(relation_ids))
-    return OverlayTopologyStore(payload).topology
+    return await _fetch_skel_topology_batches(relation_ids, build_overlay_relation_skel_query)
 
 
 async def _fetch_way_topology(way_ids: set[int]) -> OverlayTopology:
     """抓取全部目标/support way 的有序 node refs。"""
     # way Query 也不带 bbox，否则可能无法获得构建线/面所需的完整 node 顺序。
-    payload = await request_overpass(build_overlay_way_skel_query(way_ids))
-    return OverlayTopologyStore(payload).topology
+    return await _fetch_skel_topology_batches(way_ids, build_overlay_way_skel_query)
 
 
-async def _fetch_node_batch(
-    node_ids: tuple[int, ...],
-    tile_bbox: Geometry.BBox,
-    semaphore: asyncio.Semaphore,
-    wait_after_success: bool
+async def _fetch_skel_topology_batches(
+    osm_ids: set[int],
+    build_query: Callable[[tuple[int, ...]], str]
 ) -> OverlayTopology:
-    """在并发限制内抓取单批、位于 tile bbox 内的 node coordinates。"""
-    # gather 会同时创建多个批次任务，Semaphore 只允许配置数量的请求真正进入网络层。
-    async with semaphore:
-        payload = await request_overpass(build_overlay_node_skel_query(node_ids, tile_bbox))
-        # 公共 Overpass 通常不会返回 Retry-After；成功批次之间也主动留出 cooldown。
-        if wait_after_success and config.overpass.overlay_node_batch_delay_seconds > 0:
-            await asyncio.sleep(config.overpass.overlay_node_batch_delay_seconds)
-    # NodeSkeleton 在这里完成 Pydantic 校验，并把 Overpass lat/lon 转成内部 (lon, lat)。
-    return OverlayTopologyStore(payload).topology
+    """按统一 ID 上限抓取二阶段 skeleton，并合并为 topology。"""
+    topology_store = OverlayTopologyStore()
+    batches = _chunk_osm_ids(osm_ids, config.overpass.overlay_skel_id_batch_size)
+    semaphore = asyncio.Semaphore(config.overpass.overlay_skel_concurrency)
+    start_lock = asyncio.Lock()
+    next_start_at = [0.0]
+
+    async def fetch_batch(osm_id_batch: tuple[int, ...]) -> OverlayTopology:
+        """在并发上限和全局启动间隔内抓取单个 skel batch。"""
+        async with semaphore:
+            async with start_lock:
+                loop = asyncio.get_running_loop()
+                wait_seconds = next_start_at[0] - loop.time()
+                if wait_seconds > 0:
+                    await asyncio.sleep(wait_seconds)
+                next_start_at[0] = loop.time() + config.overpass.overlay_skel_batch_delay_seconds
+            payload = await request_overpass(build_query(osm_id_batch))
+            return OverlayTopologyStore(payload).topology
+
+    # gather 按传入批次顺序返回；逐批 first-wins 合并可保持稳定结果。
+    for batch_topology in await asyncio.gather(*(fetch_batch(batch) for batch in batches)):
+        topology_store.merge_stage2(batch_topology)
+    return topology_store.topology
 
 
 def _nested_relation_ids(topology: OverlayTopology) -> set[int]:
@@ -150,16 +161,12 @@ async def fetch_overlay_topology(
     _add_known_node_coordinates(topology_store, required_node_ids, available_maps)
     # 只有仍缺坐标的 node 才进入网络批次，避免重复下载第一阶段已经拥有的 body。
     missing_node_ids = required_node_ids - topology_store.topology.node_coordinates_by_id.keys()
-    node_batches = _chunk_osm_ids(missing_node_ids, config.overpass.overlay_node_batch_size)
-    if node_batches:
-        semaphore = asyncio.Semaphore(config.overpass.overlay_node_concurrency)
-        node_topologies = await asyncio.gather(*(
-            _fetch_node_batch(node_batch, tile_bbox, semaphore, batch_index < len(node_batches) - 1)
-            for batch_index, node_batch in enumerate(node_batches)
+    if missing_node_ids:
+        # NodeSkeleton 在这里完成 Pydantic 校验，并把 Overpass lat/lon 转成内部 (lon, lat)。
+        topology_store.merge_stage2(await _fetch_skel_topology_batches(
+            missing_node_ids,
+            lambda node_ids: build_overlay_node_skel_query(node_ids, tile_bbox)
         ))
-        # gather 按传入批次顺序返回；逐批 first-wins 合并可保持稳定结果。
-        for node_topology in node_topologies:
-            topology_store.merge_stage2(node_topology)
 
     # 此时仍是 topology，不包含 tags、geometry 或 feature_id。
     return topology_store.topology

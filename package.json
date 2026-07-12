@@ -14,6 +14,7 @@
     "test:ts-local": "node --import tsx --test local_test/ts/**/*.test.ts",
     "typecheck:ts-local": "tsc -p local_test/ts/tsconfig.json --noEmit",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint:py": ".venv/bin/python -m pylint python",
     "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\""
   },
   "dependencies": {

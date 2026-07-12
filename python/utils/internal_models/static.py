@@ -35,9 +35,9 @@ class OverpassConfig(StrictModel):
 
     relation_parent_depth: int = Field(ge=0)
     relation_member_depth: Annotated[int, Field(ge=0)] | Literal["all"] = 2
-    overlay_node_batch_size: int = Field(default=1000, gt=0)
-    overlay_node_concurrency: int = Field(default=1, gt=0)
-    overlay_node_batch_delay_seconds: float = Field(default=3.00, ge=0, multiple_of=0.01)
+    overlay_skel_id_batch_size: int = Field(default=1000, gt=0)
+    overlay_skel_concurrency: int = Field(default=1, gt=0)
+    overlay_skel_batch_delay_seconds: float = Field(default=3.00, ge=0, multiple_of=0.01)
     endpoint: str = Field(min_length=1)
     user_agent: str = Field(min_length=1)
     timeout_seconds: float = Field(gt=0, multiple_of=1)

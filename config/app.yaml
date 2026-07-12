@@ -46,12 +46,12 @@ overpass:
   relation_parent_depth: 1
   # Overlay relation member relation 的向下递归深度；0 只读取根 members，"all" 递归到没有新 relation。
   relation_member_depth: 2
-  # Overlay 二阶段单批 node ID 数量。
-  overlay_node_batch_size: 1000
-  # Overlay 二阶段 node 批次最大并发数。
-  overlay_node_concurrency: 1
-  # Overlay node 批次成功后、下一批开始前的等待秒数；降低公共服务限流概率。
-  overlay_node_batch_delay_seconds: 3.00
+  # Overlay 二阶段 relation / way / node 单批 skel 查询携带的 ID 数量。
+  overlay_skel_id_batch_size: 1000
+  # Overlay 二阶段 skel 批次最大并发数；默认 1，调高时仍会按 batch delay 错开请求启动。
+  overlay_skel_concurrency: 1
+  # Overlay 二阶段 skel 批次请求启动间隔秒数；降低公共服务限流概率。
+  overlay_skel_batch_delay_seconds: 3.00
   # Overpass API 请求地址。
   endpoint: "https://overpass-api.de/api/interpreter"
   # 发给 Overpass API 的 User-Agent。

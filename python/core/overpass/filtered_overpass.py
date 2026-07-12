@@ -202,9 +202,9 @@ if __name__ == "__main__":
             print(
                 "Stage 2 config: "
                 f"relation_member_depth={config.overpass.relation_member_depth}, "
-                f"node_batch_size={config.overpass.overlay_node_batch_size}, "
-                f"node_concurrency={config.overpass.overlay_node_concurrency}, "
-                f"node_batch_delay={config.overpass.overlay_node_batch_delay_seconds}s, "
+                f"skel_id_batch_size={config.overpass.overlay_skel_id_batch_size}, "
+                f"skel_concurrency={config.overpass.overlay_skel_concurrency}, "
+                f"skel_batch_delay={config.overpass.overlay_skel_batch_delay_seconds}s, "
                 f"retry_attempts={config.overpass.retry_attempts}, "
                 f"retry_base_delay={config.overpass.retry_delay_seconds}s"
             )
