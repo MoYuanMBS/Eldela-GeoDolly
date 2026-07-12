@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal, TypeAlias
+from typing import Annotated, Any, Literal, TypeAlias
 
 from pydantic import Field
 
@@ -14,6 +14,10 @@ from python.utils.models import StrictModel
 
 TagRuleMap: TypeAlias = dict[str, list[str]]
 OsmElementMap: TypeAlias = dict[int, dict[str, Any]]
+OsmId: TypeAlias = Annotated[int, Field(gt=0)]
+Latitude: TypeAlias = Annotated[float, Field(ge=-90, le=90)]
+Longitude: TypeAlias = Annotated[float, Field(ge=-180, le=180)]
+OverlayCoordinate: TypeAlias = tuple[float, float]
 
 
 class InternalFilterRulesConfig(StrictModel):
@@ -40,6 +44,14 @@ class OverpassFilterRule(StrictModel):
     deny_exact_rules: set[tuple[str, str]] = Field(default_factory=set)
 
 
+class OsmRelationMember(StrictModel):
+    """Overpass relation member，保留原始顺序、类型、引用与 role。"""
+
+    type: Literal["node", "way", "relation"]
+    ref: OsmId
+    role: str
+
+
 class OsmElement(StrictModel):
     """Overpass 返回的单个 OSM element 内部校验模型。"""
 
@@ -49,7 +61,46 @@ class OsmElement(StrictModel):
     lat: float | None = None
     lon: float | None = None
     nodes: list[int] | None = None
-    members: list[dict[str, Any]] | None = None
+    members: list[OsmRelationMember] | None = None
+
+
+class OverlayNodeSkeleton(StrictModel):
+    """Overlay 二阶段 node `out skel` 原始结构。"""
+
+    type: Literal["node"]
+    id: OsmId
+    lat: Latitude
+    lon: Longitude
+
+
+class OverlayWaySkeleton(StrictModel):
+    """Overlay 二阶段 way `out skel` 原始结构。"""
+
+    type: Literal["way"]
+    id: OsmId
+    nodes: list[OsmId]
+
+
+class OverlayRelationSkeleton(StrictModel):
+    """Overlay 二阶段 relation `out skel` 原始结构。"""
+
+    type: Literal["relation"]
+    id: OsmId
+    members: list[OsmRelationMember]
+
+
+OverlaySkeletonElement: TypeAlias = Annotated[
+    OverlayNodeSkeleton | OverlayWaySkeleton | OverlayRelationSkeleton,
+    Field(discriminator="type")
+]
+
+
+class OverlayTopology(StrictModel):
+    """二阶段 skeleton 规范化后的拓扑索引，不保存或合并 tags。"""
+
+    node_coordinates_by_id: dict[int, OverlayCoordinate] = Field(default_factory=dict)
+    way_node_ids_by_id: dict[int, list[int]] = Field(default_factory=dict)
+    relation_members_by_id: dict[int, list[OsmRelationMember]] = Field(default_factory=dict)
 
 
 class TypedOsmMaps(StrictModel):

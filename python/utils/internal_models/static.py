@@ -2,7 +2,7 @@
 """
 
 from __future__ import annotations
-from typing import Any
+from typing import Annotated, Any, Literal
 from pydantic import Field
 from python.utils.models import StrictModel
 
@@ -34,6 +34,9 @@ class OverpassConfig(StrictModel):
     """Overpass 运行配置。"""
 
     relation_parent_depth: int = Field(ge=0)
+    relation_member_depth: Annotated[int, Field(ge=0)] | Literal["all"] = 2
+    overlay_node_batch_size: int = Field(default=500, gt=0)
+    overlay_node_concurrency: int = Field(default=3, gt=0)
     endpoint: str = Field(min_length=1)
     user_agent: str = Field(min_length=1)
     timeout_seconds: float = Field(gt=0, multiple_of=1)
