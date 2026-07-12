@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 import logging
 import math
+from threading import Lock
 from typing import Any, cast
 
 import httpx
@@ -17,6 +18,8 @@ from python.utils.models import JsonDictType, TransferTypes
 warning_logger = logging.getLogger("geomcp.warning")
 _MAX_ERROR_RESPONSE_TEXT = 2000
 _MAX_ERROR_QUERY_PREVIEW = 500
+_endpoint_cursor = 0
+_endpoint_cursor_lock = Lock()
 
 
 def _response_header(response: httpx.Response, name: str) -> str | None:
@@ -111,14 +114,45 @@ def _is_retryable_status(status_code: int) -> bool:
     return status_code == 429 or status_code >= 500
 
 
-def _warn_overpass_retry(reason: str, attempt: int, wait_seconds: float, details: JsonDictType | None = None) -> None:
+def _configured_endpoints() -> tuple[str, ...]:
+    """读取 Overpass endpoint pool；未配置 pool 时回退到单 endpoint。"""
+    raw_endpoints = config.overpass.endpoints if config.overpass.endpoints else [config.overpass.endpoint]
+    endpoints: list[str] = []
+    for endpoint in raw_endpoints:
+        normalized_endpoint = endpoint.strip()
+        if normalized_endpoint and normalized_endpoint not in endpoints:
+            endpoints.append(normalized_endpoint)
+    if not endpoints:
+        raise TransferTypes.AppError(code="invalid_config", message="Overpass endpoint pool is empty")
+    return tuple(endpoints)
+
+
+def _next_endpoint_start(endpoints: tuple[str, ...]) -> int:
+    """按配置策略决定当前请求的首选 endpoint 下标。"""
+    global _endpoint_cursor
+    if config.overpass.endpoint_strategy != "round_robin" or len(endpoints) == 1:
+        return 0
+    with _endpoint_cursor_lock:
+        start_index = _endpoint_cursor % len(endpoints)
+        _endpoint_cursor += 1
+    return start_index
+
+
+def _endpoint_for_attempt(endpoints: tuple[str, ...], start_index: int, attempt: int) -> str:
+    """根据请求首选下标和 retry 次数选择本次尝试使用的 endpoint。"""
+    if config.overpass.endpoint_strategy == "round_robin":
+        return endpoints[(start_index + attempt - 1) % len(endpoints)]
+    return endpoints[(attempt - 1) % len(endpoints)]
+
+
+def _warn_overpass_retry(reason: str, attempt: int, wait_seconds: float, endpoint: str, details: JsonDictType | None = None) -> None:
     """记录 Overpass 请求重试 warning。"""
     log_details: JsonDictType = {
         "status": "retrying",
         "reason": reason,
         "attempt": attempt,
         "max_attempts": config.overpass.retry_attempts + 1,
-        "endpoint": config.overpass.endpoint,
+        "endpoint": endpoint,
         "wait_seconds": wait_seconds
     }
     if details:
@@ -149,8 +183,11 @@ async def request_overpass(query: str) -> JsonDictType:
     if not query.strip():
         raise TransferTypes.AppError(code="overpass_invalid_query", message="Overpass query is empty")
 
+    endpoints = _configured_endpoints()
+    start_index = _next_endpoint_start(endpoints)
     max_attempts = config.overpass.retry_attempts + 1
     for attempt in range(1, max_attempts + 1):
+        endpoint = _endpoint_for_attempt(endpoints, start_index, attempt)
         # Overpass 请求模块内部管理 client 生命周期，对外只暴露 query -> JSON 的爬取能力。
         request_client = httpx.AsyncClient(
             headers={"User-Agent": config.overpass.user_agent},
@@ -158,17 +195,17 @@ async def request_overpass(query: str) -> JsonDictType:
         )
         try:
             # 使用 POST 避免较长的 poly / tag 查询受到 URL 长度限制。
-            response = await request_client.post(config.overpass.endpoint, data={"data": query})
+            response = await request_client.post(endpoint, data={"data": query})
         except httpx.TransportError as error:
             is_timeout = isinstance(error, httpx.TimeoutException)
             error_code = "overpass_timeout" if is_timeout else "overpass_connection_error"
             error_message = "Overpass request timed out" if is_timeout else "Failed to connect to Overpass"
             if attempt < max_attempts:
                 wait_seconds = _retry_wait_seconds(attempt)
-                _warn_overpass_retry(error_code, attempt, wait_seconds, {"error": str(error), "query_length": len(query)})
+                _warn_overpass_retry(error_code, attempt, wait_seconds, endpoint, {"error": str(error), "query_length": len(query)})
                 await asyncio.sleep(wait_seconds)
                 continue
-            raise TransferTypes.AppError(code=error_code, message=error_message, details={"endpoint": config.overpass.endpoint, "query_length": len(query)}) from error
+            raise TransferTypes.AppError(code=error_code, message=error_message, details={"endpoint": endpoint, "query_length": len(query)}) from error
         finally:
             await request_client.aclose()
 
@@ -179,7 +216,7 @@ async def request_overpass(query: str) -> JsonDictType:
                 retry_after = _response_header(response, "Retry-After")
                 if retry_after is not None:
                     retry_details["retry_after"] = retry_after
-                _warn_overpass_retry("overpass_http_status", attempt, wait_seconds, retry_details)
+                _warn_overpass_retry("overpass_http_status", attempt, wait_seconds, endpoint, retry_details)
                 await asyncio.sleep(wait_seconds)
                 continue
             raise _status_error(response, query)
@@ -189,7 +226,7 @@ async def request_overpass(query: str) -> JsonDictType:
         except ValueError as error:
             if attempt < max_attempts:
                 wait_seconds = _retry_wait_seconds(attempt)
-                _warn_overpass_retry("overpass_invalid_json", attempt, wait_seconds, {"error": str(error), "query_length": len(query)})
+                _warn_overpass_retry("overpass_invalid_json", attempt, wait_seconds, endpoint, {"error": str(error), "query_length": len(query)})
                 await asyncio.sleep(wait_seconds)
                 continue
             raise TransferTypes.AppError(code="overpass_invalid_response", message="Overpass returned invalid JSON") from error

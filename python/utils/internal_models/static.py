@@ -6,6 +6,8 @@ from typing import Annotated, Any, Literal
 from pydantic import Field
 from python.utils.models import StrictModel
 
+OverpassEndpoint = Annotated[str, Field(min_length=1)]
+
 
 class NominatimConfig(StrictModel):
     """Nominatim 运行配置。"""
@@ -39,6 +41,8 @@ class OverpassConfig(StrictModel):
     overlay_skel_concurrency: int = Field(default=1, gt=0)
     overlay_skel_batch_delay_seconds: float = Field(default=3.00, ge=0, multiple_of=0.01)
     endpoint: str = Field(min_length=1)
+    endpoints: list[OverpassEndpoint] = Field(default_factory=list)
+    endpoint_strategy: Literal["failover", "round_robin"] = "failover"
     user_agent: str = Field(min_length=1)
     timeout_seconds: float = Field(gt=0, multiple_of=1)
     retry_attempts: int = Field(ge=0)
