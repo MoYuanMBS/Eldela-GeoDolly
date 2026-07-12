@@ -10,6 +10,7 @@ from python.core.filter.overlay_filter import filter_overlay
 from python.core.overpass.build_query import build_initial_query
 from python.core.filter.filter_rules import FilterRuleContext
 from python.core.overpass.maping import TypedOsmMapStore
+from python.core.overpass.overlay_fetch import fetch_overlay_topology
 from python.core.overpass.overpass import request_overpass
 from python.core.overpass.parent_relation import build_parent_relation_query, filter_parent_relation_result
 from python.core.overpass.query_utils import build_overpass_tag_filters
@@ -107,7 +108,7 @@ async def run_filtered_overpass(
     bbox: Geometry.BBox,
     rule_context: FilterRuleContext
 ) -> FilteredOverpassResult:
-    """执行第一阶段 Overpass、Parent 反查、typed mapping 与双层 Filter。"""
+    """执行第一阶段筛选、Parent 反查与 Overlay 二阶段 topology 抓取。"""
     initial_bodies = await fetch_initial_bodies(core_area, bbox, rule_context)
     core_maps = TypedOsmMapStore(initial_bodies["core"]).maps if initial_bodies["core"] else TypedOsmMaps()
     bbox_maps = TypedOsmMapStore(initial_bodies["bbox"]).maps if initial_bodies["bbox"] else TypedOsmMaps()
@@ -130,11 +131,14 @@ async def run_filtered_overpass(
     combined_maps = combined_store.maps
     overlay_maps = filter_overlay(combined_maps, rule_context)
     output_maps = merge_parent_relations(filter_output(combined_maps, rule_context), parent_maps)
+    # Stage 2 只使用已筛选的 Overlay targets；combined maps 仅用于复用第一阶段已有 node 坐标。
+    overlay_topology = await fetch_overlay_topology(overlay_maps, bbox, combined_maps)
 
     return FilteredOverpassResult.model_construct(
         combined_maps=combined_maps,
         overlay_maps=overlay_maps,
-        output_maps=output_maps
+        output_maps=output_maps,
+        overlay_topology=overlay_topology
     )
 
 
@@ -145,10 +149,18 @@ async def run_filtered_overpass(
 #####################################测试调试用#########################################################
 if __name__ == "__main__":
 
+    import sys
+    from python.main import GeomcpJsonFormatter
     from python.core.geometry.geometry import process_geometry, process_bbox
     from python.core.nominatim import query_request
+    from python.utils.config_loader import config
     from python.utils.models import NominatimData
     import time
+
+    # 直接运行本文件时也显示 retry 的 wait_seconds、HTTP status 与 query_length 等结构化详情。
+    log_handler = logging.StreamHandler(sys.stderr)
+    log_handler.setFormatter(GeomcpJsonFormatter())
+    logging.basicConfig(level=logging.INFO, handlers=[log_handler], force=True)
 
     test_query = "Square one"
     test_country_code = "CA"
@@ -181,12 +193,28 @@ if __name__ == "__main__":
 
             a = build_query.build_initial_query(final_bbox, build_overpass_tag_filters(rule_context, use_any_tag=True))
             print(f"Overpass query: {a}")
+            print(f"BBox query length: {len(a)} chars")
             b = build_query.build_initial_query(geometry_result.geometry, build_overpass_tag_filters(rule_context, use_any_tag=True))
             print(f"Overpass query: {b}")
+            print(f"Core query length: {len(b)} chars")
             tokens = b.split()
             print(len(tokens))
+            print(
+                "Stage 2 config: "
+                f"relation_member_depth={config.overpass.relation_member_depth}, "
+                f"node_batch_size={config.overpass.overlay_node_batch_size}, "
+                f"node_concurrency={config.overpass.overlay_node_concurrency}, "
+                f"node_batch_delay={config.overpass.overlay_node_batch_delay_seconds}s, "
+                f"retry_attempts={config.overpass.retry_attempts}, "
+                f"retry_base_delay={config.overpass.retry_delay_seconds}s"
+            )
             start_time = time.time()
-            result = asyncio.run(run_filtered_overpass(geometry_result.geometry, final_bbox, rule_context))
+            try:
+                result = asyncio.run(run_filtered_overpass(geometry_result.geometry, final_bbox, rule_context))
+            except TransferTypes.AppError as error:
+                print(f"Filtered Overpass failed after {time.time() - start_time:.2f} seconds")
+                print(json.dumps(error.to_dict(), indent=2, ensure_ascii=False))
+                raise
             
 
             # result = asyncio.run(fetch_initial_bodies(geometry_result.geometry, final_bbox, rule_context))
@@ -195,6 +223,26 @@ if __name__ == "__main__":
 
             end_time = time.time()
             print(f"Overpass fetch time: {end_time - start_time:.2f} seconds")
+            print(
+                "Combined maps: "
+                f"nodes={len(result.combined_maps.nodes_by_id)}, "
+                f"ways={len(result.combined_maps.ways_by_id)}, "
+                f"relations={len(result.combined_maps.relations_by_id)}"
+            )
+            print(
+                "Overlay targets: "
+                f"nodes={len(result.overlay_maps.nodes_by_id)}, "
+                f"ways={len(result.overlay_maps.ways_by_id)}, "
+                f"relations={len(result.overlay_maps.relations_by_id)}"
+            )
+            print(
+                "Stage 2 topology: "
+                f"node_coordinates={len(result.overlay_topology.node_coordinates_by_id)}, "
+                f"ways={len(result.overlay_topology.way_node_ids_by_id)}, "
+                f"way_node_refs={sum(len(node_ids) for node_ids in result.overlay_topology.way_node_ids_by_id.values())}, "
+                f"relations={len(result.overlay_topology.relation_members_by_id)}, "
+                f"relation_members={sum(len(members) for members in result.overlay_topology.relation_members_by_id.values())}"
+            )
             with open(file_path, "w", encoding="utf-8") as f:
                 json.dump(result.model_dump(mode="json"),f,indent=2,ensure_ascii=False,)
                 f.flush()

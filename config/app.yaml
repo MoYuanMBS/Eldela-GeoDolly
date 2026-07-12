@@ -47,9 +47,11 @@ overpass:
   # Overlay relation member relation 的向下递归深度；0 只读取根 members，"all" 递归到没有新 relation。
   relation_member_depth: 2
   # Overlay 二阶段单批 node ID 数量。
-  overlay_node_batch_size: 500
+  overlay_node_batch_size: 1000
   # Overlay 二阶段 node 批次最大并发数。
-  overlay_node_concurrency: 3
+  overlay_node_concurrency: 1
+  # Overlay node 批次成功后、下一批开始前的等待秒数；降低公共服务限流概率。
+  overlay_node_batch_delay_seconds: 3.00
   # Overpass API 请求地址。
   endpoint: "https://overpass-api.de/api/interpreter"
   # 发给 Overpass API 的 User-Agent。
@@ -59,7 +61,7 @@ overpass:
   # 请求失败后的重试次数。
   retry_attempts: 3
   # 每次重试前的基础等待秒数。
-  retry_delay_seconds: 1.00
+  retry_delay_seconds: 5.00
 
 # Geometry 模块统一运行参数。
 geometry:

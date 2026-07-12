@@ -112,8 +112,9 @@ class TypedOsmMaps(StrictModel):
 
 
 class FilteredOverpassResult(StrictModel):
-    """Overpass / Filter 第一阶段可运行流程结果。"""
+    """Overpass / Filter 第一阶段筛选与二阶段 topology 结果。"""
 
     combined_maps: TypedOsmMaps
     overlay_maps: TypedOsmMaps
     output_maps: TypedOsmMaps
+    overlay_topology: OverlayTopology

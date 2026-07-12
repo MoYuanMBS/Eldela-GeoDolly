@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 import logging
+import math
 from typing import Any, cast
 
 import httpx
@@ -12,13 +15,79 @@ from python.utils.config_loader import config
 from python.utils.models import JsonDictType, TransferTypes
 
 warning_logger = logging.getLogger("geomcp.warning")
+_MAX_ERROR_RESPONSE_TEXT = 2000
+_MAX_ERROR_QUERY_PREVIEW = 500
 
 
-def _status_error(response: httpx.Response) -> TransferTypes.AppError:
+def _response_header(response: httpx.Response, name: str) -> str | None:
+    """兼容测试 response 与 httpx.Response 地读取单个响应头。"""
+    headers = getattr(response, "headers", None)
+    if headers is None:
+        return None
+    value = headers.get(name)
+    return str(value) if value is not None else None
+
+
+def _response_text(response: httpx.Response) -> str | None:
+    """读取有限长度的错误正文，避免 debug details 过大。"""
+    try:
+        text = getattr(response, "text", None)
+    except RuntimeError:
+        return None
+    if not isinstance(text, str) or not text:
+        return None
+    return text[:_MAX_ERROR_RESPONSE_TEXT]
+
+
+def _retry_after_seconds(response: httpx.Response) -> float | None:
+    """把 Retry-After 的秒数或 HTTP-date 转换为等待秒数。"""
+    retry_after = _response_header(response, "Retry-After")
+    if retry_after is None:
+        return None
+    try:
+        seconds = float(retry_after)
+        return seconds if math.isfinite(seconds) and seconds >= 0 else None
+    except ValueError:
+        try:
+            retry_at = parsedate_to_datetime(retry_after)
+        except (TypeError, ValueError, OverflowError):
+            return None
+        if retry_at.tzinfo is None:
+            retry_at = retry_at.replace(tzinfo=timezone.utc)
+        return max(0.0, (retry_at - datetime.now(timezone.utc)).total_seconds())
+
+
+def _retry_wait_seconds(attempt: int, response: httpx.Response | None = None) -> float:
+    """计算指数退避；服务器 Retry-After 更长时优先遵守服务器时间。"""
+    backoff_seconds = config.overpass.retry_delay_seconds * (2 ** (attempt - 1))
+    if response is None:
+        return backoff_seconds
+    retry_after_seconds = _retry_after_seconds(response)
+    return max(backoff_seconds, retry_after_seconds) if retry_after_seconds is not None else backoff_seconds
+
+
+def _response_error_details(response: httpx.Response, query: str) -> JsonDictType:
+    """整理最终 HTTP 错误的有限调试信息。"""
+    details: JsonDictType = {
+        "http_status": response.status_code,
+        "endpoint": str(response.request.url),
+        "query_length": len(query),
+        "query_preview": query[:_MAX_ERROR_QUERY_PREVIEW]
+    }
+    retry_after = _response_header(response, "Retry-After")
+    if retry_after is not None:
+        details["retry_after"] = retry_after
+    response_text = _response_text(response)
+    if response_text is not None:
+        details["response_text"] = response_text
+    return details
+
+
+def _status_error(response: httpx.Response, query: str) -> TransferTypes.AppError:
     """将非成功 HTTP 响应转换为 GeoMCP Overpass 错误。
 
-    当前阶段不在本函数内执行重试，只根据最终 HTTP status 建立稳定
-    错误码。后续加入 retry/backoff 时，仍可复用这里的状态映射。
+    本函数只处理重试耗尽或不可重试的最终 HTTP status，并附带有限的
+    Query、Retry-After 与响应正文信息，便于本地调试。
 
     Args:
         response: 已完成但 HTTP status 不属于成功范围的响应。
@@ -27,7 +96,7 @@ def _status_error(response: httpx.Response) -> TransferTypes.AppError:
         包含项目错误码、简洁消息、HTTP status 和 endpoint 的 AppError。
         调用方负责 ``raise`` 返回的异常。
     """
-    details = {"http_status": response.status_code, "endpoint": str(response.request.url)}
+    details = _response_error_details(response, query)
     if response.status_code == 400:
         return TransferTypes.AppError(code=f"overpass_invalid_query_{response.status_code}", message="Overpass rejected the query", details=details)
     if response.status_code == 429:
@@ -42,7 +111,7 @@ def _is_retryable_status(status_code: int) -> bool:
     return status_code == 429 or status_code >= 500
 
 
-def _warn_overpass_retry(reason: str, attempt: int, details: JsonDictType | None = None) -> None:
+def _warn_overpass_retry(reason: str, attempt: int, wait_seconds: float, details: JsonDictType | None = None) -> None:
     """记录 Overpass 请求重试 warning。"""
     log_details: JsonDictType = {
         "status": "retrying",
@@ -50,6 +119,7 @@ def _warn_overpass_retry(reason: str, attempt: int, details: JsonDictType | None
         "attempt": attempt,
         "max_attempts": config.overpass.retry_attempts,
         "endpoint": config.overpass.endpoint,
+        "wait_seconds": wait_seconds
     }
     if details:
         log_details["details"] = details
@@ -93,26 +163,33 @@ async def request_overpass(query: str) -> JsonDictType:
             error_code = "overpass_timeout" if is_timeout else "overpass_connection_error"
             error_message = "Overpass request timed out" if is_timeout else "Failed to connect to Overpass"
             if attempt < config.overpass.retry_attempts:
-                _warn_overpass_retry(error_code, attempt, {"error": str(error)})
-                await asyncio.sleep(config.overpass.retry_delay_seconds)
+                wait_seconds = _retry_wait_seconds(attempt)
+                _warn_overpass_retry(error_code, attempt, wait_seconds, {"error": str(error), "query_length": len(query)})
+                await asyncio.sleep(wait_seconds)
                 continue
-            raise TransferTypes.AppError(code=error_code, message=error_message, details={"endpoint": config.overpass.endpoint}) from error
+            raise TransferTypes.AppError(code=error_code, message=error_message, details={"endpoint": config.overpass.endpoint, "query_length": len(query)}) from error
         finally:
             await request_client.aclose()
 
         if not response.is_success:
             if attempt < config.overpass.retry_attempts and _is_retryable_status(response.status_code):
-                _warn_overpass_retry("overpass_http_status", attempt, {"http_status": response.status_code})
-                await asyncio.sleep(config.overpass.retry_delay_seconds)
+                wait_seconds = _retry_wait_seconds(attempt, response)
+                retry_details: JsonDictType = {"http_status": response.status_code, "query_length": len(query)}
+                retry_after = _response_header(response, "Retry-After")
+                if retry_after is not None:
+                    retry_details["retry_after"] = retry_after
+                _warn_overpass_retry("overpass_http_status", attempt, wait_seconds, retry_details)
+                await asyncio.sleep(wait_seconds)
                 continue
-            raise _status_error(response)
+            raise _status_error(response, query)
 
         try:
             payload: Any = response.json()
         except ValueError as error:
             if attempt < config.overpass.retry_attempts:
-                _warn_overpass_retry("overpass_invalid_json", attempt, {"error": str(error)})
-                await asyncio.sleep(config.overpass.retry_delay_seconds)
+                wait_seconds = _retry_wait_seconds(attempt)
+                _warn_overpass_retry("overpass_invalid_json", attempt, wait_seconds, {"error": str(error), "query_length": len(query)})
+                await asyncio.sleep(wait_seconds)
                 continue
             raise TransferTypes.AppError(code="overpass_invalid_response", message="Overpass returned invalid JSON") from error
         # Overpass 可能用 2xx + remark 表示运行期失败，必须优先于普通响应结构处理。

@@ -46,12 +46,16 @@ async def _fetch_way_topology(way_ids: set[int]) -> OverlayTopology:
 async def _fetch_node_batch(
     node_ids: tuple[int, ...],
     tile_bbox: Geometry.BBox,
-    semaphore: asyncio.Semaphore
+    semaphore: asyncio.Semaphore,
+    wait_after_success: bool
 ) -> OverlayTopology:
     """在并发限制内抓取单批、位于 tile bbox 内的 node coordinates。"""
     # gather 会同时创建多个批次任务，Semaphore 只允许配置数量的请求真正进入网络层。
     async with semaphore:
         payload = await request_overpass(build_overlay_node_skel_query(node_ids, tile_bbox))
+        # 公共 Overpass 通常不会返回 Retry-After；成功批次之间也主动留出 cooldown。
+        if wait_after_success and config.overpass.overlay_node_batch_delay_seconds > 0:
+            await asyncio.sleep(config.overpass.overlay_node_batch_delay_seconds)
     # NodeSkeleton 在这里完成 Pydantic 校验，并把 Overpass lat/lon 转成内部 (lon, lat)。
     return OverlayTopologyStore(payload).topology
 
@@ -150,8 +154,8 @@ async def fetch_overlay_topology(
     if node_batches:
         semaphore = asyncio.Semaphore(config.overpass.overlay_node_concurrency)
         node_topologies = await asyncio.gather(*(
-            _fetch_node_batch(node_batch, tile_bbox, semaphore)
-            for node_batch in node_batches
+            _fetch_node_batch(node_batch, tile_bbox, semaphore, batch_index < len(node_batches) - 1)
+            for batch_index, node_batch in enumerate(node_batches)
         ))
         # gather 按传入批次顺序返回；逐批 first-wins 合并可保持稳定结果。
         for node_topology in node_topologies:
