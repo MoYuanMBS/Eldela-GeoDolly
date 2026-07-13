@@ -112,6 +112,9 @@ wayback_images/
 
 # ---------- 输出文件 ----------
 output/
+!python/core/output/
+!python/core/output/**
+python/core/output/__pycache__/
 results/
 exports/
 *.png

@@ -8,19 +8,19 @@ relation 提供 members，way 提供 node refs，node 提供坐标。原始 tags
 from __future__ import annotations
 
 import asyncio
+import logging
 from collections.abc import Callable
 from typing import Literal
 
+from python.core.output.overlay_geometry import is_area_way
 from python.core.overpass.maping import OverlayTopologyStore
-from python.core.overpass.overlay_query import (
-    build_overlay_node_skel_query,
-    build_overlay_relation_skel_query,
-    build_overlay_way_skel_query
-)
+import python.core.overpass.overlay_query as overlay_query
 from python.core.overpass.overpass import request_overpass
 from python.utils.config_loader import config
 from python.utils.internal_models.overpass import OverlayTopology, TypedOsmMaps
 from python.utils.models import Geometry
+
+warning_logger = logging.getLogger("geomcp.warning")
 
 
 def _chunk_osm_ids(osm_ids: set[int], batch_size: int) -> list[tuple[int, ...]]:
@@ -33,13 +33,13 @@ def _chunk_osm_ids(osm_ids: set[int], batch_size: int) -> list[tuple[int, ...]]:
 async def _fetch_relation_topology(relation_ids: set[int]) -> OverlayTopology:
     """抓取同一递归层的 relation members，并立即校验成 topology。"""
     # relation Query 不带 bbox，因为 out skel 必须完整返回 member list。
-    return await _fetch_skel_topology_batches(relation_ids, build_overlay_relation_skel_query)
+    return await _fetch_skel_topology_batches(relation_ids, overlay_query.build_overlay_relation_skel_query)
 
 
 async def _fetch_way_topology(way_ids: set[int]) -> OverlayTopology:
     """抓取全部目标/support way 的有序 node refs。"""
     # way Query 也不带 bbox，否则可能无法获得构建线/面所需的完整 node 顺序。
-    return await _fetch_skel_topology_batches(way_ids, build_overlay_way_skel_query)
+    return await _fetch_skel_topology_batches(way_ids, overlay_query.build_overlay_way_skel_query)
 
 
 async def _fetch_skel_topology_batches(
@@ -113,6 +113,63 @@ def _add_known_node_coordinates(
         topology_store.add_element({"type": "node", "id": osm_id, "lat": lat, "lon": lon})
 
 
+def _area_completion_node_ids(
+    overlay_maps: TypedOsmMaps,
+    topology: OverlayTopology
+) -> set[int]:
+    """收集直接选中的 area ways 在 bbox node Query 后仍缺失的 node IDs。"""
+    completion_node_ids: set[int] = set()
+    known_node_ids = topology.node_coordinates_by_id.keys()
+    max_nodes = config.overpass.overlay_skel_id_batch_size
+
+    # 只检查第一阶段 Overlay 直接选中的 ways；relation 展开的 support way 不生成 Feature，
+    # 因而不能把大型 relation 的 bbox 外节点带进无 bbox completion Query。
+    for osm_id, element in sorted(overlay_maps.ways_by_id.items()):
+        tags = element.get("tags")
+        node_ids = topology.way_node_ids_by_id.get(osm_id)
+        if not isinstance(tags, dict) or node_ids is None or not is_area_way(node_ids, tags):
+            continue
+
+        missing_node_ids = set(node_ids) - known_node_ids
+        new_node_ids = missing_node_ids - completion_node_ids
+        if len(completion_node_ids) + len(new_node_ids) > max_nodes:
+            # 上限按整次 Stage 2 请求累计。当前 way 不做部分补抓，否则依然无法形成完整 Polygon。
+            warning_logger.warning(
+                "skip_overlay_area_completion",
+                extra={"geomcp_extra": {
+                    "status": "skipped",
+                    "reason": "node_limit_exceeded",
+                    "filter_stage": "overlay_area_completion",
+                    "osm_type": "way",
+                    "osm_id": osm_id,
+                    "missing_node_count": len(missing_node_ids),
+                    "max_nodes": max_nodes
+                }}
+            )
+            continue
+        completion_node_ids.update(new_node_ids)
+
+    return completion_node_ids
+
+
+async def complete_overlay_area_nodes(
+    overlay_maps: TypedOsmMaps,
+    topology: OverlayTopology
+) -> OverlayTopology:
+    """为直接选中的 area ways 单独补抓 bbox 外缺失节点，并返回合并后 topology。"""
+    completion_node_ids = _area_completion_node_ids(overlay_maps, topology)
+    if not completion_node_ids:
+        return topology
+
+    topology_store = OverlayTopologyStore()
+    topology_store.merge_stage2(topology)
+    topology_store.merge_stage2(await _fetch_skel_topology_batches(
+        completion_node_ids,
+        overlay_query.build_overlay_node_completion_query
+    ))
+    return topology_store.topology
+
+
 async def fetch_overlay_topology(
     overlay_maps: TypedOsmMaps,
     tile_bbox: Geometry.BBox,
@@ -165,7 +222,7 @@ async def fetch_overlay_topology(
         # NodeSkeleton 在这里完成 Pydantic 校验，并把 Overpass lat/lon 转成内部 (lon, lat)。
         topology_store.merge_stage2(await _fetch_skel_topology_batches(
             missing_node_ids,
-            lambda node_ids: build_overlay_node_skel_query(node_ids, tile_bbox)
+            lambda node_ids: overlay_query.build_overlay_node_skel_query(node_ids, tile_bbox)
         ))
 
     # 此时仍是 topology，不包含 tags、geometry 或 feature_id。

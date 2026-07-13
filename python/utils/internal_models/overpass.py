@@ -5,9 +5,11 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Annotated, Any, Literal, TypeAlias
 
 from pydantic import Field
+from shapely.geometry import LineString, MultiLineString, MultiPolygon, Point, Polygon
 
 from python.utils.models import StrictModel
 
@@ -18,6 +20,17 @@ OsmId: TypeAlias = Annotated[int, Field(gt=0)]
 Latitude: TypeAlias = Annotated[float, Field(ge=-90, le=90)]
 Longitude: TypeAlias = Annotated[float, Field(ge=-180, le=180)]
 OverlayCoordinate: TypeAlias = tuple[float, float]
+OverlayGeometry: TypeAlias = Point | LineString | MultiLineString | Polygon | MultiPolygon
+
+
+@dataclass(frozen=True, slots=True)
+class ResolvedOverlayObject:
+    """完成 topology 解引用和 bbox 裁切、尚未排序的 Overlay 空间对象。"""
+
+    osm_type: Literal["node", "way"]
+    osm_id: int
+    tags: dict[str, str]
+    geometry: OverlayGeometry
 
 
 class InternalFilterRulesConfig(StrictModel):

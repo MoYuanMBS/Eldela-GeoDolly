@@ -10,7 +10,7 @@ from python.core.filter.overlay_filter import filter_overlay
 from python.core.overpass.build_query import build_initial_query
 from python.core.filter.filter_rules import FilterRuleContext
 from python.core.overpass.maping import TypedOsmMapStore
-from python.core.overpass.overlay_fetch import fetch_overlay_topology
+from python.core.overpass.overlay_fetch import complete_overlay_area_nodes, fetch_overlay_topology
 from python.core.overpass.overpass import request_overpass
 from python.core.overpass.parent_relation import build_parent_relation_query, filter_parent_relation_result
 from python.core.overpass.query_utils import build_overpass_tag_filters
@@ -133,6 +133,8 @@ async def run_filtered_overpass(
     output_maps = merge_parent_relations(filter_output(combined_maps, rule_context), parent_maps)
     # Stage 2 只使用已筛选的 Overlay targets；combined maps 仅用于复用第一阶段已有 node 坐标。
     overlay_topology = await fetch_overlay_topology(overlay_maps, bbox, combined_maps)
+    # bbox node 抓取结束后，再为直接选中的 area ways 单独补齐 bbox 外边界节点。
+    overlay_topology = await complete_overlay_area_nodes(overlay_maps, overlay_topology)
 
     return FilteredOverpassResult.model_construct(
         combined_maps=combined_maps,

@@ -47,3 +47,8 @@ def build_overlay_way_skel_query(way_ids: Iterable[int]) -> str:
 def build_overlay_node_skel_query(node_ids: Iterable[int], bbox: Geometry.BBox) -> str:
     """构建 tile bbox 内 Overlay node coordinates 的 out skel Query。"""
     return _build_overlay_skel_query("node", node_ids, bbox)
+
+
+def build_overlay_node_completion_query(node_ids: Iterable[int]) -> str:
+    """构建 area way bbox 外缺失 nodes 的无 bbox completion Query。"""
+    return _build_overlay_skel_query("node", node_ids)
