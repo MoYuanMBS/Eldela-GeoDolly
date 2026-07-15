@@ -1,4 +1,4 @@
-"""Overpass Query 公共片段、坐标与规则序列化工具。"""
+"""Overpass Query 公共片段、构建bbox filter 和 tag selector 等。"""
 
 from __future__ import annotations
 

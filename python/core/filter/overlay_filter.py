@@ -15,12 +15,9 @@ def _filter_element_map(elements: OsmElementMap, rules: TagFilterRule) -> OsmEle
     for osm_id, element in elements.items():
         tags = element.get("tags")
         if not isinstance(tags, dict) or not tags:
-            warning_logger.warning(
-                "skip_osm_element_without_tags",
-                extra={"geomcp_extra": {"status": "skipped", "reason": "missing_or_empty_tags", "filter_stage": "overlay", "osm_type": element.get("type"), "osm_id": osm_id}}
-            )
+            warning_logger.warning("skip_osm_element_without_tags",extra={"geomcp_extra": {"status": "skipped", "reason": "missing_or_empty_tags", "filter_stage": "overlay", "osm_type": element.get("type"), "osm_id": osm_id}})
             continue
-        if filter_include_tags(tags, rules) is not None:
+        if filter_include_tags(tags, rules):
             selected_elements[osm_id] = element
     return selected_elements
 

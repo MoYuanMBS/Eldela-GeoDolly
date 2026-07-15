@@ -5,7 +5,7 @@ import logging
 from python.core.filter.filter import filter_output_tags
 from python.core.filter.filter_rules import FilterRuleContext
 from python.core.overpass.maping import TypedOsmMapStore
-from python.utils.internal_models.overpass import OsmElementMap, TypedOsmMaps
+from python.utils.internal_models.overpass import OsmElementMap, TypedOsmMaps, ResolvedOverlayObject
 
 warning_logger = logging.getLogger("geomcp.warning")
 
@@ -49,3 +49,30 @@ def merge_parent_relations(output_maps: TypedOsmMaps, parent_maps: TypedOsmMaps)
     )
     merged_store.merge_stage1(parent_maps)
     return merged_store.maps
+
+
+def append_missing_elements(
+    output_maps: TypedOsmMaps,
+    resolved_objects: list[ResolvedOverlayObject],
+    rule_context: FilterRuleContext
+) -> TypedOsmMaps:
+    """原地补入最终 geometry 来源中 AI Output 缺少且重新通过 Filter 的对象。"""
+
+    def add_filtered_element(elements: OsmElementMap, element_type: str, osm_id: int, tags: dict[str, str]) -> None:
+        filtered_tags = filter_output_tags(tags, rule_context.output_remove_tag_rules)
+        if filtered_tags is not None:
+            elements[osm_id] = {"type": element_type, "id": osm_id, "tags": filtered_tags}
+
+    for resolved_object in resolved_objects:
+        match resolved_object.feature_type:
+            case "node":
+                if resolved_object.osm_id not in output_maps.nodes_by_id:
+                    add_filtered_element(output_maps.nodes_by_id, "node", resolved_object.osm_id, resolved_object.tags)
+            case "way":
+                if resolved_object.osm_id not in output_maps.ways_by_id:
+                    add_filtered_element(output_maps.ways_by_id, "way", resolved_object.osm_id, resolved_object.tags)
+            case "area":
+                if resolved_object.osm_id not in output_maps.ways_by_id:
+                    add_filtered_element(output_maps.ways_by_id, "way", resolved_object.osm_id, resolved_object.tags)
+
+    return output_maps

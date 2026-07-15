@@ -63,12 +63,12 @@ async def _fetch_skel_topology_batches(
                     await asyncio.sleep(wait_seconds)
                 next_start_at[0] = loop.time() + config.overpass.overlay_skel_batch_delay_seconds
             payload = await request_overpass(build_query(osm_id_batch))
-            return OverlayTopologyStore(payload).topology
+            return OverlayTopologyStore(payload).to_pology
 
     # gather 按传入批次顺序返回；逐批 first-wins 合并可保持稳定结果。
     for batch_topology in await asyncio.gather(*(fetch_batch(batch) for batch in batches)):
         topology_store.merge_stage2(batch_topology)
-    return topology_store.topology
+    return topology_store.to_pology
 
 
 def _nested_relation_ids(topology: OverlayTopology) -> set[int]:
@@ -167,7 +167,7 @@ async def complete_overlay_area_nodes(
         completion_node_ids,
         overlay_query.build_overlay_node_completion_query
     ))
-    return topology_store.topology
+    return topology_store.to_pology
 
 
 async def fetch_overlay_topology(
@@ -203,21 +203,21 @@ async def fetch_overlay_topology(
 
     # 第二段：直接命中的 way 和 relation 展开得到的 support way 使用同一个去重集合。
     required_way_ids = set(overlay_maps.ways_by_id)
-    required_way_ids.update(_relation_member_ids(topology_store.topology, "way"))
+    required_way_ids.update(_relation_member_ids(topology_store.to_pology, "way"))
     if required_way_ids:
         topology_store.merge_stage2(await _fetch_way_topology(required_way_ids))
 
     # 第三段：node 需求来自三处——直接命中的 node、relation 的直接 node member、全部 way refs。
     required_node_ids = set(overlay_maps.nodes_by_id)
-    required_node_ids.update(_relation_member_ids(topology_store.topology, "node"))
-    for node_ids in topology_store.topology.way_node_ids_by_id.values():
+    required_node_ids.update(_relation_member_ids(topology_store.to_pology, "node"))
+    for node_ids in topology_store.to_pology.way_node_ids_by_id.values():
         required_node_ids.update(node_ids)
 
     # known_maps 通常传 combined maps；未传时至少复用 overlay target node 自己的一阶段坐标。
     available_maps = overlay_maps if known_maps is None else known_maps
     _add_known_node_coordinates(topology_store, required_node_ids, available_maps)
     # 只有仍缺坐标的 node 才进入网络批次，避免重复下载第一阶段已经拥有的 body。
-    missing_node_ids = required_node_ids - topology_store.topology.node_coordinates_by_id.keys()
+    missing_node_ids = required_node_ids - topology_store.to_pology.node_coordinates_by_id.keys()
     if missing_node_ids:
         # NodeSkeleton 在这里完成 Pydantic 校验，并把 Overpass lat/lon 转成内部 (lon, lat)。
         topology_store.merge_stage2(await _fetch_skel_topology_batches(
@@ -226,4 +226,4 @@ async def fetch_overlay_topology(
         ))
 
     # 此时仍是 topology，不包含 tags、geometry 或 feature_id。
-    return topology_store.topology
+    return topology_store.to_pology

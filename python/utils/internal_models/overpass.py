@@ -27,7 +27,7 @@ OverlayGeometry: TypeAlias = Point | LineString | MultiLineString | Polygon | Mu
 class ResolvedOverlayObject:
     """完成 topology 解引用和 bbox 裁切、尚未排序的 Overlay 空间对象。"""
 
-    osm_type: Literal["node", "way"]
+    feature_type: Literal["node", "way", "area"]
     osm_id: int
     tags: dict[str, str]
     geometry: OverlayGeometry

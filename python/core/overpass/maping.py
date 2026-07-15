@@ -75,7 +75,7 @@ class OverlayTopologyStore:
     """二阶段 skeleton 校验、坐标规范化与多批 topology 去重合并。"""
 
     def __init__(self, payload: JsonDictType | None = None):
-        self.topology = OverlayTopology()
+        self.to_pology = OverlayTopology()
         if payload is not None:
             self.add_payload(payload)
 
@@ -108,21 +108,21 @@ class OverlayTopologyStore:
         """把已验证模型分流到 topology；这里只做坐标转换与 first-wins 去重。"""
         match skeleton:
             case OverlayNodeSkeleton(id=osm_id, lon=lon, lat=lat):
-                self.topology.node_coordinates_by_id.setdefault(osm_id, (lon, lat))
+                self.to_pology.node_coordinates_by_id.setdefault(osm_id, (lon, lat))
             case OverlayWaySkeleton(id=osm_id, nodes=node_ids):
-                if osm_id not in self.topology.way_node_ids_by_id:
-                    self.topology.way_node_ids_by_id[osm_id] = list(node_ids)
+                if osm_id not in self.to_pology.way_node_ids_by_id:
+                    self.to_pology.way_node_ids_by_id[osm_id] = list(node_ids)
             case OverlayRelationSkeleton(id=osm_id, members=members):
-                if osm_id not in self.topology.relation_members_by_id:
-                    self.topology.relation_members_by_id[osm_id] = list(members)
+                if osm_id not in self.to_pology.relation_members_by_id:
+                    self.to_pology.relation_members_by_id[osm_id] = list(members)
 
     def merge_stage2(self, incoming_topology: OverlayTopology) -> None:
         """合并另一批 topology；重复 typed identity 保留先到结构。"""
         for osm_id, coordinate in incoming_topology.node_coordinates_by_id.items():
-            self.topology.node_coordinates_by_id.setdefault(osm_id, coordinate)
+            self.to_pology.node_coordinates_by_id.setdefault(osm_id, coordinate)
         for osm_id, node_ids in incoming_topology.way_node_ids_by_id.items():
-            if osm_id not in self.topology.way_node_ids_by_id:
-                self.topology.way_node_ids_by_id[osm_id] = list(node_ids)
+            if osm_id not in self.to_pology.way_node_ids_by_id:
+                self.to_pology.way_node_ids_by_id[osm_id] = list(node_ids)
         for osm_id, members in incoming_topology.relation_members_by_id.items():
-            if osm_id not in self.topology.relation_members_by_id:
-                self.topology.relation_members_by_id[osm_id] = list(members)
+            if osm_id not in self.to_pology.relation_members_by_id:
+                self.to_pology.relation_members_by_id[osm_id] = list(members)

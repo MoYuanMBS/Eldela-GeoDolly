@@ -30,7 +30,7 @@ def filter_parent_relation(osm_maps: TypedOsmMaps, rule_context: FilterRuleConte
                     extra={"geomcp_extra": {"status": "skipped", "reason": "missing_or_empty_tags", "filter_stage": "parent_relation", "osm_type": element.get("type"), "osm_id": osm_id}}
                 )
                 continue
-            if filter_include_tags(tags, seed_rules) is not None:
+            if filter_include_tags(tags, seed_rules):
                 selected_elements[osm_id] = element
     return selected_maps
 

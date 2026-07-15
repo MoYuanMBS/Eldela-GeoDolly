@@ -133,7 +133,7 @@ def _build_node_object(
     if geometry is None:
         _warn_geometry_skip("node", osm_id, "empty_after_bbox_clip")
         return None
-    return overpass_models.ResolvedOverlayObject(osm_type="node", osm_id=osm_id, tags=dict(tags), geometry=geometry)
+    return overpass_models.ResolvedOverlayObject(feature_type="node", osm_id=osm_id, tags=dict(tags), geometry=geometry)
 
 
 def _build_way_object(
@@ -154,10 +154,11 @@ def _build_way_object(
     if area_semantics and not closed_way:
         _warn_geometry_skip("way", osm_id, "open_area_way")
         return None
+    feature_type = "area" if area_semantics else "way"
 
     coordinate_parts, has_missing_coordinate = _coordinate_parts(node_ids, topology.node_coordinates_by_id)
     try:
-        if area_semantics and closed_way:
+        if feature_type == "area":
             # bbox 外节点应由上游 completion Query 补齐；这里仍缺点时绝不猜测或强行闭合。
             if has_missing_coordinate or len(coordinate_parts) != 1 or len(coordinate_parts[0]) < 4:
                 _warn_geometry_skip("way", osm_id, "incomplete_polygon_coordinates")
@@ -181,7 +182,7 @@ def _build_way_object(
     if geometry is None:
         _warn_geometry_skip("way", osm_id, "empty_after_bbox_clip")
         return None
-    return overpass_models.ResolvedOverlayObject(osm_type="way", osm_id=osm_id, tags=dict(tags), geometry=geometry)
+    return overpass_models.ResolvedOverlayObject(feature_type=feature_type, osm_id=osm_id, tags=dict(tags), geometry=geometry)
 
 
 def build_overlay_geometries(
