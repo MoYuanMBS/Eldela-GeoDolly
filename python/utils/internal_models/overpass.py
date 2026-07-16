@@ -53,6 +53,16 @@ class MergedOverlayFeature:
     geometry: OverlayGeometry
 
 
+@dataclass(frozen=True, slots=True)
+class IdentifiedOverlayFeature:
+    """完成类型内空间排序并生成 canonical ID 的 Overlay Feature。"""
+
+    feature_id: str
+    feature_type: OverlayFeatureType
+    sources: tuple[OverlayFeatureSource, ...]
+    geometry: OverlayGeometry
+
+
 class InternalFilterRulesConfig(StrictModel):
     """`internal_rules.json` 的内部负向规则配置。"""
 

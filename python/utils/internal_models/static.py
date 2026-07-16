@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 from typing import Annotated, Any, Literal
-from pydantic import Field, StringConstraints
+from pydantic import Field, StringConstraints, field_validator
 
 from python.utils.models import StrictModel
 
@@ -82,6 +82,16 @@ class FeatureIdConfig(StrictModel):
     alphabet_pool: Annotated[str, StringConstraints(strip_whitespace=True, to_upper=True, min_length=1)]
     id_scheme: FeatureIdSchemes
     render: Any = Field(default=None, exclude=True, repr=False)
+
+    @field_validator("alphabet_pool")
+    @classmethod
+    def validate_alphabet_pool(cls, value: str) -> str:
+        """保证 canonical ID 字母池为有序且不重复的 ASCII 大写字母。"""
+        if any(character < "A" or character > "Z" for character in value):
+            raise ValueError("feature ID alphabet_pool must contain only ASCII A-Z")
+        if len(set(value)) != len(value):
+            raise ValueError("feature ID alphabet_pool must not contain duplicate characters")
+        return value
 
 
 class AppConfig(StrictModel):
