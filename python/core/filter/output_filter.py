@@ -60,7 +60,7 @@ def append_missing_elements(
 
     def add_filtered_element(elements: OsmElementMap, element_type: str, osm_id: int, tags: dict[str, str]) -> None:
         filtered_tags = filter_output_tags(tags, rule_context.output_remove_tag_rules)
-        if filtered_tags is not None:
+        if filtered_tags:
             elements[osm_id] = {"type": element_type, "id": osm_id, "tags": filtered_tags}
 
     for resolved_object in resolved_objects:

@@ -3,7 +3,8 @@
 
 from __future__ import annotations
 from typing import Annotated, Any, Literal
-from pydantic import Field
+from pydantic import Field, StringConstraints
+
 from python.utils.models import StrictModel
 
 OverpassEndpoint = Annotated[str, Field(min_length=1)]
@@ -49,12 +50,47 @@ class OverpassConfig(StrictModel):
     retry_delay_seconds: float = Field(ge=0, multiple_of=0.01)
 
 
+class FeatureIdScheme(StrictModel):
+    """单个 Feature ID 命名空间的生成配置。"""
+
+    template: Annotated[str, StringConstraints(
+        min_length=1, 
+        pattern=(
+            r"^(?:"
+            r"\{alpha\}|"
+            r"\{num\}|"
+            r"\{alpha\}[-*~=]?\{num\}|"
+            r"\{num\}[-*~=]?\{alpha\}"
+            r")$")
+    )]
+    mode: Literal["global", "grouped", "round"]
+    group: Annotated[int, Field(gt=0)] | None = None
+
+
+class FeatureIdSchemes(StrictModel):
+    """各 Feature 类型共用结构、相互独立的 ID scheme。"""
+
+    node: FeatureIdScheme
+    way: FeatureIdScheme
+    area: FeatureIdScheme
+    relation: FeatureIdScheme
+
+
+class FeatureIdConfig(StrictModel):
+    """共享 Feature ID 配置；Python 不解释 TypeScript render skin。"""
+
+    alphabet_pool: Annotated[str, StringConstraints(strip_whitespace=True, to_upper=True, min_length=1)]
+    id_scheme: FeatureIdSchemes
+    render: Any = Field(default=None, exclude=True, repr=False)
+
+
 class AppConfig(StrictModel):
     """`config/app.yaml` 中 Python 侧会使用的轻量配置。"""
 
     nominatim: NominatimConfig
     geometry: GeometryConfig
     overpass: OverpassConfig
+    feature_id: FeatureIdConfig
 
 
 class FiltersConfig(StrictModel):

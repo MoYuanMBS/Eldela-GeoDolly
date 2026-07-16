@@ -21,15 +21,35 @@ Latitude: TypeAlias = Annotated[float, Field(ge=-90, le=90)]
 Longitude: TypeAlias = Annotated[float, Field(ge=-180, le=180)]
 OverlayCoordinate: TypeAlias = tuple[float, float]
 OverlayGeometry: TypeAlias = Point | LineString | MultiLineString | Polygon | MultiPolygon
+OverlayFeatureType: TypeAlias = Literal["node", "way", "area"]
+OverlaySourceType: TypeAlias = Literal["node", "way"]
 
 
 @dataclass(frozen=True, slots=True)
 class ResolvedOverlayObject:
     """完成 topology 解引用和 bbox 裁切、尚未排序的 Overlay 空间对象。"""
 
-    feature_type: Literal["node", "way", "area"]
+    feature_type: OverlayFeatureType
     osm_id: int
     tags: dict[str, str]
+    geometry: OverlayGeometry
+
+
+@dataclass(frozen=True, slots=True)
+class OverlayFeatureSource:
+    """合并后 Overlay Feature 的单个 OSM 来源及其原始 Overlay tags。"""
+
+    osm_type: OverlaySourceType
+    osm_id: int
+    tags: dict[str, str]
+
+
+@dataclass(frozen=True, slots=True)
+class MergedOverlayFeature:
+    """同派生类型、同完整 geometry 合并后的待排序空间 Feature。"""
+
+    feature_type: OverlayFeatureType
+    sources: tuple[OverlayFeatureSource, ...]
     geometry: OverlayGeometry
 
 

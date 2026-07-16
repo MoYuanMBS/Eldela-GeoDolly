@@ -8,13 +8,14 @@ feature_id，也不序列化 GeoJSON。relation 和 support node/way 不会在�
 from __future__ import annotations
 
 import logging
+from typing import cast
 
-from shapely import make_valid
+from shapely import make_valid, to_wkb
 from shapely.errors import GEOSException
 from shapely.geometry import GeometryCollection, LineString, MultiLineString, MultiPolygon, Point, Polygon, box
 from shapely.geometry.base import BaseGeometry
 
-import python.utils.internal_models.overpass as overpass_models
+import python.utils.internal_models.overpass as overpass
 from python.utils.models import Geometry
 
 warning_logger = logging.getLogger("geomcp.warning")
@@ -57,11 +58,11 @@ def is_area_way(node_ids: list[int], tags: dict[str, str]) -> bool:
 
 def _coordinate_parts(
     node_ids: list[int],
-    coordinates_by_id: dict[int, overpass_models.OverlayCoordinate]
-) -> tuple[list[list[overpass_models.OverlayCoordinate]], bool]:
+    coordinates_by_id: dict[int, overpass.OverlayCoordinate]
+) -> tuple[list[list[overpass.OverlayCoordinate]], bool]:
     """按缺失 node 切断 way，禁止跨缺口连接不存在的线段。"""
-    coordinate_parts: list[list[overpass_models.OverlayCoordinate]] = []
-    current_part: list[overpass_models.OverlayCoordinate] = []
+    coordinate_parts: list[list[overpass.OverlayCoordinate]] = []
+    current_part: list[overpass.OverlayCoordinate] = []
     has_missing_coordinate = False
     for node_id in node_ids:
         coordinate = coordinates_by_id.get(node_id)
@@ -99,7 +100,7 @@ def _normalize_clipped_geometry(
     geometry: BaseGeometry,
     bbox_geometry: Polygon,
     geometry_kind: str
-) -> overpass_models.OverlayGeometry | None:
+) -> overpass.OverlayGeometry | None:
     """裁切到 tile bbox，并收敛为允许进入 Ordering 的 geometry 类型。"""
     # 这里由 Shapely 计算真实的 bbox 交点；不能用人工构造的 bbox 点代替原始边界。
     clipped_geometry = geometry.intersection(bbox_geometry)
@@ -121,9 +122,9 @@ def _normalize_clipped_geometry(
 def _build_node_object(
     osm_id: int,
     tags: dict[str, str],
-    topology: overpass_models.OverlayTopology,
+    topology: overpass.OverlayTopology,
     bbox_geometry: Polygon
-) -> overpass_models.ResolvedOverlayObject | None:
+) -> overpass.ResolvedOverlayObject | None:
     """把直接选中的 Overlay node 构建为 bbox 内 Point。"""
     coordinate = topology.node_coordinates_by_id.get(osm_id)
     if coordinate is None:
@@ -133,15 +134,15 @@ def _build_node_object(
     if geometry is None:
         _warn_geometry_skip("node", osm_id, "empty_after_bbox_clip")
         return None
-    return overpass_models.ResolvedOverlayObject(feature_type="node", osm_id=osm_id, tags=dict(tags), geometry=geometry)
+    return overpass.ResolvedOverlayObject(feature_type="node", osm_id=osm_id, tags=dict(tags), geometry=geometry)
 
 
 def _build_way_object(
     osm_id: int,
     tags: dict[str, str],
-    topology: overpass_models.OverlayTopology,
+    topology: overpass.OverlayTopology,
     bbox_geometry: Polygon
-) -> overpass_models.ResolvedOverlayObject | None:
+) -> overpass.ResolvedOverlayObject | None:
     """解引用 way node refs，构建并裁切 LineString 或 Polygon。"""
     node_ids = topology.way_node_ids_by_id.get(osm_id)
     if node_ids is None:
@@ -182,18 +183,18 @@ def _build_way_object(
     if geometry is None:
         _warn_geometry_skip("way", osm_id, "empty_after_bbox_clip")
         return None
-    return overpass_models.ResolvedOverlayObject(feature_type=feature_type, osm_id=osm_id, tags=dict(tags), geometry=geometry)
+    return overpass.ResolvedOverlayObject(feature_type=feature_type, osm_id=osm_id, tags=dict(tags), geometry=geometry)
 
 
 def build_overlay_geometries(
-    overlay_maps: overpass_models.TypedOsmMaps,
-    topology: overpass_models.OverlayTopology,
+    overlay_maps: overpass.TypedOsmMaps,
+    topology: overpass.OverlayTopology,
     tile_bbox: Geometry.BBox
-) -> list[overpass_models.ResolvedOverlayObject]:
+) -> list[overpass.ResolvedOverlayObject]:
     """为直接选中的 Overlay node/way 构建最终 bbox 内 Shapely geometry。"""
     south, west, north, east = tile_bbox
     bbox_geometry = box(west, south, east, north)
-    resolved_objects: list[overpass_models.ResolvedOverlayObject] = []
+    resolved_objects: list[overpass.ResolvedOverlayObject] = []
 
     # relation 不生成 Feature；support 对象也不会因为出现在 topology 中自动升级。
     for osm_id, element in sorted(overlay_maps.nodes_by_id.items()):
@@ -215,3 +216,49 @@ def build_overlay_geometries(
             resolved_objects.append(resolved_object)
 
     return resolved_objects
+
+
+def _normalized_geometry_token(
+    geometry: overpass.OverlayGeometry
+) -> tuple[overpass.OverlayGeometry, bytes]:
+    """规范 geometry 的方向与部件顺序，并返回固定字节序的完整 WKB token。"""
+    normalized_geometry = cast(overpass.OverlayGeometry, geometry.normalize())
+    return normalized_geometry, to_wkb(normalized_geometry, byte_order=1)
+
+
+def merge_overlay_features(
+    resolved_objects: list[overpass.ResolvedOverlayObject]
+) -> list[overpass.MergedOverlayFeature]:
+    """合并同派生类型、同完整 geometry 的对象，并保留全部 OSM 来源与 tags。"""
+    geometry_by_key: dict[
+        tuple[overpass.OverlayFeatureType, bytes],
+        overpass.OverlayGeometry
+    ] = {}
+    sources_by_key: dict[
+        tuple[overpass.OverlayFeatureType, bytes],
+        list[overpass.OverlayFeatureSource]
+    ] = {}
+
+    for resolved_object in resolved_objects:
+        normalized_geometry, geometry_token = _normalized_geometry_token(resolved_object.geometry)
+        merge_key = (resolved_object.feature_type, geometry_token)
+        if merge_key not in geometry_by_key:
+            geometry_by_key[merge_key] = normalized_geometry
+            sources_by_key[merge_key] = []
+
+        # area 是由 OSM way 派生的空间类型，来源 identity 仍必须保持 way。
+        source_type: overpass.OverlaySourceType = "node" if resolved_object.feature_type == "node" else "way"
+        sources_by_key[merge_key].append(overpass.OverlayFeatureSource(
+            osm_type=source_type,
+            osm_id=resolved_object.osm_id,
+            tags=dict(resolved_object.tags)
+        ))
+
+    return [
+        overpass.MergedOverlayFeature(
+            feature_type=feature_type,
+            sources=tuple(sources_by_key[(feature_type, geometry_token)]),
+            geometry=geometry
+        )
+        for (feature_type, geometry_token), geometry in geometry_by_key.items()
+    ]

@@ -16,7 +16,7 @@ if __package__ in (None, ""):
 
 from python.utils.models import StrictModel, TransferTypes
 from python.utils.internal_models.experts import ExpertConfig, ExpertRegistryType
-from python.utils.internal_models.static import AppConfig, FiltersConfig, GeometryConfig, NominatimConfig, OverpassConfig, TilesConfig
+from python.utils.internal_models.static import AppConfig, FeatureIdConfig, FiltersConfig, GeometryConfig, NominatimConfig, OverpassConfig, TilesConfig
 
 type YamlMapType = dict[str, Any]
 ConfigModelType = TypeVar("ConfigModelType", bound=StrictModel)
@@ -120,6 +120,7 @@ class _ConfigLoader:
             "nominatim": raw_app_config.get("nominatim"),
             "geometry": raw_app_config.get("geometry"),
             "overpass": raw_app_config.get("overpass"),
+            "feature_id": raw_app_config.get("feature_id")
         }, "app.yaml")
 
     @cached_property
@@ -179,6 +180,10 @@ class ConfigHub:
     @property
     def overpass(self) -> OverpassConfig:
         return self._loader.app.overpass
+
+    @property
+    def feature_id(self) -> FeatureIdConfig:
+        return self._loader.app.feature_id
 
     @property
     def filters(self) -> FiltersConfig:
