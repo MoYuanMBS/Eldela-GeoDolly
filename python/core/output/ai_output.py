@@ -25,7 +25,13 @@ def _translate_tag(key: str, value: str, annotations: overpass.TagAnnotationRule
     exact_replacement = annotations.get((key, value))
 
     if exact_replacement:
-        if wildcard_replacement and wildcard_replacement[1] and exact_replacement[0] is None:
+        if (
+            wildcard_replacement
+            and wildcard_replacement[0] is not None
+            and wildcard_replacement[1] is None
+            and exact_replacement[0] is None
+            and exact_replacement[1] is not None
+        ):
             return cast(str, wildcard_replacement[0]), cast(str, exact_replacement[1])
         return _apply_replacement(key, value, exact_replacement)
     if wildcard_replacement:
