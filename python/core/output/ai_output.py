@@ -7,6 +7,7 @@ from typing import Literal, cast
 
 from python.core.filter.filter_rules import FilterRuleContext
 import python.utils.internal_models.overpass as overpass
+from python.utils.models import Overpass
 
 warning_logger = logging.getLogger("geomcp.warning")
 
@@ -72,10 +73,10 @@ def _translate_tags(
 def _build_records(
     elements: overpass.OsmElementMap,
     annotations: overpass.TagAnnotationRules,
-) -> list[overpass.AiOutputRecord]:
+) -> list[Overpass.AiOutputRecord]:
     """把一组内部 OSM mapping 释放为最终列表记录。"""
     return [
-        overpass.AiOutputRecord(
+        Overpass.AiOutputRecord(
             osm_id=osm_id,
             tags=_translate_tags(cast(dict[str, str], element["tags"]), annotations, osm_id)
         )
@@ -83,10 +84,10 @@ def _build_records(
     ]
 
 
-def build_ai_output_records(output_maps: overpass.TypedOsmMaps, rule_context: FilterRuleContext) -> overpass.AiOutputGroups:
+def build_ai_output_records(output_maps: overpass.TypedOsmMaps, rule_context: FilterRuleContext) -> Overpass.AiOutputGroups:
     """翻译 tags，并按 OSM primitive 生成三组最终 AI Output records。"""
     annotations = rule_context.tag_annotations
-    return overpass.AiOutputGroups.model_validate({
+    return Overpass.AiOutputGroups.model_validate({
         "node": _build_records(output_maps.nodes_by_id, annotations),
         "way": _build_records(output_maps.ways_by_id, annotations),
         "relation": _build_records(output_maps.relations_by_id, annotations)

@@ -5,8 +5,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Annotated, Any, Literal, TypeAlias, TypedDict
+from dataclasses import dataclass
+from typing import Annotated, Any, Literal, TypeAlias
 
 from pydantic import Field
 from shapely.geometry import LineString, MultiLineString, MultiPolygon, Point, Polygon
@@ -136,8 +136,6 @@ class OverpassFilterRule(StrictModel):
 
 OverlayGeometry: TypeAlias = Point | LineString | MultiLineString | Polygon | MultiPolygon
 OverlayFeatureType: TypeAlias = Literal["node", "way", "area"]
-IdentifiedOverlayFeatureType: TypeAlias = Literal["node", "way", "area", "relation"]
-GeoJsonPosition: TypeAlias = list[float]
 
 
 @dataclass(frozen=True, slots=True)
@@ -158,76 +156,3 @@ class MergedOverlayFeature:
     osm_id: list[int]
     properties: dict[str, list[str]]
     geometry: OverlayGeometry
-
-
-class GeoJsonPoint(TypedDict):
-    type: Literal["Point"]
-    coordinates: GeoJsonPosition
-
-
-class GeoJsonLineString(TypedDict):
-    type: Literal["LineString"]
-    coordinates: list[GeoJsonPosition]
-
-
-class GeoJsonMultiLineString(TypedDict):
-    type: Literal["MultiLineString"]
-    coordinates: list[list[GeoJsonPosition]]
-
-
-class GeoJsonPolygon(TypedDict):
-    type: Literal["Polygon"]
-    coordinates: list[list[GeoJsonPosition]]
-
-
-class GeoJsonMultiPolygon(TypedDict):
-    type: Literal["MultiPolygon"]
-    coordinates: list[list[list[GeoJsonPosition]]]
-
-
-OverlayGeoJsonGeometry: TypeAlias = GeoJsonPoint | GeoJsonLineString | GeoJsonMultiLineString | GeoJsonPolygon | GeoJsonMultiPolygon
-
-
-class IdentifiedRelationMember(TypedDict):
-    type: Literal["node", "way", "relation"]
-    ref: int
-    role: str
-
-
-@dataclass(frozen=True, slots=True)
-class IdentifiedOverlayFeature:
-    """完成 canonical ID 分配、可直接进入最终输出的 Feature。"""
-
-    type: Literal["Feature"] = field(init=False, default="Feature")
-    feature_id: str
-    osm_id: list[int]
-    feature_type: IdentifiedOverlayFeatureType
-    properties: dict[str, list[str]]
-    geometry: OverlayGeoJsonGeometry | None
-    members: list[IdentifiedRelationMember] | None = None
-
-
-##### AI Output #####
-
-class AiOutputRecord(StrictModel):
-    """Python AI Output 的最终单条记录。"""
-
-    osm_id: int
-    tags: dict[str, str]
-
-
-class AiOutputGroups(StrictModel):
-    """按 OSM primitive 分组的 Python AI Output。"""
-
-    node: list[AiOutputRecord] = Field(default_factory=list)
-    way: list[AiOutputRecord] = Field(default_factory=list)
-    relation: list[AiOutputRecord] = Field(default_factory=list)
-
-
-##### Final Output #####
-
-class FilteredOverpassResult(StrictModel):
-    """Overpass / Filter 完整流程的两路最终输出。"""
-
-    ai_output: AiOutputGroups
-    identified_features: dict[IdentifiedOverlayFeatureType, list[IdentifiedOverlayFeature]]

@@ -18,7 +18,7 @@ import python.core.output.ai_output as ai_output
 import python.core.output.ordering as ordering
 import python.core.output.overlay_geometry as overlay_geometry
 import python.utils.internal_models.overpass as overpass
-from python.utils.models import Geometry, JsonDictType, TransferTypes
+from python.utils.models import Geometry, JsonDictType, Overpass, TransferTypes
 
 warning_logger = logging.getLogger("geomcp.warning")
 
@@ -118,7 +118,7 @@ async def run_filtered_overpass(
     core_area: Geometry.BBox | Geometry.AdaptedMultiPolygon | None,
     bbox: Geometry.BBox,
     rule_context: FilterRuleContext
-) -> overpass.FilteredOverpassResult:
+) -> Overpass.FilteredOverpassResult:
     """执行 Overpass / Filter 全流程，返回 AI Output 与 Identified Features。"""
     # 第一阶段并行获取 Core / BBox，并在 typed mapping 中保持 Core first-wins。
     initial_bodies = await fetch_initial_bodies(core_area, bbox, rule_context)
@@ -161,7 +161,7 @@ async def run_filtered_overpass(
         overlay_topology
     )
 
-    return overpass.FilteredOverpassResult(
+    return Overpass.FilteredOverpassResult(
         ai_output=ai_output.build_ai_output_records(output_maps, rule_context),
         identified_features=identified_features
     )

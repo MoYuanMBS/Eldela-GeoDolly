@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from typing import Literal, Protocol, TypeAlias, TypedDict, cast
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -78,6 +79,69 @@ class NominatimData:
         query: str
         candidates: list[NominatimData.LocSearchCandidate]
         message: str | None = None
+
+################### Overpass 最终输出格式 ##############################################
+class Overpass:
+    IdentifiedOverlayFeatureType: TypeAlias = Literal["node", "way", "area", "relation"]
+    GeoJsonPosition: TypeAlias = list[float]
+
+    class GeoJsonPoint(TypedDict):
+        type: Literal["Point"]
+        coordinates: Overpass.GeoJsonPosition
+
+    class GeoJsonLineString(TypedDict):
+        type: Literal["LineString"]
+        coordinates: list[Overpass.GeoJsonPosition]
+
+    class GeoJsonMultiLineString(TypedDict):
+        type: Literal["MultiLineString"]
+        coordinates: list[list[Overpass.GeoJsonPosition]]
+
+    class GeoJsonPolygon(TypedDict):
+        type: Literal["Polygon"]
+        coordinates: list[list[Overpass.GeoJsonPosition]]
+
+    class GeoJsonMultiPolygon(TypedDict):
+        type: Literal["MultiPolygon"]
+        coordinates: list[list[list[Overpass.GeoJsonPosition]]]
+
+    OverlayGeoJsonGeometry: TypeAlias = GeoJsonPoint | GeoJsonLineString | GeoJsonMultiLineString | GeoJsonPolygon | GeoJsonMultiPolygon
+
+    class IdentifiedRelationMember(TypedDict):
+        type: Literal["node", "way", "relation"]
+        ref: int
+        role: str
+
+    @dataclass(frozen=True, slots=True)
+    class IdentifiedOverlayFeature:
+        """完成 canonical ID 分配、可直接进入最终输出的 Feature。"""
+
+        type: Literal["Feature"] = field(init=False, default="Feature")
+        feature_id: str
+        osm_id: list[int]
+        feature_type: Overpass.IdentifiedOverlayFeatureType
+        properties: dict[str, list[str]]
+        geometry: Overpass.OverlayGeoJsonGeometry | None
+        members: list[Overpass.IdentifiedRelationMember] | None = None
+
+    class AiOutputRecord(StrictModel):
+        """Python AI Output 的最终单条记录。"""
+
+        osm_id: int
+        tags: dict[str, str]
+
+    class AiOutputGroups(StrictModel):
+        """按 OSM primitive 分组的 Python AI Output。"""
+
+        node: list[Overpass.AiOutputRecord] = Field(default_factory=list)
+        way: list[Overpass.AiOutputRecord] = Field(default_factory=list)
+        relation: list[Overpass.AiOutputRecord] = Field(default_factory=list)
+
+    class FilteredOverpassResult(StrictModel):
+        """Overpass / Filter 完整流程的两路最终输出。"""
+
+        ai_output: Overpass.AiOutputGroups
+        identified_features: dict[Overpass.IdentifiedOverlayFeatureType, list[Overpass.IdentifiedOverlayFeature]]
 
 class TransferTypes:
     """桥接层统一使用的结构化数据类型。"""

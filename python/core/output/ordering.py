@@ -10,7 +10,7 @@ from shapely.geometry import LineString, MultiLineString, MultiPolygon, Point, P
 import python.utils.internal_models.overpass as overpass
 import python.utils.internal_models.static as static_models
 from python.utils.config_loader import config
-from python.utils.models import TransferTypes
+from python.utils.models import Overpass, TransferTypes
 
 
 ##### Spatial Ordering #####
@@ -96,12 +96,12 @@ def _feature_id_candidate(
 
 ##### GeoJSON Serialization #####
 
-def _geojson_position(coordinate: tuple[float, ...]) -> overpass.GeoJsonPosition:
+def _geojson_position(coordinate: tuple[float, ...]) -> Overpass.GeoJsonPosition:
     """把 Shapely coordinate 转成 JSON 可序列化的 `[lon, lat]`。"""
     return [float(coordinate[0]), float(coordinate[1])]
 
 
-def _polygon_coordinates(geometry: Polygon) -> list[list[overpass.GeoJsonPosition]]:
+def _polygon_coordinates(geometry: Polygon) -> list[list[Overpass.GeoJsonPosition]]:
     """保留 Polygon exterior / interiors 的原始 ring 顺序。"""
     return [
         [_geojson_position(coordinate) for coordinate in ring.coords]
@@ -109,7 +109,7 @@ def _polygon_coordinates(geometry: Polygon) -> list[list[overpass.GeoJsonPositio
     ]
 
 
-def _to_geojson_geometry(geometry: overpass.OverlayGeometry) -> overpass.OverlayGeoJsonGeometry:
+def _to_geojson_geometry(geometry: overpass.OverlayGeometry) -> Overpass.OverlayGeoJsonGeometry:
     """在 ID 生成边界把已排序 Shapely geometry 转成最终 GeoJSON。"""
     if isinstance(geometry, Point):
         return {"type": "Point", "coordinates": _geojson_position(geometry.coords[0])}
@@ -165,17 +165,17 @@ def _generate_namespace_feature_ids(
     features: list[overpass.MergedOverlayFeature],
     scheme: static_models.FeatureIdScheme,
     alphabet_pool: str
-) -> list[overpass.IdentifiedOverlayFeature]:
+) -> list[Overpass.IdentifiedOverlayFeature]:
     """为一个已排序类型命名空间依次分配唯一且不占用 ref 的 ID。"""
     used_ids = _collect_reserved_refs(features)
-    identified_features: list[overpass.IdentifiedOverlayFeature] = []
+    identified_features: list[Overpass.IdentifiedOverlayFeature] = []
     candidate_index = 1
 
     for feature in features:
         feature_id, candidate_index = _next_available_feature_id(
             candidate_index, used_ids, scheme, alphabet_pool
         )
-        identified_features.append(overpass.IdentifiedOverlayFeature(
+        identified_features.append(Overpass.IdentifiedOverlayFeature(
             feature_id=feature_id,
             osm_id=list(feature.osm_id),
             feature_type=feature.feature_type,
@@ -202,9 +202,9 @@ def _generate_relation_feature_ids(
     topology: overpass.OverlayTopology,
     scheme: static_models.FeatureIdScheme,
     alphabet_pool: str
-) -> list[overpass.IdentifiedOverlayFeature]:
+) -> list[Overpass.IdentifiedOverlayFeature]:
     """按 OSM ID 排序，为 Overlay relation 生成非空间 canonical ID。"""
-    relation_inputs: list[tuple[int, dict[str, list[str]], list[overpass.IdentifiedRelationMember]]] = []
+    relation_inputs: list[tuple[int, dict[str, list[str]], list[Overpass.IdentifiedRelationMember]]] = []
     reserved_refs: set[str] = set()
 
     # 先收齐整个 relation 命名空间的 ref，再分配任何 ID，避免与较晚 relation 的 ref 冲突。
@@ -229,13 +229,13 @@ def _generate_relation_feature_ids(
         ]))
 
     # relation 不参与空间排序；这里严格沿用上一步保存的 osm_id 升序。
-    identified_relations: list[overpass.IdentifiedOverlayFeature] = []
+    identified_relations: list[Overpass.IdentifiedOverlayFeature] = []
     candidate_index = 1
     for osm_id, properties, members in relation_inputs:
         feature_id, candidate_index = _next_available_feature_id(
             candidate_index, reserved_refs, scheme, alphabet_pool
         )
-        identified_relations.append(overpass.IdentifiedOverlayFeature(
+        identified_relations.append(Overpass.IdentifiedOverlayFeature(
             feature_id=feature_id,
             osm_id=[osm_id],
             feature_type="relation",
@@ -252,7 +252,7 @@ def generate_feature_ids(
     ordered_features: dict[overpass.OverlayFeatureType, list[overpass.MergedOverlayFeature]],
     relations_by_id: overpass.OsmElementMap,
     topology: overpass.OverlayTopology
-) -> dict[overpass.IdentifiedOverlayFeatureType, list[overpass.IdentifiedOverlayFeature]]:
+) -> dict[Overpass.IdentifiedOverlayFeatureType, list[Overpass.IdentifiedOverlayFeature]]:
     """按四种独立命名空间生成 canonical ID，relation 只按 OSM ID 排序。"""
     return {
         "node": _generate_namespace_feature_ids(
