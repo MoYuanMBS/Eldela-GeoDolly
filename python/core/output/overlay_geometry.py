@@ -229,14 +229,18 @@ def _normalized_geometry_token(
 def merge_overlay_features(
     resolved_objects: list[overpass.ResolvedOverlayObject]
 ) -> list[overpass.MergedOverlayFeature]:
-    """合并同派生类型、同完整 geometry 的对象，并保留全部 OSM 来源与 tags。"""
+    """合并同派生类型、同完整 geometry 的对象，并聚合 OSM IDs 与 tags。"""
     geometry_by_key: dict[
         tuple[overpass.OverlayFeatureType, bytes],
         overpass.OverlayGeometry
     ] = {}
-    sources_by_key: dict[
+    osm_ids_by_key: dict[
         tuple[overpass.OverlayFeatureType, bytes],
-        list[overpass.OverlayFeatureSource]
+        list[int]
+    ] = {}
+    properties_by_key: dict[
+        tuple[overpass.OverlayFeatureType, bytes],
+        dict[str, list[str]]
     ] = {}
 
     for resolved_object in resolved_objects:
@@ -244,20 +248,22 @@ def merge_overlay_features(
         merge_key = (resolved_object.feature_type, geometry_token)
         if merge_key not in geometry_by_key:
             geometry_by_key[merge_key] = normalized_geometry
-            sources_by_key[merge_key] = []
+            osm_ids_by_key[merge_key] = []
+            properties_by_key[merge_key] = {}
 
-        # area 是由 OSM way 派生的空间类型，来源 identity 仍必须保持 way。
-        source_type: overpass.OverlaySourceType = "node" if resolved_object.feature_type == "node" else "way"
-        sources_by_key[merge_key].append(overpass.OverlayFeatureSource(
-            osm_type=source_type,
-            osm_id=resolved_object.osm_id,
-            tags=dict(resolved_object.tags)
-        ))
+        # 聚合 list 只表达集合语义，不使用位置维持 osm_id 与 tag value 的对应关系。
+        if resolved_object.osm_id not in osm_ids_by_key[merge_key]:
+            osm_ids_by_key[merge_key].append(resolved_object.osm_id)
+        for key, value in resolved_object.tags.items():
+            values = properties_by_key[merge_key].setdefault(key, [])
+            if value not in values:
+                values.append(value)
 
     return [
         overpass.MergedOverlayFeature(
             feature_type=feature_type,
-            sources=tuple(sources_by_key[(feature_type, geometry_token)]),
+            osm_id=osm_ids_by_key[(feature_type, geometry_token)],
+            properties=properties_by_key[(feature_type, geometry_token)],
             geometry=geometry
         )
         for (feature_type, geometry_token), geometry in geometry_by_key.items()

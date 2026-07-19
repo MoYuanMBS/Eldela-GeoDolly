@@ -59,8 +59,8 @@ class FeatureIdScheme(StrictModel):
             r"^(?:"
             r"\{alpha\}|"
             r"\{num\}|"
-            r"\{alpha\}[-*~=]?\{num\}|"
-            r"\{num\}[-*~=]?\{alpha\}"
+            r"\{alpha\}[-_~=]?\{num\}|"
+            r"\{num\}[-_~=]?\{alpha\}"
             r")$")
     )]
     mode: Literal["global", "grouped", "round"]

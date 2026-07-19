@@ -99,7 +99,7 @@ geometry:
   max_core_area_km2: 120.00
 
 # Feature ID 的共享生成与显示配置。
-# Python 生成 node / way / area canonical ID；TypeScript 处理 relation 备用 ID 与 display ID。
+# Python 生成 node / way / area / relation Feature ID；TypeScript 处理 display ID。
 feature_id:
   # canonical ID 使用的有序字母池，同时决定 render skin 的逐字符映射顺序。
   alphabet_pool: "DFHJPWXYKC"

@@ -5,8 +5,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Annotated, Any, Literal, TypeAlias
+from dataclasses import dataclass, field
+from typing import Annotated, Any, Literal, TypeAlias, TypedDict
 
 from pydantic import Field
 from shapely.geometry import LineString, MultiLineString, MultiPolygon, Point, Polygon
@@ -22,7 +22,42 @@ Longitude: TypeAlias = Annotated[float, Field(ge=-180, le=180)]
 OverlayCoordinate: TypeAlias = tuple[float, float]
 OverlayGeometry: TypeAlias = Point | LineString | MultiLineString | Polygon | MultiPolygon
 OverlayFeatureType: TypeAlias = Literal["node", "way", "area"]
-OverlaySourceType: TypeAlias = Literal["node", "way"]
+IdentifiedOverlayFeatureType: TypeAlias = Literal["node", "way", "area", "relation"]
+GeoJsonPosition: TypeAlias = list[float]
+
+
+class GeoJsonPoint(TypedDict):
+    type: Literal["Point"]
+    coordinates: GeoJsonPosition
+
+
+class GeoJsonLineString(TypedDict):
+    type: Literal["LineString"]
+    coordinates: list[GeoJsonPosition]
+
+
+class GeoJsonMultiLineString(TypedDict):
+    type: Literal["MultiLineString"]
+    coordinates: list[list[GeoJsonPosition]]
+
+
+class GeoJsonPolygon(TypedDict):
+    type: Literal["Polygon"]
+    coordinates: list[list[GeoJsonPosition]]
+
+
+class GeoJsonMultiPolygon(TypedDict):
+    type: Literal["MultiPolygon"]
+    coordinates: list[list[list[GeoJsonPosition]]]
+
+
+OverlayGeoJsonGeometry: TypeAlias = GeoJsonPoint | GeoJsonLineString | GeoJsonMultiLineString | GeoJsonPolygon | GeoJsonMultiPolygon
+
+
+class IdentifiedRelationMember(TypedDict):
+    type: Literal["node", "way", "relation"]
+    ref: int
+    role: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,31 +71,26 @@ class ResolvedOverlayObject:
 
 
 @dataclass(frozen=True, slots=True)
-class OverlayFeatureSource:
-    """合并后 Overlay Feature 的单个 OSM 来源及其原始 Overlay tags。"""
-
-    osm_type: OverlaySourceType
-    osm_id: int
-    tags: dict[str, str]
-
-
-@dataclass(frozen=True, slots=True)
 class MergedOverlayFeature:
     """同派生类型、同完整 geometry 合并后的待排序空间 Feature。"""
 
     feature_type: OverlayFeatureType
-    sources: tuple[OverlayFeatureSource, ...]
+    osm_id: list[int]
+    properties: dict[str, list[str]]
     geometry: OverlayGeometry
 
 
 @dataclass(frozen=True, slots=True)
 class IdentifiedOverlayFeature:
-    """完成类型内空间排序并生成 canonical ID 的 Overlay Feature。"""
+    """完成 canonical ID 分配、可直接进入最终输出的 Feature。"""
 
+    type: Literal["Feature"] = field(init=False, default="Feature")
     feature_id: str
-    feature_type: OverlayFeatureType
-    sources: tuple[OverlayFeatureSource, ...]
-    geometry: OverlayGeometry
+    osm_id: list[int]
+    feature_type: IdentifiedOverlayFeatureType
+    properties: dict[str, list[str]]
+    geometry: OverlayGeoJsonGeometry | None
+    members: list[IdentifiedRelationMember] | None = None
 
 
 class InternalFilterRulesConfig(StrictModel):
