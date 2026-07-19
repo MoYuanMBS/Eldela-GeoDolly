@@ -172,7 +172,6 @@ def _build_way_object(
             lines = [LineString(part) for part in coordinate_parts if len(part) >= 2]
             lines = [line for line in lines if line.length > 0]
             if not lines:
-                _warn_geometry_skip("way", osm_id, "insufficient_line_coordinates")
                 return None
             line_geometry: LineString | MultiLineString = lines[0] if len(lines) == 1 else MultiLineString(lines)
             geometry = _normalize_clipped_geometry(line_geometry, bbox_geometry, "line")
