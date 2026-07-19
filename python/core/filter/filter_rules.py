@@ -15,7 +15,7 @@ if __package__ in (None, ""):
 
 from python.utils.config_loader import config
 from python.utils.internal_models.experts import ExpertConfig
-from python.utils.internal_models.overpass import TagFilterRule, OverpassFilterRule, InternalFilterRulesConfig, TagRuleMap
+from python.utils.internal_models.overpass import TagAnnotationReplacement, TagAnnotationRules, TagFilterRule, OverpassFilterRule, InternalFilterRulesConfig, TagRuleMap
 from python.utils.models import TransferTypes
 
 warning_logger = logging.getLogger("geomcp.warning")
@@ -95,6 +95,7 @@ class FilterRuleContext:
         self.parent_relation_rules = self._merge_expert_overpass_rules(expert_configs)
         self.overlay_rules = self._merge_base_expert_overlay_rules(base_config, expert_configs)
         self.output_remove_tag_rules = self._merge_output_remove_tag_rules()
+        self.tag_annotations = self._merge_expert_tag_annotations(expert_configs)
 
     def _parse_tag_rule(self, tag_rule: str, rule_source: str) -> tuple[str, str] | None:
         """解析 `key=*` 或 `key=value` 格式的 tag rule。"""
@@ -243,6 +244,67 @@ class FilterRuleContext:
             deny_wildcard_keys=set(self.deny_object_rules.deny_wildcard_keys),
             deny_exact_rules=set(self.deny_object_rules.deny_exact_rules),
         )
+
+######tag annotation rules
+
+    def _parse_tag_annotation(self, annotation: str, match_key: str, match_value: str) -> TagAnnotationReplacement | None:
+        """把 annotation 编译成 key/value 替换；None 表示保留原值。"""
+        annotation = annotation.strip()
+        if not annotation:
+            warning_logger.warning(
+                "skip_invalid_tag_annotation",
+                extra={"geomcp_extra": {"status": "skipped", "reason": "empty_annotation", "match": f"{match_key}={match_value}"}}
+            )
+            return None
+
+        target_key, separator, target_value = annotation.partition("=")
+        if separator:
+            target_key = target_key.strip()
+            target_value = target_value.strip()
+            if not target_key or not target_value:
+                warning_logger.warning(
+                    "skip_invalid_tag_annotation",
+                    extra={"geomcp_extra": {"status": "skipped", "reason": "invalid_replacement", "match": f"{match_key}={match_value}", "annotation": annotation}}
+                )
+                return None
+            return target_key, target_value
+
+        if match_value == "*":
+            return annotation, None
+        return None, annotation
+
+    def _merge_expert_tag_annotations(self, expert_configs: list[ExpertConfig]) -> TagAnnotationRules:
+        """合并 Expert tag_annotations；同 match 冲突时 warning 并保留先遇到的规则。"""
+        merged_annotations: TagAnnotationRules = {}
+        for expert_config in expert_configs:
+            for annotation_config in expert_config.tag_annotations:
+                parsed_match = self._parse_tag_rule(annotation_config.match, "expert.tag_annotations")
+                if parsed_match is None:
+                    continue
+                match_key, match_value = parsed_match
+                replacement = self._parse_tag_annotation(annotation_config.annotation, match_key, match_value)
+                if replacement is None:
+                    continue
+
+                selector = (match_key, match_value)
+                if selector not in merged_annotations:
+                    merged_annotations[selector] = replacement
+                    continue
+                if merged_annotations[selector] == replacement:
+                    continue
+
+                kept_replacement = merged_annotations[selector]
+                warning_logger.warning(
+                    "skip_conflicting_tag_annotation",
+                    extra={"geomcp_extra": {
+                        "status": "skipped",
+                        "reason": "conflicting_annotation",
+                        "match": f"{match_key}={match_value}",
+                        "kept_replacement": {"key": kept_replacement[0], "value": kept_replacement[1]},
+                        "skipped_replacement": {"key": replacement[0], "value": replacement[1]}
+                    }}
+                )
+        return merged_annotations
 
 
 if __name__ == "__main__":

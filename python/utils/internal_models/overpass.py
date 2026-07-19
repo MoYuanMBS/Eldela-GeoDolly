@@ -24,6 +24,8 @@ OverlayGeometry: TypeAlias = Point | LineString | MultiLineString | Polygon | Mu
 OverlayFeatureType: TypeAlias = Literal["node", "way", "area"]
 IdentifiedOverlayFeatureType: TypeAlias = Literal["node", "way", "area", "relation"]
 GeoJsonPosition: TypeAlias = list[float]
+TagAnnotationReplacement: TypeAlias = tuple[str | None, str | None]
+TagAnnotationRules: TypeAlias = dict[tuple[str, str], TagAnnotationReplacement]
 
 
 class GeoJsonPoint(TypedDict):
@@ -91,6 +93,21 @@ class IdentifiedOverlayFeature:
     properties: dict[str, list[str]]
     geometry: OverlayGeoJsonGeometry | None
     members: list[IdentifiedRelationMember] | None = None
+
+
+class AiOutputRecord(StrictModel):
+    """Python AI Output 的最终单条记录。"""
+
+    osm_id: int
+    tags: dict[str, str]
+
+
+class AiOutputGroups(StrictModel):
+    """按 OSM primitive 分组的 Python AI Output。"""
+
+    node: list[AiOutputRecord] = Field(default_factory=list)
+    way: list[AiOutputRecord] = Field(default_factory=list)
+    relation: list[AiOutputRecord] = Field(default_factory=list)
 
 
 class InternalFilterRulesConfig(StrictModel):
