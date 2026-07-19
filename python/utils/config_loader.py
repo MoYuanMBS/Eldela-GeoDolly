@@ -23,9 +23,13 @@ ConfigModelType = TypeVar("ConfigModelType", bound=StrictModel)
 warning_logger = logging.getLogger("geomcp.warning")
 
 
+##### YAML 文件读取 #####
+
 class _YamlStore:
     """底层 YAML 文件读取入口 """
     _instance = None
+
+    ##### 实例与路径 #####
 
     def __new__(cls):
         if cls._instance is None:
@@ -42,6 +46,8 @@ class _YamlStore:
         if not full_path.exists():
             raise TransferTypes.AppError(code="config_not_found", message=f"config file not found: {full_path}")
         return full_path
+
+    ##### 静态配置读取 #####
 
     def load_static_yaml(self, file_name: str) -> YamlMapType:
         """全量加载轻量静态配置。"""
@@ -61,6 +67,8 @@ class _YamlStore:
             raise TransferTypes.AppError(code="invalid_config", message=f"config file format error: {path} (expected mapping at top level)")
 
         return loaded_yaml
+
+    ##### Expert 配置读取 #####
 
     @cached_property
     def get_dir_experts(self) -> set[str]:
@@ -95,12 +103,17 @@ class _YamlStore:
             result[file] = data
         return result
 
+
+##### 配置模型加载 #####
+
 class _ConfigLoader:
     """Python 侧配置模型 loader。
 
     负责把 _YamlStore 读出的 raw mapping 转成内部模型；
     静态配置使用 cached_property 缓存，专家配置按请求名称即时加载。
     """
+
+    ##### Loader 基础能力 #####
 
     def __init__(self):
         self._yaml_store = _YamlStore()
@@ -111,6 +124,8 @@ class _ConfigLoader:
             return model.model_validate(raw_config)
         except ValidationError as error:
             raise TransferTypes.AppError(code="invalid_config", message=f"config model validation failed: {source}", details=str(error)) from error
+
+    ##### 静态配置 #####
 
     @cached_property
     def app(self) -> AppConfig:
@@ -137,6 +152,15 @@ class _ConfigLoader:
             "raw": raw_tiles_config
         }, "tiles.yaml")
 
+    ##### 规则配置 #####
+
+    def get_base(self) -> ExpertConfig:
+        """从 base.yaml 加载固定的 context Base 规则，并复用 ExpertConfig 校验。"""
+        raw_base_config = self._yaml_store.load_static_yaml("base.yaml")
+        if "context" not in raw_base_config:
+            raise TransferTypes.AppError(code="invalid_config", message="base.yaml must contain context")
+        return self._validate_config_model(ExpertConfig, raw_base_config["context"], "base.yaml:context")
+
     def get_experts(self, expert_names: list[str]) -> ExpertRegistryType:
         """从 YAML 按需加载 raw expert，并逐个校验成 ExpertConfig。"""
         raw_experts = self._yaml_store.load_expert_yaml("experts.yaml", expert_names)
@@ -148,17 +172,15 @@ class _ConfigLoader:
             for expert_name, raw_expert in raw_experts.items()
         }
 
-    def get_base(self) -> ExpertConfig:
-        """从 base.yaml 加载固定的 context Base 规则，并复用 ExpertConfig 校验。"""
-        raw_base_config = self._yaml_store.load_static_yaml("base.yaml")
-        if "context" not in raw_base_config:
-            raise TransferTypes.AppError(code="invalid_config", message="base.yaml must contain context")
-        return self._validate_config_model(ExpertConfig, raw_base_config["context"], "base.yaml:context")
+    ##### 缓存控制 #####
 
     def reset_cache(self) -> None:
         """清除 cached_property 写入实例 __dict__ 的配置缓存。"""
         for config_name in ("app", "filters", "tiles"):
             self.__dict__.pop(config_name, None)
+
+
+##### 统一配置入口 #####
 
 class ConfigHub:
     """Python 侧统一配置入口。
@@ -166,8 +188,12 @@ class ConfigHub:
     业务模块通过这个 hub 读取配置，不直接访问 YAML 文件或 _YamlStore。
     """
 
+    ##### Hub 初始化 #####
+
     def __init__(self):
         self._loader = _ConfigLoader()
+
+    ##### App 子配置 #####
 
     @property
     def nominatim(self) -> NominatimConfig:
@@ -185,6 +211,8 @@ class ConfigHub:
     def feature_id(self) -> FeatureIdConfig:
         return self._loader.app.feature_id
 
+    ##### 独立静态配置 #####
+
     @property
     def filters(self) -> FiltersConfig:
         return self._loader.filters
@@ -192,21 +220,26 @@ class ConfigHub:
     @property
     def tiles(self) -> TilesConfig:
         return self._loader.tiles
-    def get_experts(self, expert_names: list[str]) -> ExpertRegistryType:
-        """按专家名称读取专家配置。"""
-        return self._loader.get_experts(expert_names)
+
+    ##### 规则配置 #####
 
     def get_base(self) -> ExpertConfig:
         """读取固定的 Base context 规则配置。"""
         return self._loader.get_base()
 
-    
-    def reset_cache(self) -> None:
-        self._loader.reset_cache()
+    def get_experts(self, expert_names: list[str]) -> ExpertRegistryType:
+        """按专家名称读取专家配置。"""
+        return self._loader.get_experts(expert_names)
+
+    ##### 缓存生命周期 #####
 
     def warmup_app(self) -> AppConfig:
         """初始化 app 配置，触发相关配置预加载，并返回已校验的 app 配置。"""
         return self._loader.app
+
+    def reset_cache(self) -> None:
+        self._loader.reset_cache()
+
 
 config = ConfigHub()
 

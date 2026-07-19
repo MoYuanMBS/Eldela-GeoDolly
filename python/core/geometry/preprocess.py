@@ -20,6 +20,8 @@ import python.core.geometry.area_check as areaChecker
 warning_logger = logging.getLogger("geomcp.warning")
 
 
+##### CRS 基础处理 #####
+
 def get_local_metric_epsg(bounds: tuple[float, float, float, float]) -> int:
     """根据 WGS84 geometry bounds 的中心点选择本地 UTM EPSG。"""
     min_lon, min_lat, max_lon, max_lat = bounds
@@ -45,6 +47,9 @@ def crs_to_overpass_bbox(crs_bbox: Polygon) -> Geometry.BBox:
     min_lon, min_lat, max_lon, max_lat = transform(to_wgs84.transform, crs_bbox).bounds
     return (min_lat, min_lon, max_lat, max_lon)
 
+
+##### BBox 预处理 #####
+
 def project_and_expand_bbox(crs_bbox: Polygon, expand_meter: float, max_area: float) -> tuple[bool, Geometry.BBox|None]:
     """扩展crs bbox 并投影为 Overpass WGS84 bbox, 并检测面积"""
     epsg = int(get_srid(crs_bbox))
@@ -56,6 +61,7 @@ def project_and_expand_bbox(crs_bbox: Polygon, expand_meter: float, max_area: fl
         box(min_x - expand_meter, min_y - expand_meter, max_x + expand_meter, max_y + expand_meter),
         epsg
     )
+    # 优先使用扩展 bbox；超限时回退到未扩展 bbox。
     if areaChecker.area_check(areaChecker.metric_geometry_area_m2(expanded_metric_bbox), max_area):
         return (True, crs_to_overpass_bbox(expanded_metric_bbox))
     if areaChecker.area_check(areaChecker.metric_geometry_area_m2(metric_bbox), max_area):
@@ -65,6 +71,9 @@ def project_and_expand_bbox(crs_bbox: Polygon, expand_meter: float, max_area: fl
         )
         return (True, crs_to_overpass_bbox(metric_bbox))
     return (False, None)
+
+
+##### Geometry 投影与标准化 #####
 
 def expand_linestring_to_polygon(linestring: LineString, expand_meter: float, target_epsg: int | None = None) -> MultiPolygon:
     """将 WGS84 LineString 投影并按米扩展为本地 CRS MultiPolygon。"""
@@ -100,6 +109,7 @@ def convert_polygon_to_adupt(polygon: MultiPolygon) -> tuple[bool, Geometry.Adap
     if not source_crs.is_projected:
         raise TransferTypes.AppError(code="invalid_geometry", message="polygon must use a projected metric CRS")
 
+    # 面积通过后反投影，并剥离闭合重复点构建 adapter。
     to_wgs84 = Transformer.from_crs(source_crs, 4326, always_xy=True)
     wgs84_polygon = transform(to_wgs84.transform, polygon)
     adapted_parts: Geometry.AdaptedMultiPolygon = []

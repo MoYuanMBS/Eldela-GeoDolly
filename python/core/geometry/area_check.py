@@ -13,6 +13,15 @@ from python.utils.models import Geometry
 GEOD = Geod(ellps="WGS84")
 
 
+##### 通用面积判断 #####
+
+def area_check(area_m2: float, max_area_m2: float) -> bool:
+    """检查已经计算出的面积是否不超过上限。"""
+    return area_m2 <= max_area_m2
+
+
+##### WGS84 面积计算 #####
+
 def bbox_area_m2(bbox: Geometry.BBox) -> float:
     """计算 WGS84 bbox 的椭球面积，bbox 顺序为 (south, west, north, east)。"""
     south, west, north, east = bbox
@@ -21,6 +30,8 @@ def bbox_area_m2(bbox: Geometry.BBox) -> float:
     area_m2, _ = GEOD.polygon_area_perimeter(lons, lats)
     return abs(float(area_m2))
 
+
+##### 米制面积计算 #####
 
 def metric_bbox_area_m2(bbox: Geometry.BBox) -> float:
     """计算本地米制 CRS bbox 的平面面积，bbox 顺序为 (south, west, north, east)。"""
@@ -33,8 +44,3 @@ def metric_geometry_area_m2(geometry: MetricPolygon) -> float:
     if geometry.is_empty:
         return 0.00
     return float(geometry.area)
-
-
-def area_check(area_m2: float, max_area_m2: float) -> bool:
-    """检查已经计算出的面积是否不超过上限。"""
-    return area_m2 <= max_area_m2

@@ -22,6 +22,8 @@ event_logger = logging.getLogger("geomcp.event")
 warning_logger = logging.getLogger("geomcp.warning")
 
 
+##### 基础转换与降级辅助 #####
+
 def nominatim_bbox_to_project_bbox(boundingbox: list[float] | None) -> Geometry.BBox:
     """将 Nominatim boundingbox 转为项目内部 bbox 顺序。"""
     if boundingbox is None:
@@ -30,18 +32,6 @@ def nominatim_bbox_to_project_bbox(boundingbox: list[float] | None) -> Geometry.
         raise TransferTypes.AppError(code="invalid_bbox", message="bbox must have 4 coordinates")
     south, north, west, east = boundingbox
     return (float(south), float(west), float(north), float(east))
-
-
-def process_bbox(boundingbox: list[float], expand_meter: float, max_area_km2: float) -> tuple[bool, Geometry.BBox | None]:
-    """生成指定 bbox stage 的 Overpass WGS84 bbox。"""
-
-    bbox = nominatim_bbox_to_project_bbox(boundingbox)
-    passed, overpass_bbox = preprocess.project_and_expand_bbox(
-        preprocess.bbox_to_crs(bbox),
-        expand_meter,
-        max_area_km2 * 1_000_000.00
-    )
-    return passed, overpass_bbox
 
 
 def warn_geojson_fallback(geometry_type: object, details: str) -> None:
@@ -73,6 +63,22 @@ def combine_metric_parts(parts: list[MultiPolygon]) -> MultiPolygon:
         raise ValueError("Unable to normalize polygonal geometry parts")
     return normalized
 
+
+##### BBox 流程 #####
+
+def process_bbox(boundingbox: list[float], expand_meter: float, max_area_km2: float) -> tuple[bool, Geometry.BBox | None]:
+    """生成指定 bbox stage 的 Overpass WGS84 bbox。"""
+
+    bbox = nominatim_bbox_to_project_bbox(boundingbox)
+    passed, overpass_bbox = preprocess.project_and_expand_bbox(
+        preprocess.bbox_to_crs(bbox),
+        expand_meter,
+        max_area_km2 * 1_000_000.00
+    )
+    return passed, overpass_bbox
+
+
+##### GeoJSON 预处理 #####
 
 def geojson_to_metric_multipolygon(
     geojson: JsonDictType,
@@ -115,6 +121,7 @@ def geojson_to_metric_multipolygon(
                     return None, True
                 return preprocess.polygon_to_crs(multipolygon, target_epsg), False
             case "GeometryCollection":
+                # GeometryCollection 递归复用同一转换规则，仅合并 polygonal parts。
                 geometries = geojson.get("geometries")
                 if not isinstance(geometries, list):
                     warn_geojson_fallback(geometry_type, "GeometryCollection.geometries must be a list")
@@ -138,6 +145,8 @@ def geojson_to_metric_multipolygon(
         return None, True
 
 
+##### Core Area 降级输出 #####
+
 def bbox_core_result(
     bbox: Geometry.BBox,
     bbox_area_m2: float,
@@ -159,20 +168,25 @@ def bbox_core_result(
     return Geometry.CompressionResult(geometry=None, status="tool_a_fallback")
 
 
+##### Core Geometry 主流程 #####
+
 def process_geometry(geojson: JsonDictType | None, boundingbox: list[float] | None) -> Geometry.CompressionResult:
     """处理 tools 分发的 GeoJSON 与 Nominatim boundingbox。"""
+    # 先固定 bbox 来源并计算 WGS84 area，后续 fallback 始终复用该结果。
     try:
         bbox = nominatim_bbox_to_project_bbox(boundingbox)
         raw_bbox_area_m2 = area_check.bbox_area_m2(bbox)
     except Exception as error:
         raise TransferTypes.AppError(code="invalid_bbox", message="bbox area calculation failed", details=str(error)) from error
 
+    # GeoJSON 不可用或不产生 polygonal geometry 时，按原因进入 bbox 流程。
     geometry_type = geojson.get("type") if geojson is not None else None
     metric_multipolygon, geojson_error = geojson_to_metric_multipolygon(geojson) if geojson else (None, False)
     if metric_multipolygon is None:
         bbox_status: Literal["not_needed", "bbox_fallback"] = "bbox_fallback" if geojson_error else "not_needed"
         return bbox_core_result(bbox, raw_bbox_area_m2, bbox_status)
 
+    # Compression 与 adapter 任一失败都降级到同一 bbox 输出路径。
     try:
         compressed_geometry, compression_status = compression.compress_geometry(metric_multipolygon, raw_bbox_area_m2)
     except Exception as error:

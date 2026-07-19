@@ -17,6 +17,9 @@ from python.utils.config_loader import config
 
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 
+
+##### 上游字段规范化 #####
+
 def _to_optional_string(value: Any) -> str | None:
     """把上游值转换为可选的非空字符串。"""
     if value is None:
@@ -77,6 +80,8 @@ def _normalize_boundingbox(value: Any) -> list[float] | None:
     return normalized_coordinates or None
 
 
+##### Candidate 构建 #####
+
 def _build_candidate(raw_result: dict[str, Any], index: int) -> NominatimData.LocSearchCandidate:
     """把单条原始 Nominatim 结果映射为共享的 Candidate 模型。"""
     return NominatimData.LocSearchCandidate(
@@ -96,6 +101,8 @@ def _build_candidate(raw_result: dict[str, Any], index: int) -> NominatimData.Lo
         else None,
     )
 
+
+##### Nominatim 请求 #####
 
 def search_location(query: str, country_codes: str = "") -> list[dict[str, Any]]:
     """根据单条查询文本拉取原始 Nominatim 搜索结果。"""
@@ -127,6 +134,9 @@ def search_location(query: str, country_codes: str = "") -> list[dict[str, Any]]
     if not isinstance(payload, list):
         return []
     return [item for item in payload if isinstance(item, dict)]
+
+
+##### 搜索请求编排 #####
 
 def query_request(search_request: NominatimData.LocSearchQueryReq) -> NominatimData.LocSearchReply:
     """执行一次搜索请求，并把结果转换为 SearchResponse。"""

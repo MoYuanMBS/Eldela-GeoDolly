@@ -22,6 +22,8 @@ event_logger = logging.getLogger("geomcp.event")
 warning_logger = logging.getLogger("geomcp.warning")
 
 
+##### 日志格式 #####
+
 class GeomcpJsonFormatter(logging.Formatter):
     """把 geomcp_extra 合并成一行 JSON 日志。"""
 
@@ -42,8 +44,28 @@ class GeomcpJsonFormatter(logging.Formatter):
         return json.dumps(payload, ensure_ascii=False, default=str)
 
 
+##### Bridge 协议处理 #####
+
 class PythonBridgeApp:
     """Python bridge 入口控制器。"""
+
+    ##### 基础环境 #####
+
+    @staticmethod
+    def configure_logging() -> None:
+        """配置 Python 侧结构化日志，日志走 stderr，避免污染 bridge stdout。"""
+        log_level_name = os.getenv("GEOMCP_LOG_LEVEL", "WARNING").upper()
+        log_level = getattr(logging, log_level_name, logging.WARNING)
+        handler = logging.StreamHandler(sys.stderr)
+        handler.setFormatter(GeomcpJsonFormatter())
+        logging.basicConfig(
+            level=log_level,
+            handlers=[handler],
+            force=True
+        )
+
+    ##### Bridge 输入输出 #####
+
     @staticmethod
     def read_payload() -> tuple[TransferTypes.Action, TransferTypes.BridgeData]:
         """从 stdin 读取并解析 JSON 请求。"""
@@ -62,6 +84,8 @@ class PythonBridgeApp:
             return TransferTypes.BridgeResponse(ok=True, data=response, error=None)
 
         return TransferTypes.BridgeResponse(ok=True, data=response.to_dict(), error=None)
+
+    ##### 异常处理 #####
 
     @staticmethod
     def normalize_exception(error: Exception) -> TransferTypes.AppError:
@@ -84,22 +108,12 @@ class PythonBridgeApp:
         )
         return TransferTypes.BridgeResponse(ok=False, data=None, error=app_error.to_dict())
 
-    @staticmethod
-    def configure_logging() -> None:
-        """配置 Python 侧结构化日志，日志走 stderr，避免污染 bridge stdout。"""
-        log_level_name = os.getenv("GEOMCP_LOG_LEVEL", "WARNING").upper()
-        log_level = getattr(logging, log_level_name, logging.WARNING)
-        handler = logging.StreamHandler(sys.stderr)
-        handler.setFormatter(GeomcpJsonFormatter())
-        logging.basicConfig(
-            level=log_level,
-            handlers=[handler],
-            force=True
-        )
+    ##### Handler 包装 #####
 
     @staticmethod
     def return_repponse_decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         """装饰器：统一做成功响应包装与异常包装。"""
+        # 同步和异步 handler 保持原调用方式，仅统一收敛返回与异常。
         if inspect.iscoroutinefunction(func):
             @wraps(func)
             async def async_inner(*args: Any, **kwargs: Any) -> TransferTypes.BridgeResponse:
@@ -118,6 +132,9 @@ class PythonBridgeApp:
                 except Exception as error:
                     return PythonBridgeApp.return_response_error(error)
             return sync_inner
+
+
+##### Action 分发 #####
 
 class MainHandler:
     @staticmethod
@@ -149,6 +166,9 @@ class MainHandler:
         #     return MainHandler.handle_tool_b(data)
         else:
             raise TransferTypes.AppError("UNKNOWN_ACTION", f"Unsupported action: {action}")
+
+
+##### CLI 入口 #####
 
 def main() -> int:
     """同步入口，内部跑 async 主流程。"""

@@ -30,33 +30,7 @@ event_logger = logging.getLogger("geomcp.event")
 warning_logger = logging.getLogger("geomcp.warning")
 
 
-def log_compression_result(
-    status: InternalCompressionStatus,
-    reason: CompressionReason,
-    raw_bbox_area_m2: float,
-    tolerance_meter: float | None,
-    current_max_node: int | None,
-    node_count_before: int,
-    node_count_after: int
-) -> None:
-    """记录 compression 已有结果，不额外计算 audit 数据。"""
-    logger = warning_logger.warning if status == "degraded" else event_logger.info
-    logger(
-        "core area MultiPolygon calculate",
-        extra={"geomcp_extra": {
-            "status": status,
-            "algorithm": "coverage_simplify",
-            "raw_bbox_area_m2": round(raw_bbox_area_m2, 2),
-            "tolerance_m": tolerance_meter,
-            "current_max_node": current_max_node,
-            "reason": reason,
-            "nodes": {
-                "before": node_count_before,
-                "after": node_count_after
-            }
-        }}
-    )
-
+##### Compression 基础计算 #####
 
 def count_exterior_nodes(multipolygon: MultiPolygon) -> int:
     """统计全部 exterior open-ring 节点，不统计 holes 与闭合重复点。"""
@@ -104,6 +78,38 @@ def normalize_candidate(candidate: Polygon | MultiPolygon, srid: int) -> MultiPo
     return set_srid(normalized, srid)
 
 
+##### Compression 日志 #####
+
+def log_compression_result(
+    status: InternalCompressionStatus,
+    reason: CompressionReason,
+    raw_bbox_area_m2: float,
+    tolerance_meter: float | None,
+    current_max_node: int | None,
+    node_count_before: int,
+    node_count_after: int
+) -> None:
+    """记录 compression 已有结果，不额外计算 audit 数据。"""
+    logger = warning_logger.warning if status == "degraded" else event_logger.info
+    logger(
+        "core area MultiPolygon calculate",
+        extra={"geomcp_extra": {
+            "status": status,
+            "algorithm": "coverage_simplify",
+            "raw_bbox_area_m2": round(raw_bbox_area_m2, 2),
+            "tolerance_m": tolerance_meter,
+            "current_max_node": current_max_node,
+            "reason": reason,
+            "nodes": {
+                "before": node_count_before,
+                "after": node_count_after
+            }
+        }}
+    )
+
+
+##### Compression 主流程 #####
+
 def compress_geometry(metric_multipolygon: MultiPolygon, bbox_area_m2: float) -> tuple[MultiPolygon | None, InternalCompressionStatus]:
     """压缩米制 MultiPolygon；失败时返回 None，不执行反投影或序列化。"""
     geometry_config = config.geometry
@@ -120,6 +126,7 @@ def compress_geometry(metric_multipolygon: MultiPolygon, bbox_area_m2: float) ->
 
     tolerance, node_budget = predict_compression_parameters(bbox_area_m2, original_node)
 
+    # 每次尝试必须同时满足 geometry 合法性与当前 node budget。
     def try_candidate(current_tolerance: float, current_node_budget: int) -> tuple[MultiPolygon | None, CompressionReason | None]:
         try:
             simplified_parts = coverage_simplify(list(metric_multipolygon.geoms), current_tolerance)
@@ -138,6 +145,7 @@ def compress_geometry(metric_multipolygon: MultiPolygon, bbox_area_m2: float) ->
 
     candidate: MultiPolygon | None = None
     failure_reason: CompressionReason = "max_node_not_reached"
+    # 重试逐步提高 tolerance 与 node budget，最后一次使用配置硬上限。
     for attempt in range(geometry_config.max_retry + 1):
         if attempt == geometry_config.max_retry:
             tolerance = geometry_config.max_tolerance_meter
