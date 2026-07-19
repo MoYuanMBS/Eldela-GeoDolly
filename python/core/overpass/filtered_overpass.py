@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from python.core.filter.output_filter import filter_output, merge_parent_relations
+from python.core.filter.output_filter import append_missing_elements, filter_output, merge_parent_relations
 from python.core.filter.overlay_filter import filter_overlay
 from python.core.overpass.build_query import build_initial_query
 from python.core.filter.filter_rules import FilterRuleContext
@@ -14,7 +14,10 @@ from python.core.overpass.overlay_fetch import complete_overlay_area_nodes, fetc
 from python.core.overpass.overpass import request_overpass
 from python.core.overpass.parent_relation import build_parent_relation_query, filter_parent_relation_result
 from python.core.overpass.query_utils import build_overpass_tag_filters
-from python.utils.internal_models.overpass import FilteredOverpassResult, TypedOsmMaps
+import python.core.output.ai_output as ai_output
+import python.core.output.ordering as ordering
+import python.core.output.overlay_geometry as overlay_geometry
+import python.utils.internal_models.overpass as overpass
 from python.utils.models import Geometry, JsonDictType, TransferTypes
 
 warning_logger = logging.getLogger("geomcp.warning")
@@ -107,13 +110,13 @@ async def run_filtered_overpass(
     core_area: Geometry.BBox | Geometry.AdaptedMultiPolygon | None,
     bbox: Geometry.BBox,
     rule_context: FilterRuleContext
-) -> FilteredOverpassResult:
-    """执行第一阶段筛选、Parent 反查与 Overlay 二阶段 topology 抓取。"""
+) -> overpass.FilteredOverpassResult:
+    """执行 Overpass / Filter 全流程，返回 AI Output 与 Identified Features。"""
     initial_bodies = await fetch_initial_bodies(core_area, bbox, rule_context)
-    core_maps = TypedOsmMapStore(initial_bodies["core"]).maps if initial_bodies["core"] else TypedOsmMaps()
-    bbox_maps = TypedOsmMapStore(initial_bodies["bbox"]).maps if initial_bodies["bbox"] else TypedOsmMaps()
+    core_maps = TypedOsmMapStore(initial_bodies["core"]).maps if initial_bodies["core"] else overpass.TypedOsmMaps()
+    bbox_maps = TypedOsmMapStore(initial_bodies["bbox"]).maps if initial_bodies["bbox"] else overpass.TypedOsmMaps()
 
-    parent_maps = TypedOsmMaps()
+    parent_maps = overpass.TypedOsmMaps()
     parent_query = build_parent_relation_query(core_maps, rule_context)
     if parent_query:
         try:
@@ -136,11 +139,19 @@ async def run_filtered_overpass(
     # bbox node 抓取结束后，再为直接选中的 area ways 单独补齐 bbox 外边界节点。
     overlay_topology = await complete_overlay_area_nodes(overlay_maps, overlay_topology)
 
-    return FilteredOverpassResult.model_construct(
-        combined_maps=combined_maps,
-        overlay_maps=overlay_maps,
-        output_maps=output_maps,
-        overlay_topology=overlay_topology
+    resolved_objects = overlay_geometry.build_overlay_geometries(overlay_maps, overlay_topology, bbox)
+    output_maps = append_missing_elements(output_maps, resolved_objects, rule_context)
+    merged_features = overlay_geometry.merge_overlay_features(resolved_objects)
+    ordered_features = ordering.order_features_in_space(merged_features)
+    identified_features = ordering.generate_feature_ids(
+        ordered_features,
+        overlay_maps.relations_by_id,
+        overlay_topology
+    )
+
+    return overpass.FilteredOverpassResult(
+        ai_output=ai_output.build_ai_output_records(output_maps, rule_context),
+        identified_features=identified_features
     )
 
 
@@ -226,24 +237,17 @@ if __name__ == "__main__":
             end_time = time.time()
             print(f"Overpass fetch time: {end_time - start_time:.2f} seconds")
             print(
-                "Combined maps: "
-                f"nodes={len(result.combined_maps.nodes_by_id)}, "
-                f"ways={len(result.combined_maps.ways_by_id)}, "
-                f"relations={len(result.combined_maps.relations_by_id)}"
+                "AI Output: "
+                f"nodes={len(result.ai_output.node)}, "
+                f"ways={len(result.ai_output.way)}, "
+                f"relations={len(result.ai_output.relation)}"
             )
             print(
-                "Overlay targets: "
-                f"nodes={len(result.overlay_maps.nodes_by_id)}, "
-                f"ways={len(result.overlay_maps.ways_by_id)}, "
-                f"relations={len(result.overlay_maps.relations_by_id)}"
-            )
-            print(
-                "Stage 2 topology: "
-                f"node_coordinates={len(result.overlay_topology.node_coordinates_by_id)}, "
-                f"ways={len(result.overlay_topology.way_node_ids_by_id)}, "
-                f"way_node_refs={sum(len(node_ids) for node_ids in result.overlay_topology.way_node_ids_by_id.values())}, "
-                f"relations={len(result.overlay_topology.relation_members_by_id)}, "
-                f"relation_members={sum(len(members) for members in result.overlay_topology.relation_members_by_id.values())}"
+                "Identified Features: "
+                + ", ".join(
+                    f"{feature_type}={len(features)}"
+                    for feature_type, features in result.identified_features.items()
+                )
             )
             with open(file_path, "w", encoding="utf-8") as f:
                 json.dump(result.model_dump(mode="json"),f,indent=2,ensure_ascii=False,)
