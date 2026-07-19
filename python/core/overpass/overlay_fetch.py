@@ -23,23 +23,13 @@ from python.utils.models import Geometry
 warning_logger = logging.getLogger("geomcp.warning")
 
 
+##### Batched Skeleton Fetch #####
+
 def _chunk_osm_ids(osm_ids: set[int], batch_size: int) -> list[tuple[int, ...]]:
     """稳定排序并拆分 node IDs，避免单条 node Query 过长。"""
     # set 已经完成跨 way/relation 去重；排序保证每次请求的分组和 QL 文本稳定。
     sorted_ids = sorted(osm_ids)
     return [tuple(sorted_ids[index:index + batch_size]) for index in range(0, len(sorted_ids), batch_size)]
-
-
-async def _fetch_relation_topology(relation_ids: set[int]) -> OverlayTopology:
-    """抓取同一递归层的 relation members，并立即校验成 topology。"""
-    # relation Query 不带 bbox，因为 out skel 必须完整返回 member list。
-    return await _fetch_skel_topology_batches(relation_ids, overlay_query.build_overlay_relation_skel_query)
-
-
-async def _fetch_way_topology(way_ids: set[int]) -> OverlayTopology:
-    """抓取全部目标/support way 的有序 node refs。"""
-    # way Query 也不带 bbox，否则可能无法获得构建线/面所需的完整 node 顺序。
-    return await _fetch_skel_topology_batches(way_ids, overlay_query.build_overlay_way_skel_query)
 
 
 async def _fetch_skel_topology_batches(
@@ -71,6 +61,20 @@ async def _fetch_skel_topology_batches(
     return topology_store.to_pology
 
 
+async def _fetch_relation_topology(relation_ids: set[int]) -> OverlayTopology:
+    """抓取同一递归层的 relation members，并立即校验成 topology。"""
+    # relation Query 不带 bbox，因为 out skel 必须完整返回 member list。
+    return await _fetch_skel_topology_batches(relation_ids, overlay_query.build_overlay_relation_skel_query)
+
+
+async def _fetch_way_topology(way_ids: set[int]) -> OverlayTopology:
+    """抓取全部目标/support way 的有序 node refs。"""
+    # way Query 也不带 bbox，否则可能无法获得构建线/面所需的完整 node 顺序。
+    return await _fetch_skel_topology_batches(way_ids, overlay_query.build_overlay_way_skel_query)
+
+
+##### Relation Requirements #####
+
 def _nested_relation_ids(topology: OverlayTopology) -> set[int]:
     """收集当前已抓 relation 中引用的 child relation IDs。"""
     # role 和原始 member 顺序仍保存在 topology；这里只提取下一层抓取所需的 identity。
@@ -93,6 +97,8 @@ def _relation_member_ids(topology: OverlayTopology, member_type: Literal["node",
     }
 
 
+##### Node Coordinate Reuse #####
+
 def _add_known_node_coordinates(
     topology_store: OverlayTopologyStore,
     required_node_ids: set[int],
@@ -112,6 +118,8 @@ def _add_known_node_coordinates(
         # 只取 skeleton 所需字段，不把第一阶段 tags 写入 OverlayTopology。
         topology_store.add_element({"type": "node", "id": osm_id, "lat": lat, "lon": lon})
 
+
+##### Area Completion #####
 
 def _area_completion_node_ids(
     overlay_maps: TypedOsmMaps,
@@ -169,6 +177,8 @@ async def complete_overlay_area_nodes(
     ))
     return topology_store.to_pology
 
+
+##### Public Stage 2 Flow #####
 
 async def fetch_overlay_topology(
     overlay_maps: TypedOsmMaps,

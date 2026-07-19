@@ -10,6 +10,8 @@ from python.utils.internal_models.overpass import OsmElementMap, TypedOsmMaps, R
 warning_logger = logging.getLogger("geomcp.warning")
 
 
+##### AI Output Filter #####
+
 def _filter_output_element_map(elements: OsmElementMap, rule_context: FilterRuleContext) -> OsmElementMap:
     """清洗同一 OSM 类型的普通 AI Output 对象。"""
     selected_elements: OsmElementMap = {}
@@ -39,6 +41,8 @@ def filter_output(osm_maps: TypedOsmMaps, rule_context: FilterRuleContext) -> Ty
     )
 
 
+##### Parent Relation Merge #####
+
 def merge_parent_relations(output_maps: TypedOsmMaps, parent_maps: TypedOsmMaps) -> TypedOsmMaps:
     """使用 typed mapping 将 Parent relations 合入 AI Output 并去重。"""
     merged_store = TypedOsmMapStore()
@@ -50,6 +54,8 @@ def merge_parent_relations(output_maps: TypedOsmMaps, parent_maps: TypedOsmMaps)
     merged_store.merge_stage1(parent_maps)
     return merged_store.maps
 
+
+##### Overlay Source Completion #####
 
 def append_missing_elements(
     output_maps: TypedOsmMaps,

@@ -23,6 +23,8 @@ from python.utils.models import Geometry, JsonDictType, TransferTypes
 warning_logger = logging.getLogger("geomcp.warning")
 
 
+##### Initial Overpass Fetch #####
+
 async def fetch_initial_body(
     area: Geometry.BBox | Geometry.AdaptedMultiPolygon,
     tag_filters: tuple[str, ...]
@@ -69,11 +71,13 @@ async def fetch_initial_bodies(
         return_exceptions=True
     )
 
+    # 任务取消必须原样向上传播，不能被双查询的 partial-success 策略吞掉。
     if isinstance(core_result, asyncio.CancelledError):
         raise core_result
     if isinstance(bbox_result, asyncio.CancelledError):
         raise bbox_result
 
+    # gather 的两个结果先统一拆成 body / error，后面再集中判断双失败或单侧降级。
     if isinstance(core_result, BaseException):
         core_error: BaseException | None = core_result
         core_body: JsonDictType | None = None
@@ -87,6 +91,8 @@ async def fetch_initial_bodies(
     else:
         bbox_error = None
         bbox_body = bbox_result
+
+    # 双侧均失败时终止流程；只有一侧失败时保留另一侧数据并记录 partial warning。
     if core_error is not None and bbox_error is not None:
         if isinstance(bbox_error, TransferTypes.AppError):
             raise bbox_error
@@ -106,16 +112,20 @@ async def fetch_initial_bodies(
     return {"core": core_body, "bbox": bbox_body}
 
 
+##### Public Filtered Overpass Flow #####
+
 async def run_filtered_overpass(
     core_area: Geometry.BBox | Geometry.AdaptedMultiPolygon | None,
     bbox: Geometry.BBox,
     rule_context: FilterRuleContext
 ) -> overpass.FilteredOverpassResult:
     """执行 Overpass / Filter 全流程，返回 AI Output 与 Identified Features。"""
+    # 第一阶段并行获取 Core / BBox，并在 typed mapping 中保持 Core first-wins。
     initial_bodies = await fetch_initial_bodies(core_area, bbox, rule_context)
     core_maps = TypedOsmMapStore(initial_bodies["core"]).maps if initial_bodies["core"] else overpass.TypedOsmMaps()
     bbox_maps = TypedOsmMapStore(initial_bodies["bbox"]).maps if initial_bodies["bbox"] else overpass.TypedOsmMaps()
 
+    # Parent relation 是 AI Output 的补充来源；失败只降级，不阻断已成功的初始查询。
     parent_maps = overpass.TypedOsmMaps()
     parent_query = build_parent_relation_query(core_maps, rule_context)
     if parent_query:
@@ -128,6 +138,7 @@ async def run_filtered_overpass(
                 extra={"geomcp_extra": {"status": "partial", "reason": error.code}}
             )
 
+    # 合并后分别进入 Overlay selector 与 AI tag cleaning，两路数据不互相删除。
     combined_store = TypedOsmMapStore()
     combined_store.merge_stage1(core_maps)
     combined_store.merge_stage1(bbox_maps)
@@ -139,6 +150,7 @@ async def run_filtered_overpass(
     # bbox node 抓取结束后，再为直接选中的 area ways 单独补齐 bbox 外边界节点。
     overlay_topology = await complete_overlay_area_nodes(overlay_maps, overlay_topology)
 
+    # 只有成功构建的 geometry 进入补入、同 geometry 合并、空间排序与 canonical ID。
     resolved_objects = overlay_geometry.build_overlay_geometries(overlay_maps, overlay_topology, bbox)
     output_maps = append_missing_elements(output_maps, resolved_objects, rule_context)
     merged_features = overlay_geometry.merge_overlay_features(resolved_objects)
@@ -155,11 +167,8 @@ async def run_filtered_overpass(
     )
 
 
+##### Local Debug #####
 
-
-
-
-#####################################测试调试用#########################################################
 if __name__ == "__main__":
 
     import sys

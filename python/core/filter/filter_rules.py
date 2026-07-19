@@ -21,6 +21,8 @@ from python.utils.models import TransferTypes
 warning_logger = logging.getLogger("geomcp.warning")
 
 
+##### Internal Rule Store #####
+
 class _OverpassRuleStore:
     """Overpass / Filter 规则存储。"""
 
@@ -78,6 +80,9 @@ class _OverpassRuleStore:
 
         return TagFilterRule(wildcard_keys=wildcard_keys, values_by_key=values_by_key)
 
+
+##### Request Rule Context #####
+
 class FilterRuleContext:
     """一次 Overpass / Filter 流程内可复用的合并规则上下文。"""
 
@@ -96,6 +101,8 @@ class FilterRuleContext:
         self.overlay_rules = self._merge_base_expert_overlay_rules(base_config, expert_configs)
         self.output_remove_tag_rules = self._merge_output_remove_tag_rules()
         self.tag_annotations = self._merge_expert_tag_annotations(expert_configs)
+
+    ##### Base Helpers #####
 
     def _parse_tag_rule(self, tag_rule: str, rule_source: str) -> tuple[str, str] | None:
         """解析 `key=*` 或 `key=value` 格式的 tag rule。"""
@@ -138,6 +145,8 @@ class FilterRuleContext:
         for key, values in source.values_by_key.items():
             for value in values:
                 self._merge_tag_rule(target, key, value)
+
+    ##### Overpass Rules #####
 
     def _remove_denied_rules(self, include_rules: TagFilterRule, deny_rules: TagFilterRule) -> TagFilterRule:
         """反向屏蔽某一组 tag rules。"""
@@ -196,6 +205,22 @@ class FilterRuleContext:
         self._merge_compiled_rules(merged_rules, self._merge_expert_overpass_rules(expert_configs))
         return merged_rules
 
+    def _merge_context_overpass_rules(self, base_config: ExpertConfig | None, expert_configs: list[ExpertConfig]) -> OverpassFilterRule:
+        """合并 context 正向规则，并附加强制 deny_object_rules。"""
+        include_rules = self._remove_denied_rules(self._merge_base_expert_overpass_rules(base_config, expert_configs), self._overpass_deny_as_tag_rules())
+        include_exact_rules: set[tuple[str, str]] = set()
+        for key, values in include_rules.values_by_key.items():
+            for value in values:
+                include_exact_rules.add((key, value))
+        return OverpassFilterRule(
+            include_wildcard_keys=include_rules.wildcard_keys,
+            include_exact_rules=include_exact_rules,
+            deny_wildcard_keys=set(self.deny_object_rules.deny_wildcard_keys),
+            deny_exact_rules=set(self.deny_object_rules.deny_exact_rules),
+        )
+
+    ##### Tag Filter Rules #####
+
     def _merge_base_expert_overlay_rules(self, base_config: ExpertConfig | None, expert_configs: list[ExpertConfig]) -> TagFilterRule:
         """合并 Base / Expert overlay_rules。"""
         overlay_matches: list[str] = []
@@ -231,21 +256,7 @@ class FilterRuleContext:
             values_by_key.setdefault(key, set()).add(value)
         return values_by_key
 
-    def _merge_context_overpass_rules(self, base_config: ExpertConfig | None, expert_configs: list[ExpertConfig]) -> OverpassFilterRule:
-        """合并 context 正向规则，并附加强制 deny_object_rules。"""
-        include_rules = self._remove_denied_rules(self._merge_base_expert_overpass_rules(base_config, expert_configs), self._overpass_deny_as_tag_rules())
-        include_exact_rules: set[tuple[str, str]] = set()
-        for key, values in include_rules.values_by_key.items():
-            for value in values:
-                include_exact_rules.add((key, value))
-        return OverpassFilterRule(
-            include_wildcard_keys=include_rules.wildcard_keys,
-            include_exact_rules=include_exact_rules,
-            deny_wildcard_keys=set(self.deny_object_rules.deny_wildcard_keys),
-            deny_exact_rules=set(self.deny_object_rules.deny_exact_rules),
-        )
-
-######tag annotation rules
+    ##### Annotation Rules #####
 
     def _parse_tag_annotation(self, annotation: str, match_key: str, match_value: str) -> TagAnnotationReplacement | None:
         """把 annotation 编译成 key/value 替换；None 表示保留原值。"""
@@ -306,6 +317,8 @@ class FilterRuleContext:
                 )
         return merged_annotations
 
+
+##### Local Debug #####
 
 if __name__ == "__main__":
     base_context = FilterRuleContext()

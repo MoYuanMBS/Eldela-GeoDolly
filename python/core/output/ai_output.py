@@ -10,6 +10,9 @@ import python.utils.internal_models.overpass as overpass
 
 warning_logger = logging.getLogger("geomcp.warning")
 
+
+##### Tag Translation #####
+
 def _apply_replacement(key: str, value: str, replacement: overpass.TagAnnotationReplacement) -> tuple[str, str]:
     """None 表示保留原 key/value。"""
     target_key, target_value = replacement
@@ -64,6 +67,8 @@ def _translate_tags(
     return translated_tags
 
 
+##### AI Output Records #####
+
 def _build_records(
     elements: overpass.OsmElementMap,
     annotations: overpass.TagAnnotationRules,
@@ -81,8 +86,8 @@ def _build_records(
 def build_ai_output_records(output_maps: overpass.TypedOsmMaps, rule_context: FilterRuleContext) -> overpass.AiOutputGroups:
     """翻译 tags，并按 OSM primitive 生成三组最终 AI Output records。"""
     annotations = rule_context.tag_annotations
-    return overpass.AiOutputGroups(
-        node=_build_records(output_maps.nodes_by_id, annotations),
-        way=_build_records(output_maps.ways_by_id, annotations),
-        relation=_build_records(output_maps.relations_by_id, annotations)
-    )
+    return overpass.AiOutputGroups.model_validate({
+        "node": _build_records(output_maps.nodes_by_id, annotations),
+        "way": _build_records(output_maps.ways_by_id, annotations),
+        "relation": _build_records(output_maps.relations_by_id, annotations)
+    })

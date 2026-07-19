@@ -21,6 +21,8 @@ from python.utils.models import Geometry
 warning_logger = logging.getLogger("geomcp.warning")
 
 
+##### Geometry Classification #####
+
 def _warn_geometry_skip(osm_type: str, osm_id: int, reason: str) -> None:
     """统一记录单个 Overlay 对象无法生成 geometry 的 warning。"""
     warning_logger.warning(
@@ -55,6 +57,8 @@ def is_area_way(node_ids: list[int], tags: dict[str, str]) -> bool:
     """先判断面积语义，再要求 way 结构闭合，避免只凭闭合状态生成 Polygon。"""
     return has_area_semantics(tags) and is_closed_way(node_ids)
 
+
+##### Geometry Resolution / Clipping #####
 
 def _coordinate_parts(
     node_ids: list[int],
@@ -118,6 +122,8 @@ def _normalize_clipped_geometry(
         return polygons[0]
     return MultiPolygon(polygons) if polygons else None
 
+
+##### Overlay Object Building #####
 
 def _build_node_object(
     osm_id: int,
@@ -217,6 +223,8 @@ def build_overlay_geometries(
     return resolved_objects
 
 
+##### Same-Geometry Merge #####
+
 def _normalized_geometry_token(
     geometry: overpass.OverlayGeometry
 ) -> tuple[overpass.OverlayGeometry, bytes]:
@@ -245,6 +253,7 @@ def merge_overlay_features(
     for resolved_object in resolved_objects:
         normalized_geometry, geometry_token = _normalized_geometry_token(resolved_object.geometry)
         merge_key = (resolved_object.feature_type, geometry_token)
+        # 第一次遇到 merge key 时建立 geometry、OSM IDs 和 properties 三个同步容器。
         if merge_key not in geometry_by_key:
             geometry_by_key[merge_key] = normalized_geometry
             osm_ids_by_key[merge_key] = []

@@ -18,6 +18,8 @@ from python.utils.models import JsonDictType, TransferTypes
 _overlay_skeleton_adapter = TypeAdapter(OverlaySkeletonElement)
 
 
+##### Stage 1 Element Mapping #####
+
 class TypedOsmMapStore:
     """一阶段 typed OSM object store。"""
 
@@ -70,6 +72,8 @@ class TypedOsmMapStore:
         for element in incoming_maps.relations_by_id.values():
             self.add_element(element)
 
+
+##### Stage 2 Topology Mapping #####
 
 class OverlayTopologyStore:
     """二阶段 skeleton 校验、坐标规范化与多批 topology 去重合并。"""

@@ -14,125 +14,16 @@ from shapely.geometry import LineString, MultiLineString, MultiPolygon, Point, P
 from python.utils.models import StrictModel
 
 
+##### 基础类型 #####
+
 TagRuleMap: TypeAlias = dict[str, list[str]]
 OsmElementMap: TypeAlias = dict[int, dict[str, Any]]
 OsmId: TypeAlias = Annotated[int, Field(gt=0)]
 Latitude: TypeAlias = Annotated[float, Field(ge=-90, le=90)]
 Longitude: TypeAlias = Annotated[float, Field(ge=-180, le=180)]
-OverlayCoordinate: TypeAlias = tuple[float, float]
-OverlayGeometry: TypeAlias = Point | LineString | MultiLineString | Polygon | MultiPolygon
-OverlayFeatureType: TypeAlias = Literal["node", "way", "area"]
-IdentifiedOverlayFeatureType: TypeAlias = Literal["node", "way", "area", "relation"]
-GeoJsonPosition: TypeAlias = list[float]
-TagAnnotationReplacement: TypeAlias = tuple[str | None, str | None]
-TagAnnotationRules: TypeAlias = dict[tuple[str, str], TagAnnotationReplacement]
 
 
-class GeoJsonPoint(TypedDict):
-    type: Literal["Point"]
-    coordinates: GeoJsonPosition
-
-
-class GeoJsonLineString(TypedDict):
-    type: Literal["LineString"]
-    coordinates: list[GeoJsonPosition]
-
-
-class GeoJsonMultiLineString(TypedDict):
-    type: Literal["MultiLineString"]
-    coordinates: list[list[GeoJsonPosition]]
-
-
-class GeoJsonPolygon(TypedDict):
-    type: Literal["Polygon"]
-    coordinates: list[list[GeoJsonPosition]]
-
-
-class GeoJsonMultiPolygon(TypedDict):
-    type: Literal["MultiPolygon"]
-    coordinates: list[list[list[GeoJsonPosition]]]
-
-
-OverlayGeoJsonGeometry: TypeAlias = GeoJsonPoint | GeoJsonLineString | GeoJsonMultiLineString | GeoJsonPolygon | GeoJsonMultiPolygon
-
-
-class IdentifiedRelationMember(TypedDict):
-    type: Literal["node", "way", "relation"]
-    ref: int
-    role: str
-
-
-@dataclass(frozen=True, slots=True)
-class ResolvedOverlayObject:
-    """完成 topology 解引用和 bbox 裁切、尚未排序的 Overlay 空间对象。"""
-
-    feature_type: OverlayFeatureType
-    osm_id: int
-    tags: dict[str, str]
-    geometry: OverlayGeometry
-
-
-@dataclass(frozen=True, slots=True)
-class MergedOverlayFeature:
-    """同派生类型、同完整 geometry 合并后的待排序空间 Feature。"""
-
-    feature_type: OverlayFeatureType
-    osm_id: list[int]
-    properties: dict[str, list[str]]
-    geometry: OverlayGeometry
-
-
-@dataclass(frozen=True, slots=True)
-class IdentifiedOverlayFeature:
-    """完成 canonical ID 分配、可直接进入最终输出的 Feature。"""
-
-    type: Literal["Feature"] = field(init=False, default="Feature")
-    feature_id: str
-    osm_id: list[int]
-    feature_type: IdentifiedOverlayFeatureType
-    properties: dict[str, list[str]]
-    geometry: OverlayGeoJsonGeometry | None
-    members: list[IdentifiedRelationMember] | None = None
-
-
-class AiOutputRecord(StrictModel):
-    """Python AI Output 的最终单条记录。"""
-
-    osm_id: int
-    tags: dict[str, str]
-
-
-class AiOutputGroups(StrictModel):
-    """按 OSM primitive 分组的 Python AI Output。"""
-
-    node: list[AiOutputRecord] = Field(default_factory=list)
-    way: list[AiOutputRecord] = Field(default_factory=list)
-    relation: list[AiOutputRecord] = Field(default_factory=list)
-
-
-class InternalFilterRulesConfig(StrictModel):
-    """`internal_rules.json` 的内部负向规则配置。"""
-
-    deny_object_rules: TagRuleMap = Field(default_factory=dict)
-    remove_tag_rules: TagRuleMap = Field(default_factory=dict)
-
-
-class TagFilterRule(StrictModel):
-    """Filter 侧使用的轻量 tag 规则集合。"""
-
-    wildcard_keys: set[str] = Field(default_factory=set)
-    values_by_key: dict[str, set[str]] = Field(default_factory=dict)
-    drop_if_only_tags: dict[str, set[str]] = Field(default_factory=dict)
-
-
-class OverpassFilterRule(StrictModel):
-    """Overpass selector 使用的平铺 include / deny 规则集合。"""
-
-    include_wildcard_keys: set[str] = Field(default_factory=set)
-    include_exact_rules: set[tuple[str, str]] = Field(default_factory=set)
-    deny_wildcard_keys: set[str] = Field(default_factory=set)
-    deny_exact_rules: set[tuple[str, str]] = Field(default_factory=set)
-
+##### Overpass Query #####
 
 class OsmRelationMember(StrictModel):
     """Overpass relation member，保留原始顺序、类型、引用与 role。"""
@@ -152,6 +43,21 @@ class OsmElement(StrictModel):
     lon: float | None = None
     nodes: list[int] | None = None
     members: list[OsmRelationMember] | None = None
+
+
+##### Element Mapping / Merge #####
+
+class TypedOsmMaps(StrictModel):
+    """按 OSM 原始类型拆分并去重后的 typed OSM 映射。"""
+
+    nodes_by_id: OsmElementMap = Field(default_factory=dict)
+    ways_by_id: OsmElementMap = Field(default_factory=dict)
+    relations_by_id: OsmElementMap = Field(default_factory=dict)
+
+
+##### Secondary Overpass #####
+
+OverlayCoordinate: TypeAlias = tuple[float, float]
 
 
 class OverlayNodeSkeleton(StrictModel):
@@ -193,13 +99,132 @@ class OverlayTopology(StrictModel):
     relation_members_by_id: dict[int, list[OsmRelationMember]] = Field(default_factory=dict)
 
 
-class TypedOsmMaps(StrictModel):
-    """按 OSM 原始类型拆分并去重后的 typed OSM 映射。"""
+##### Load Filter #####
 
-    nodes_by_id: OsmElementMap = Field(default_factory=dict)
-    ways_by_id: OsmElementMap = Field(default_factory=dict)
-    relations_by_id: OsmElementMap = Field(default_factory=dict)
 
+class InternalFilterRulesConfig(StrictModel):
+    """`internal_rules.json` 的内部负向规则配置。"""
+
+    deny_object_rules: TagRuleMap = Field(default_factory=dict)
+    remove_tag_rules: TagRuleMap = Field(default_factory=dict)
+
+
+##### Filter #####
+
+TagAnnotationReplacement: TypeAlias = tuple[str | None, str | None]
+TagAnnotationRules: TypeAlias = dict[tuple[str, str], TagAnnotationReplacement]
+
+
+class TagFilterRule(StrictModel):
+    """Filter 侧使用的轻量 tag 规则集合。"""
+
+    wildcard_keys: set[str] = Field(default_factory=set)
+    values_by_key: dict[str, set[str]] = Field(default_factory=dict)
+    drop_if_only_tags: dict[str, set[str]] = Field(default_factory=dict)
+
+
+class OverpassFilterRule(StrictModel):
+    """Overpass selector 使用的平铺 include / deny 规则集合。"""
+
+    include_wildcard_keys: set[str] = Field(default_factory=set)
+    include_exact_rules: set[tuple[str, str]] = Field(default_factory=set)
+    deny_wildcard_keys: set[str] = Field(default_factory=set)
+    deny_exact_rules: set[tuple[str, str]] = Field(default_factory=set)
+
+
+##### Overlay #####
+
+OverlayGeometry: TypeAlias = Point | LineString | MultiLineString | Polygon | MultiPolygon
+OverlayFeatureType: TypeAlias = Literal["node", "way", "area"]
+IdentifiedOverlayFeatureType: TypeAlias = Literal["node", "way", "area", "relation"]
+GeoJsonPosition: TypeAlias = list[float]
+
+
+@dataclass(frozen=True, slots=True)
+class ResolvedOverlayObject:
+    """完成 topology 解引用和 bbox 裁切、尚未排序的 Overlay 空间对象。"""
+
+    feature_type: OverlayFeatureType
+    osm_id: int
+    tags: dict[str, str]
+    geometry: OverlayGeometry
+
+
+@dataclass(frozen=True, slots=True)
+class MergedOverlayFeature:
+    """同派生类型、同完整 geometry 合并后的待排序空间 Feature。"""
+
+    feature_type: OverlayFeatureType
+    osm_id: list[int]
+    properties: dict[str, list[str]]
+    geometry: OverlayGeometry
+
+
+class GeoJsonPoint(TypedDict):
+    type: Literal["Point"]
+    coordinates: GeoJsonPosition
+
+
+class GeoJsonLineString(TypedDict):
+    type: Literal["LineString"]
+    coordinates: list[GeoJsonPosition]
+
+
+class GeoJsonMultiLineString(TypedDict):
+    type: Literal["MultiLineString"]
+    coordinates: list[list[GeoJsonPosition]]
+
+
+class GeoJsonPolygon(TypedDict):
+    type: Literal["Polygon"]
+    coordinates: list[list[GeoJsonPosition]]
+
+
+class GeoJsonMultiPolygon(TypedDict):
+    type: Literal["MultiPolygon"]
+    coordinates: list[list[list[GeoJsonPosition]]]
+
+
+OverlayGeoJsonGeometry: TypeAlias = GeoJsonPoint | GeoJsonLineString | GeoJsonMultiLineString | GeoJsonPolygon | GeoJsonMultiPolygon
+
+
+class IdentifiedRelationMember(TypedDict):
+    type: Literal["node", "way", "relation"]
+    ref: int
+    role: str
+
+
+@dataclass(frozen=True, slots=True)
+class IdentifiedOverlayFeature:
+    """完成 canonical ID 分配、可直接进入最终输出的 Feature。"""
+
+    type: Literal["Feature"] = field(init=False, default="Feature")
+    feature_id: str
+    osm_id: list[int]
+    feature_type: IdentifiedOverlayFeatureType
+    properties: dict[str, list[str]]
+    geometry: OverlayGeoJsonGeometry | None
+    members: list[IdentifiedRelationMember] | None = None
+
+
+##### AI Output #####
+
+class AiOutputRecord(StrictModel):
+    """Python AI Output 的最终单条记录。"""
+
+    osm_id: int
+    tags: dict[str, str]
+
+
+class AiOutputGroups(StrictModel):
+    """按 OSM primitive 分组的 Python AI Output。"""
+
+    node: list[AiOutputRecord] = Field(default_factory=list)
+    way: list[AiOutputRecord] = Field(default_factory=list)
+    relation: list[AiOutputRecord] = Field(default_factory=list)
+
+
+##### Final Output #####
 
 class FilteredOverpassResult(StrictModel):
     """Overpass / Filter 完整流程的两路最终输出。"""

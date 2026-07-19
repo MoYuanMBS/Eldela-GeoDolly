@@ -13,6 +13,8 @@ from python.utils.config_loader import config
 from python.utils.models import TransferTypes
 
 
+##### Spatial Ordering #####
+
 def _representative_point(feature: overpass.MergedOverlayFeature) -> Point:
     """按派生类型计算最终 geometry 的空间排序代表点。"""
     match feature.feature_type:
@@ -59,6 +61,8 @@ def order_features_in_space(
     }
 
 
+##### Feature ID Encoding #####
+
 def _bijective_alpha(index: int, alphabet_pool: str) -> str:
     """把从 1 开始的序号编码为按配置字母池递增的双射字符串。"""
     base = len(alphabet_pool)
@@ -89,6 +93,8 @@ def _feature_id_candidate(
         num = alpha_index + 1
     return scheme.template.replace("{alpha}", alpha).replace("{num}", str(num))
 
+
+##### GeoJSON Serialization #####
 
 def _geojson_position(coordinate: tuple[float, ...]) -> overpass.GeoJsonPosition:
     """把 Shapely coordinate 转成 JSON 可序列化的 `[lon, lat]`。"""
@@ -125,6 +131,8 @@ def _to_geojson_geometry(geometry: overpass.OverlayGeometry) -> overpass.Overlay
     }
 
 
+##### Shared ID Allocation #####
+
 def _collect_reserved_refs(features: list[overpass.MergedOverlayFeature]) -> set[str]:
     """从聚合 properties 收集非空 ref，避免 canonical ID 与原始标识冲突。"""
     reserved_refs: set[str] = set()
@@ -151,6 +159,8 @@ def _next_available_feature_id(
             return feature_id, candidate_index
 
 
+##### Spatial Feature IDs #####
+
 def _generate_namespace_feature_ids(
     features: list[overpass.MergedOverlayFeature],
     scheme: static_models.FeatureIdScheme,
@@ -175,6 +185,18 @@ def _generate_namespace_feature_ids(
     return identified_features
 
 
+##### Relation Feature IDs #####
+
+def order_relations_by_osm_id(
+    relations_by_id: overpass.OsmElementMap
+) -> overpass.OsmElementMap:
+    """按 OSM ID 升序返回新的 relation mapping，不参与 Ordering in Space。"""
+    return {
+        osm_id: relations_by_id[osm_id]
+        for osm_id in sorted(relations_by_id)
+    }
+
+
 def _generate_relation_feature_ids(
     relations_by_id: overpass.OsmElementMap,
     topology: overpass.OverlayTopology,
@@ -185,6 +207,7 @@ def _generate_relation_feature_ids(
     relation_inputs: list[tuple[int, dict[str, list[str]], list[overpass.IdentifiedRelationMember]]] = []
     reserved_refs: set[str] = set()
 
+    # 先收齐整个 relation 命名空间的 ref，再分配任何 ID，避免与较晚 relation 的 ref 冲突。
     for osm_id, element in order_relations_by_osm_id(relations_by_id).items():
         tags = cast(dict[str, str], element["tags"])
         properties = {key: [value] for key, value in tags.items()}
@@ -205,6 +228,7 @@ def _generate_relation_feature_ids(
             for member in members
         ]))
 
+    # relation 不参与空间排序；这里严格沿用上一步保存的 osm_id 升序。
     identified_relations: list[overpass.IdentifiedOverlayFeature] = []
     candidate_index = 1
     for osm_id, properties, members in relation_inputs:
@@ -221,6 +245,8 @@ def _generate_relation_feature_ids(
         ))
     return identified_relations
 
+
+##### Public ID Generation #####
 
 def generate_feature_ids(
     ordered_features: dict[overpass.OverlayFeatureType, list[overpass.MergedOverlayFeature]],
@@ -241,14 +267,4 @@ def generate_feature_ids(
         "relation": _generate_relation_feature_ids(
             relations_by_id, topology, config.feature_id.id_scheme.relation, config.feature_id.alphabet_pool
         )
-    }
-
-
-def order_relations_by_osm_id(
-    relations_by_id: overpass.OsmElementMap
-) -> overpass.OsmElementMap:
-    """按 OSM ID 升序返回新的 relation mapping，不参与 Ordering in Space。"""
-    return {
-        osm_id: relations_by_id[osm_id]
-        for osm_id in sorted(relations_by_id)
     }

@@ -22,6 +22,8 @@ _endpoint_cursor = 0
 _endpoint_cursor_lock = Lock()
 
 
+##### Response Helpers #####
+
 def _response_header(response: httpx.Response, name: str) -> str | None:
     """兼容测试 response 与 httpx.Response 地读取单个响应头。"""
     headers = getattr(response, "headers", None)
@@ -41,6 +43,8 @@ def _response_text(response: httpx.Response) -> str | None:
         return None
     return text[:_MAX_ERROR_RESPONSE_TEXT]
 
+
+##### Retry Policy #####
 
 def _retry_after_seconds(response: httpx.Response) -> float | None:
     """把 Retry-After 的秒数或 HTTP-date 转换为等待秒数。"""
@@ -68,6 +72,8 @@ def _retry_wait_seconds(attempt: int, response: httpx.Response | None = None) ->
     retry_after_seconds = _retry_after_seconds(response)
     return max(backoff_seconds, retry_after_seconds) if retry_after_seconds is not None else backoff_seconds
 
+
+##### Error Mapping #####
 
 def _response_error_details(response: httpx.Response, query: str) -> JsonDictType:
     """整理最终 HTTP 错误的有限调试信息。"""
@@ -114,6 +120,8 @@ def _is_retryable_status(status_code: int) -> bool:
     return status_code == 429 or status_code >= 500
 
 
+##### Endpoint Selection #####
+
 def _configured_endpoints() -> tuple[str, ...]:
     """读取 Overpass endpoint pool；未配置 pool 时回退到单 endpoint。"""
     raw_endpoints = config.overpass.endpoints if config.overpass.endpoints else [config.overpass.endpoint]
@@ -145,6 +153,8 @@ def _endpoint_for_attempt(endpoints: tuple[str, ...], start_index: int, attempt:
     return endpoints[(attempt - 1) % len(endpoints)]
 
 
+##### Retry Logging #####
+
 def _warn_overpass_retry(reason: str, attempt: int, wait_seconds: float, endpoint: str, details: JsonDictType | None = None) -> None:
     """记录 Overpass 请求重试 warning。"""
     log_details: JsonDictType = {
@@ -159,6 +169,8 @@ def _warn_overpass_retry(reason: str, attempt: int, wait_seconds: float, endpoin
         log_details["details"] = details
     warning_logger.warning("overpass_request_retry", extra={"geomcp_extra": log_details})
 
+
+##### Public Request #####
 
 async def request_overpass(query: str) -> JsonDictType:
     """异步发送 Overpass QL 并校验 JSON 响应外壳。
@@ -183,6 +195,7 @@ async def request_overpass(query: str) -> JsonDictType:
     if not query.strip():
         raise TransferTypes.AppError(code="overpass_invalid_query", message="Overpass query is empty")
 
+    # 每个逻辑请求先固定 endpoint 起点，后续 retry 再按策略轮换。
     endpoints = _configured_endpoints()
     start_index = _next_endpoint_start(endpoints)
     max_attempts = config.overpass.retry_attempts + 1
@@ -221,6 +234,7 @@ async def request_overpass(query: str) -> JsonDictType:
                 continue
             raise _status_error(response, query)
 
+        # HTTP 成功后仍需依次验证 JSON、Overpass remark 和 elements 外壳。
         try:
             payload: Any = response.json()
         except ValueError as error:
