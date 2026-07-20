@@ -2,21 +2,17 @@
 
 from __future__ import annotations
 
-from functools import cached_property
 import logging
+from functools import cached_property
 from pathlib import Path
-import sys
 from typing import Any, TypeVar
 
-import yaml
 from pydantic import ValidationError
+import yaml
 
-if __package__ in (None, ""):
-    sys.path.append(str(Path(__file__).resolve().parents[2]))
-
-from python.utils.models import StrictModel, TransferTypes
 from python.utils.internal_models.experts import ExpertConfig, ExpertRegistryType
-from python.utils.internal_models.static import AppConfig, FeatureIdConfig, FiltersConfig, GeometryConfig, NominatimConfig, OverpassConfig, TilesConfig
+import python.utils.internal_models.static as static_models
+from python.utils.models import StrictModel, TransferTypes
 
 type YamlMapType = dict[str, Any]
 ConfigModelType = TypeVar("ConfigModelType", bound=StrictModel)
@@ -128,10 +124,10 @@ class _ConfigLoader:
     ##### 静态配置 #####
 
     @cached_property
-    def app(self) -> AppConfig:
+    def app(self) -> static_models.AppConfig:
         """首次访问时加载 app.yaml，并在当前 loader 实例内缓存。"""
         raw_app_config = self._yaml_store.load_static_yaml("app.yaml")
-        return self._validate_config_model(AppConfig, {
+        return self._validate_config_model(static_models.AppConfig, {
             "nominatim": raw_app_config.get("nominatim"),
             "geometry": raw_app_config.get("geometry"),
             "overpass": raw_app_config.get("overpass"),
@@ -139,16 +135,16 @@ class _ConfigLoader:
         }, "app.yaml")
 
     @cached_property
-    def filters(self) -> FiltersConfig:
+    def filters(self) -> static_models.FiltersConfig:
         """首次访问时加载 filters.yaml，并在当前 loader 实例内缓存。"""
         raw_filters_config = self._yaml_store.load_static_yaml("filters.yaml")
-        return self._validate_config_model(FiltersConfig, raw_filters_config, "filters.yaml")
+        return self._validate_config_model(static_models.FiltersConfig, raw_filters_config, "filters.yaml")
 
     @cached_property
-    def tiles(self) -> TilesConfig:
+    def tiles(self) -> static_models.TilesConfig:
         """首次访问时加载 tiles.yaml，并在当前 loader 实例内缓存。"""
         raw_tiles_config = self._yaml_store.load_static_yaml("tiles.yaml")
-        return self._validate_config_model(TilesConfig, {
+        return self._validate_config_model(static_models.TilesConfig, {
             "raw": raw_tiles_config
         }, "tiles.yaml")
 
@@ -196,29 +192,29 @@ class ConfigHub:
     ##### App 子配置 #####
 
     @property
-    def nominatim(self) -> NominatimConfig:
+    def nominatim(self) -> static_models.NominatimConfig:
         return self._loader.app.nominatim
 
     @property
-    def geometry(self) -> GeometryConfig:
+    def geometry(self) -> static_models.GeometryConfig:
         return self._loader.app.geometry
 
     @property
-    def overpass(self) -> OverpassConfig:
+    def overpass(self) -> static_models.OverpassConfig:
         return self._loader.app.overpass
 
     @property
-    def feature_id(self) -> FeatureIdConfig:
+    def feature_id(self) -> static_models.FeatureIdConfig:
         return self._loader.app.feature_id
 
     ##### 独立静态配置 #####
 
     @property
-    def filters(self) -> FiltersConfig:
+    def filters(self) -> static_models.FiltersConfig:
         return self._loader.filters
 
     @property
-    def tiles(self) -> TilesConfig:
+    def tiles(self) -> static_models.TilesConfig:
         return self._loader.tiles
 
     ##### 规则配置 #####
@@ -233,7 +229,7 @@ class ConfigHub:
 
     ##### 缓存生命周期 #####
 
-    def warmup_app(self) -> AppConfig:
+    def warmup_app(self) -> static_models.AppConfig:
         """初始化 app 配置，触发相关配置预加载，并返回已校验的 app 配置。"""
         return self._loader.app
 

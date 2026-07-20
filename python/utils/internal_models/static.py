@@ -2,7 +2,9 @@
 """
 
 from __future__ import annotations
+
 from typing import Annotated, Any, Literal
+
 from pydantic import Field, StringConstraints, field_validator
 
 from python.utils.models import StrictModel

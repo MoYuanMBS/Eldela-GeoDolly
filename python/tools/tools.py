@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from python.utils.models import Tools, JsonDictType, TransferTypes
+from python.utils.models import JsonDictType, Tools, TransferTypes
 
 def _analyze_raw_selection(data: Tools.PyToolReq) -> tuple[tuple[float, float, float, float], JsonDictType | None]:
     '''

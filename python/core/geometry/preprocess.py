@@ -8,14 +8,14 @@ from __future__ import annotations
 
 import logging
 
-from shapely import get_srid, set_srid
 from pyproj import CRS, Transformer
+from shapely import get_srid, set_srid
 from shapely.geometry import LineString, MultiPolygon, Polygon, box
 from shapely.ops import transform
 
-from python.utils.models import Geometry, TransferTypes
-from python.utils.config_loader import config
 import python.core.geometry.area_check as areaChecker
+from python.utils.config_loader import config
+from python.utils.models import Geometry, TransferTypes
 
 warning_logger = logging.getLogger("geomcp.warning")
 

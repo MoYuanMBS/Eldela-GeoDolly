@@ -2,18 +2,13 @@
 
 from __future__ import annotations
 
-import sys
 import uuid
-from pathlib import Path
-from typing import Any, cast, Literal
+from typing import Any, Literal, cast
 
 import httpx
 
-if __package__ in (None, ""):
-    sys.path.append(str(Path(__file__).resolve().parents[2]))
-
-from python.utils.models import NominatimData, TransferTypes, JsonDictType
 from python.utils.config_loader import config
+from python.utils.models import JsonDictType, NominatimData, TransferTypes
 
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 

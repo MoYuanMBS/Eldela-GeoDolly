@@ -7,7 +7,7 @@
 from __future__ import annotations
 
 import logging
-from math import exp, floor, log, sqrt
+import math
 
 from shapely import coverage_simplify, get_srid, set_srid
 from shapely.errors import GEOSException
@@ -41,13 +41,13 @@ def predict_compression_parameters(bbox_area_m2: float, original_node: int) -> t
     """根据 Nominatim bbox 面积与原节点数预测 tolerance 和 node budget。"""
     geometry_config = config.geometry
     start_node = geometry_config.max_node * BASE_NODE_RATE
-    area_ratio = sqrt(max(0.00, bbox_area_m2)) / geometry_config.max_tolerance_meter
+    area_ratio = math.sqrt(max(0.00, bbox_area_m2)) / geometry_config.max_tolerance_meter
     node_ratio = original_node / start_node
 
-    area_log = max(0.00, log(area_ratio)) if area_ratio > 0.00 else 0.00
-    node_log = max(0.00, log(node_ratio)) if node_ratio > 0.00 else 0.00
-    area_pressure = 1.00 - exp(-area_log / AREA_SMOOTHING_FACTOR)
-    node_pressure = 1.00 - exp(-node_log / NODE_SMOOTHING_FACTOR)
+    area_log = max(0.00, math.log(area_ratio)) if area_ratio > 0.00 else 0.00
+    node_log = max(0.00, math.log(node_ratio)) if node_ratio > 0.00 else 0.00
+    area_pressure = 1.00 - math.exp(-area_log / AREA_SMOOTHING_FACTOR)
+    node_pressure = 1.00 - math.exp(-node_log / NODE_SMOOTHING_FACTOR)
 
     tolerance_driver = node_pressure ** TOLERANCE_NODE_ALPHA * (
         (1.00 - TOLERANCE_AREA_WEIGHT) + TOLERANCE_AREA_WEIGHT * area_pressure ** TOLERANCE_AREA_ALPHA
@@ -61,7 +61,7 @@ def predict_compression_parameters(bbox_area_m2: float, original_node: int) -> t
         + (geometry_config.max_tolerance_meter - geometry_config.base_tolerance_meter) * tolerance_driver,
         2
     )
-    node_budget = floor(start_node + (geometry_config.max_node - start_node) * node_driver)
+    node_budget = math.floor(start_node + (geometry_config.max_node - start_node) * node_driver)
     return tolerance, node_budget
 
 
@@ -152,7 +152,7 @@ def compress_geometry(metric_multipolygon: MultiPolygon, bbox_area_m2: float) ->
             node_budget = geometry_config.max_node
         elif attempt > 0:
             tolerance = round(min(tolerance * RETRY_TOLERANCE_FACTOR, geometry_config.max_tolerance_meter), 2)
-            node_budget = floor(node_budget + (geometry_config.max_node - node_budget) * 0.50)
+            node_budget = math.floor(node_budget + (geometry_config.max_node - node_budget) * 0.50)
         candidate, current_failure_reason = try_candidate(tolerance, node_budget)
         if candidate is not None:
             break
