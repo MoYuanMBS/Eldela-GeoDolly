@@ -131,7 +131,8 @@ class _ConfigLoader:
             "nominatim": raw_app_config.get("nominatim"),
             "geometry": raw_app_config.get("geometry"),
             "overpass": raw_app_config.get("overpass"),
-            "feature_id": raw_app_config.get("feature_id")
+            "feature_id": raw_app_config.get("feature_id"),
+            "iframe_adaptive": raw_app_config.get("iframe_adaptive")
         }, "app.yaml")
 
     @cached_property
@@ -206,6 +207,10 @@ class ConfigHub:
     @property
     def feature_id(self) -> static_models.FeatureIdConfig:
         return self._loader.app.feature_id
+
+    @property
+    def iframe_adaptive(self) -> static_models.IframeAdaptiveConfig:
+        return self._loader.app.iframe_adaptive
 
     ##### 独立静态配置 #####
 

@@ -117,3 +117,24 @@ feature_id:
         ganzhi: "甲乙丙丁庚辛壬癸子丑"
       digits:
         chinese: "〇一二三四五六七八九"
+
+# iframe 自适应的 Python / TypeScript 共享配置。
+# 两端只读取并校验各自需要的字段，不解释另一端的专用参数。
+iframe_adaptive:
+
+# --- Python 内容复杂度与面积倍率参数 ---
+  # 单个最终 node Feature 对内容复杂度的贡献权重。
+  node_weight: 1.0
+  # 单个最终 way Feature 对内容复杂度的贡献权重。
+  way_weight: 0.8
+  # 单个最终 area 计数单位的贡献权重；不展开或统计 area 内部元素。
+  area_weight: 1.0
+  # 单个最终 relation 记录对内容复杂度的贡献权重。
+  relation_weight: 0.5
+  # 推荐视口面积倍率下限；稀疏或空结果不会低于该倍率。
+  min_area_factor: 1.0
+  # 推荐视口面积倍率上限；避免复杂结果生成不可控的大画布。
+  max_area_factor: 4.0
+
+# --- TypeScript ScreenshotSpec 与 iframe 参数 ---
+  # TS 专用参数后续按截图规格和 iframe 展示语义追加在本段；Python loader 会忽略这些字段。

@@ -7,7 +7,7 @@ import logging
 import re
 from typing import Annotated, Any, Literal
 
-from pydantic import Field, StringConstraints, field_validator
+from pydantic import ConfigDict, Field, StringConstraints, field_validator
 
 from python.utils.models import StrictModel
 
@@ -99,6 +99,19 @@ class FeatureIdConfig(StrictModel):
         return value
 
 
+class IframeAdaptiveConfig(StrictModel):
+    """iframe 自适应共享配置；Python 只解析面积倍率所需字段。"""
+
+    model_config = ConfigDict(strict=True, extra="ignore")
+
+    node_weight: float
+    way_weight: float
+    area_weight: float
+    relation_weight: float
+    min_area_factor: float
+    max_area_factor: float
+
+
 class AppConfig(StrictModel):
     """`config/app.yaml` 中 Python 侧会使用的轻量配置。"""
 
@@ -106,6 +119,7 @@ class AppConfig(StrictModel):
     geometry: GeometryConfig
     overpass: OverpassConfig
     feature_id: FeatureIdConfig
+    iframe_adaptive: IframeAdaptiveConfig
 
 
 class FiltersConfig(StrictModel):
