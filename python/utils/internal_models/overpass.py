@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 from typing import Annotated, Any, Literal, TypeAlias
 
 from pydantic import Field
@@ -120,6 +121,7 @@ class TagFilterRule(StrictModel):
 
     wildcard_keys: set[str] = Field(default_factory=set)
     values_by_key: dict[str, set[str]] = Field(default_factory=dict)
+    remove_tag_key_patterns: list[re.Pattern[str]] = Field(default_factory=list)
     drop_if_only_tags: dict[str, set[str]] = Field(default_factory=dict)
 
 

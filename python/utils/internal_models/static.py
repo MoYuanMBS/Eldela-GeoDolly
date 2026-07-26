@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import logging
+import re
 from typing import Annotated, Any, Literal
 
 from pydantic import Field, StringConstraints, field_validator
@@ -10,6 +12,7 @@ from pydantic import Field, StringConstraints, field_validator
 from python.utils.models import StrictModel
 
 OverpassEndpoint = Annotated[str, Field(min_length=1)]
+warning_logger = logging.getLogger("geomcp.warning")
 
 
 class NominatimConfig(StrictModel):
@@ -106,10 +109,38 @@ class AppConfig(StrictModel):
 
 
 class FiltersConfig(StrictModel):
-    """`config/filters.yaml` 的 AI Output 清理规则。"""
+    """`config/filters.yaml` 的 tag 清理规则。"""
 
     remove_tags: list[str] = Field(default_factory=list)
+    remove_tag_key_patterns: list[re.Pattern[str]] = Field(default_factory=list)
     drop_if_only_tags: list[str] = Field(default_factory=list)
+
+    @field_validator("remove_tag_key_patterns", mode="before")
+    @classmethod
+    def compile_remove_tag_key_patterns(cls, patterns: object) -> object:
+        """逐条编译 regex；语法错误只跳过当前规则。"""
+        if not isinstance(patterns, list):
+            return patterns
+
+        compiled_patterns: list[object] = []
+        for pattern in patterns:
+            if not isinstance(pattern, str):
+                compiled_patterns.append(pattern)
+                continue
+            try:
+                compiled_patterns.append(re.compile(pattern))
+            except re.error as error:
+                warning_logger.warning(
+                    "skip_invalid_tag_key_pattern",
+                    extra={"geomcp_extra": {
+                        "status": "skipped",
+                        "reason": "invalid_regex",
+                        "rule_source": "filters.remove_tag_key_patterns",
+                        "pattern": pattern,
+                        "error": str(error)
+                    }}
+                )
+        return compiled_patterns
 
 
 class TilesConfig(StrictModel):

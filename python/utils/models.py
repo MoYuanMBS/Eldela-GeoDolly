@@ -141,7 +141,9 @@ class Overpass:
         """Overpass / Filter 完整流程的两路最终输出。"""
 
         ai_output: Overpass.AiOutputGroups
-        identified_features: dict[Overpass.IdentifiedOverlayFeatureType, list[Overpass.IdentifiedOverlayFeature]]
+        overlay_output: dict[Overpass.IdentifiedOverlayFeatureType, list[Overpass.IdentifiedOverlayFeature]]
+
+############################### 传输层统一数据类型 ##############################################
 
 class TransferTypes:
     """桥接层统一使用的结构化数据类型。"""

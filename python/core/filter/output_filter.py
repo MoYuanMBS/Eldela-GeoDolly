@@ -2,7 +2,7 @@
 
 import logging
 
-from python.core.filter.filter import filter_output_tags
+from python.core.filter.filter import filter_output_tags, filter_overlay_tags
 from python.core.filter.filter_rules import FilterRuleContext
 from python.core.overpass.maping import TypedOsmMapStore
 from python.utils.internal_models.overpass import OsmElementMap, TypedOsmMaps, ResolvedOverlayObject
@@ -62,10 +62,10 @@ def append_missing_elements(
     resolved_objects: list[ResolvedOverlayObject],
     rule_context: FilterRuleContext
 ) -> TypedOsmMaps:
-    """原地补入最终 geometry 来源中 AI Output 缺少且重新通过 Filter 的对象。"""
+    """原地补入最终 geometry 来源中 AI Output 缺少且通过 Overlay tag Filter 的对象。"""
 
     def add_filtered_element(elements: OsmElementMap, element_type: str, osm_id: int, tags: dict[str, str]) -> None:
-        filtered_tags = filter_output_tags(tags, rule_context.output_remove_tag_rules)
+        filtered_tags = filter_overlay_tags(tags, rule_context.output_remove_tag_rules)
         if filtered_tags:
             elements[osm_id] = {"type": element_type, "id": osm_id, "tags": filtered_tags}
 

@@ -6,7 +6,7 @@ import asyncio
 import logging
 
 from python.core.filter.output_filter import append_missing_elements, filter_output, merge_parent_relations
-from python.core.filter.overlay_filter import filter_overlay
+from python.core.filter.overlay_filter import filter_tags_for_overlay, filter_overlay
 from python.core.overpass.build_query import build_initial_query
 from python.core.filter.filter_rules import FilterRuleContext
 from python.core.overpass.maping import TypedOsmMapStore
@@ -160,10 +160,11 @@ async def run_filtered_overpass(
         overlay_maps.relations_by_id,
         overlay_topology
     )
+    identified_features = filter_tags_for_overlay(identified_features, rule_context)
 
     return Overpass.FilteredOverpassResult(
         ai_output=ai_output.build_ai_output_records(output_maps, rule_context),
-        identified_features=identified_features
+        overlay_output=identified_features
     )
 
 
@@ -184,8 +185,8 @@ if __name__ == "__main__":
     log_handler.setFormatter(GeomcpJsonFormatter())
     logging.basicConfig(level=logging.INFO, handlers=[log_handler], force=True)
 
-    test_query = "Square one"
-    test_country_code = "CA"
+    test_query = "Disneyland Paris"
+    test_country_code = "FR"
     example_request = NominatimData.LocSearchQueryReq(queries=[NominatimData.LocSearchQuery(query=test_query, country_codes=[test_country_code])])
     req = query_request(example_request)
     candidate = req.candidates[0]
@@ -255,7 +256,7 @@ if __name__ == "__main__":
                 "Identified Features: "
                 + ", ".join(
                     f"{feature_type}={len(features)}"
-                    for feature_type, features in result.identified_features.items()
+                    for feature_type, features in result.overlay_output.items()
                 )
             )
             with open(file_path, "w", encoding="utf-8") as f:

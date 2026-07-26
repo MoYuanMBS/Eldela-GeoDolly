@@ -4,12 +4,18 @@
 # 无条件从 AI Output tags 中删除命中的 tag。
 remove_tags:
   - note=*
-  - source=*
   - description=*
   - fixme=*
   - created_by=*
-  - wikidata=*
-  - website=*
+  - image=*
+  - symbol=*
+
+# 按完整 tag key 正则匹配，同时清理 AI Output 与最终 Overlay properties。
+remove_tag_key_patterns:
+  - '^source(?::.*)?$'
+  - '^contact:.*$'
+  - '^.*(?:^|[:_-])wiki.*$'
+  - '^.*(?:^|[:_-])web.*$'
 
 # tag 清洗和 annotations 完成后，如果非 Overlay 普通 AI 对象的所有剩余 tags
 # 都命中本列表，且对象没有有效 annotation，则删除整个 AI Output 对象。

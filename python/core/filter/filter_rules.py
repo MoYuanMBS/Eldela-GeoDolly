@@ -235,6 +235,7 @@ class FilterRuleContext:
         merged_rules = TagFilterRule()
         self._merge_compiled_rules(merged_rules, self._merge_tag_strings(self.config.filters.remove_tags, "filters.remove_tags"))
         self._merge_compiled_rules(merged_rules, self.rule_store.remove_tag_rules)
+        merged_rules.remove_tag_key_patterns = list(self.config.filters.remove_tag_key_patterns)
         # drop_if_only_tags 只来自 filters.yaml，独立编译后直接放入，不参与任何 tag rules merge。
         merged_rules.drop_if_only_tags = self._compile_drop_if_only_tags(self.config.filters.drop_if_only_tags)
         return merged_rules
