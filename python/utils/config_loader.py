@@ -141,13 +141,6 @@ class _ConfigLoader:
         raw_filters_config = self._yaml_store.load_static_yaml("filters.yaml")
         return self._validate_config_model(static_models.FiltersConfig, raw_filters_config, "filters.yaml")
 
-    @cached_property
-    def tiles(self) -> static_models.TilesConfig:
-        """首次访问时加载 tiles.yaml，并在当前 loader 实例内缓存。"""
-        raw_tiles_config = self._yaml_store.load_static_yaml("tiles.yaml")
-        return self._validate_config_model(static_models.TilesConfig, {
-            "raw": raw_tiles_config
-        }, "tiles.yaml")
 
     ##### 规则配置 #####
 
@@ -173,7 +166,7 @@ class _ConfigLoader:
 
     def reset_cache(self) -> None:
         """清除 cached_property 写入实例 __dict__ 的配置缓存。"""
-        for config_name in ("app", "filters", "tiles"):
+        for config_name in ("app", "filters"):
             self.__dict__.pop(config_name, None)
 
 
@@ -218,10 +211,6 @@ class ConfigHub:
     def filters(self) -> static_models.FiltersConfig:
         return self._loader.filters
 
-    @property
-    def tiles(self) -> static_models.TilesConfig:
-        return self._loader.tiles
-
     ##### 规则配置 #####
 
     def get_base(self) -> ExpertConfig:
@@ -248,6 +237,5 @@ if __name__ == "__main__":
     # 简单测试加载配置
     print("Nominatim Config:", config.nominatim)
     print("Filters Config:", config.filters)
-    print("Tiles Config:", config.tiles)
     print("Base Config:", config.get_base())
     print("Experts Config:", config.get_experts(["example_expert"]))

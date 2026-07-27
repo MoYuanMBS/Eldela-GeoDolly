@@ -66,16 +66,16 @@ def combine_metric_parts(parts: list[MultiPolygon]) -> MultiPolygon:
 
 ##### BBox 流程 #####
 
-def process_bbox(boundingbox: list[float], expand_meter: float, max_area_km2: float) -> tuple[bool, Geometry.BBox | None]:
-    """生成指定 bbox stage 的 Overpass WGS84 bbox。"""
+def process_bbox(boundingbox: list[float], expand_meter: float, max_area_km2: float) -> tuple[bool, tuple[float, float, float, float] | None, float | None]:
+    """生成指定 bbox stage 的标准 GIS bbox 及其米制面积。"""
 
     bbox = nominatim_bbox_to_project_bbox(boundingbox)
-    passed, overpass_bbox = preprocess.project_and_expand_bbox(
+    passed, gis_bbox, bbox_area_m2 = preprocess.project_and_expand_bbox(
         preprocess.bbox_to_crs(bbox),
         expand_meter,
         max_area_km2 * 1_000_000.00
     )
-    return passed, overpass_bbox
+    return passed, gis_bbox, bbox_area_m2
 
 
 ##### GeoJSON 预处理 #####

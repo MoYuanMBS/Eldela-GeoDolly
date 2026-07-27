@@ -204,17 +204,19 @@ if __name__ == "__main__":
     if bbox and gemo :
         start_time = time.time()
         geometry_result = process_geometry(gemo, bbox)
-        result, final_bbox = process_bbox(bbox, 30.00, 120.00)
+        result, final_bbox, final_bbox_area_m2 = process_bbox(bbox, 30.00, 120.00)
         end_time = time.time()
         print(f"Geometry processing time: {end_time - start_time:.2f} seconds")
 
-        print(f"Final bbox: {final_bbox}") 
+        print(f"Final bbox: {final_bbox}")
+        print(f"Final bbox area: {final_bbox_area_m2} m²")
         print(f"Geometry result: {geometry_result.geometry}") 
 
         if final_bbox and geometry_result.geometry:
             rule_context = FilterRuleContext(experts=["example_expert"], include_base=True)
+            overpass_bbox = (final_bbox[1], final_bbox[0], final_bbox[3], final_bbox[2])
 
-            a = build_query.build_initial_query(final_bbox, build_overpass_tag_filters(rule_context, use_any_tag=True))
+            a = build_query.build_initial_query(overpass_bbox, build_overpass_tag_filters(rule_context, use_any_tag=True))
             print(f"Overpass query: {a}")
             print(f"BBox query length: {len(a)} chars")
             b = build_query.build_initial_query(geometry_result.geometry, build_overpass_tag_filters(rule_context, use_any_tag=True))

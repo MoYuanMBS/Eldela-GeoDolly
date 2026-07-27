@@ -38,20 +38,20 @@ def bbox_to_crs(bbox: Geometry.BBox) -> Polygon:
     to_metric = Transformer.from_crs(4326, epsg, always_xy=True)
     return set_srid(transform(to_metric.transform, box(west, south, east, north)), epsg)
 
-def crs_to_overpass_bbox(crs_bbox: Polygon) -> Geometry.BBox:
-    """将带 SRID 的米制 CRS Polygon 反投影为 Overpass WGS84 bbox。"""
+def crs_to_gis_bbox(crs_bbox: Polygon) -> tuple[float, float, float, float]:
+    """将带 SRID 的米制 CRS Polygon 反投影为标准 GIS bbox。"""
     epsg = get_srid(crs_bbox)
     if epsg == 0:
         raise TransferTypes.AppError(code="invalid_geometry", message="crs_bbox must have a valid SRID")
     to_wgs84 = Transformer.from_crs(epsg, 4326, always_xy=True)
     min_lon, min_lat, max_lon, max_lat = transform(to_wgs84.transform, crs_bbox).bounds
-    return (min_lat, min_lon, max_lat, max_lon)
+    return (min_lon, min_lat, max_lon, max_lat)
 
 
 ##### BBox 预处理 #####
 
-def project_and_expand_bbox(crs_bbox: Polygon, expand_meter: float, max_area: float) -> tuple[bool, Geometry.BBox|None]:
-    """扩展crs bbox 并投影为 Overpass WGS84 bbox, 并检测面积"""
+def project_and_expand_bbox(crs_bbox: Polygon, expand_meter: float, max_area: float) -> tuple[bool, tuple[float, float, float, float] | None, float | None]:
+    """扩展 CRS bbox，返回标准 GIS bbox 及其米制面积。"""
     epsg = int(get_srid(crs_bbox))
     if epsg == 0:
         raise TransferTypes.AppError(code="invalid_geometry", message="crs_bbox must have a valid SRID")
@@ -62,15 +62,17 @@ def project_and_expand_bbox(crs_bbox: Polygon, expand_meter: float, max_area: fl
         epsg
     )
     # 优先使用扩展 bbox；超限时回退到未扩展 bbox。
-    if areaChecker.area_check(areaChecker.metric_geometry_area_m2(expanded_metric_bbox), max_area):
-        return (True, crs_to_overpass_bbox(expanded_metric_bbox))
-    if areaChecker.area_check(areaChecker.metric_geometry_area_m2(metric_bbox), max_area):
+    expanded_bbox_area_m2 = areaChecker.metric_geometry_area_m2(expanded_metric_bbox)
+    if areaChecker.area_check(expanded_bbox_area_m2, max_area):
+        return (True, crs_to_gis_bbox(expanded_metric_bbox), expanded_bbox_area_m2)
+    bbox_area_m2 = areaChecker.metric_geometry_area_m2(metric_bbox)
+    if areaChecker.area_check(bbox_area_m2, max_area):
         warning_logger.warning(
             "bbox_expand_fallback",
             extra={"geomcp_extra": {"status": "fallback", "reason": "expanded_bbox_area_limit_exceeded"}}
         )
-        return (True, crs_to_overpass_bbox(metric_bbox))
-    return (False, None)
+        return (True, crs_to_gis_bbox(metric_bbox), bbox_area_m2)
+    return (False, None, None)
 
 
 ##### Geometry 投影与标准化 #####
