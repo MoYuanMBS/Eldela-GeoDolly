@@ -197,7 +197,6 @@ class Tools:
         session_id: str
         selected_candidate: NominatimData.LocSearchCandidate
         attention_experts: list[str] | None = None
-        basemap: BasemapType | None = None
 
     class PyToolResult(StrictModel):
         """Tool A/B pipeline 交给 TypeScript 的最终结果。"""

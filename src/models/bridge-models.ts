@@ -7,6 +7,8 @@
 
 import { z } from "zod";
 
+import { pyToolResultSchema } from "./map-data-models.js";
+
 export const toolTypeSchema = z.enum(["tool_a", "tool_b"]);
 export const basemapTypeSchema = z.enum(["osm", "satellite"]);
 export const searchStatusSchema = z.enum(["needs_confirmation", "no_match"]);
@@ -102,6 +104,7 @@ export const AitoolInputReqSchema = z
     selected_indices: z.array(z.number().int()).min(1),
     basemap: basemapTypeSchema.nullable().optional(),
     attention_experts: z.array(z.string()).nullable().optional(),
+    include_overlay_geojson: z.boolean().optional(),
   })
   .strict();
 
@@ -121,10 +124,10 @@ export const bridgeActionSchema = z.enum([
 ]);
 
 // Python 执行 `tool_a` / `tool_b` 后回给 TS 的业务数据结构。
-export const toolResSchema = z
+export const pyToolReplySchema = z
   .object({
     session_id: z.string(),
-    result: jsonValueSchema,
+    result: pyToolResultSchema,
   })
   .strict();
 
@@ -133,7 +136,6 @@ export const pyToolReqSchema = z
     .object({
       session_id: z.string(),
       selected_candidate: locSearchCandidateRawSchema,
-      basemap: basemapTypeSchema.nullable().optional(),
       attention_experts: z.array(z.string()).nullable().optional(),
     })
     .strict();
@@ -167,6 +169,7 @@ export type LocSearchReplyRawType = z.infer<typeof locSearchReplyRawSchema>;
 export type LocSearchReplyType = z.infer<typeof locSearchReplySchema>;
 export type AiToolInputReqType = z.infer<typeof AitoolInputReqSchema>;
 export type PyToolReqType = z.infer<typeof pyToolReqSchema>;
+export type PyToolReplyType = z.infer<typeof pyToolReplySchema>;
 export type AppErrorType = z.infer<typeof appErrorSchema>;
 export type BridgeActionType = z.infer<typeof bridgeActionSchema>;
 export type BridgeRequestType<T extends JsonDictType> = {
@@ -186,10 +189,10 @@ export const BridgeActionsRegistry = {
   },
   tool_a: {
     requestSchema: pyToolReqSchema,
-    responseSchema: toolResSchema,
+    responseSchema: pyToolReplySchema,
   },
   tool_b: {
     requestSchema: pyToolReqSchema,
-    responseSchema: toolResSchema,
+    responseSchema: pyToolReplySchema,
   },
 };

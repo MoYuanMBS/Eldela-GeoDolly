@@ -277,7 +277,6 @@ export function exportToolsQueryForPython(
   return pyToolReqSchema.parse({
     session_id: query.session_id,
     selected_candidate: selected,
-    basemap: query.basemap,
     attention_experts: filterAvailableExpertNames(query.attention_experts ?? []),
   });
 }
