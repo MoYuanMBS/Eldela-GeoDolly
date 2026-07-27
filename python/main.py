@@ -15,7 +15,9 @@ from typing import Any, Callable
 import httpx
 
 import python.core.nominatim as nominatim
-from python.utils.models import NominatimData, TransferTypes
+import python.tools.tool_a as tool_a
+import python.tools.tool_b as tool_b
+from python.utils.models import NominatimData, Tools, TransferTypes
 
 event_logger = logging.getLogger("geomcp.event")
 warning_logger = logging.getLogger("geomcp.warning")
@@ -144,13 +146,19 @@ class MainHandler:
 
         return nominatim.query_request(search_request)
 
-    # @PythonBridgeApp.return_repponse_decorator
-    # def handle_tool_a(self, data: TransferTypes.Data) :
-    #     pass
+    @staticmethod
+    @PythonBridgeApp.return_repponse_decorator
+    async def handle_tool_a(data: TransferTypes.BridgeData):
+        """解析 Tool A 请求并直接调用 Tool A pipeline。"""
+        request = Tools.PyToolReq.model_validate(data)
+        return await tool_a.run_tool_a(request)
 
-    # @PythonBridgeApp.return_repponse_decorator
-    # def handle_tool_b(self, data: TransferTypes.Data) :
-    #     pass
+    @staticmethod
+    @PythonBridgeApp.return_repponse_decorator
+    async def handle_tool_b(data: TransferTypes.BridgeData):
+        """解析 Tool B 请求并直接调用 Tool B pipeline。"""
+        request = Tools.PyToolReq.model_validate(data)
+        return await tool_b.run_tool_b(request)
 
     @staticmethod
     async def dispatch() -> TransferTypes.BridgeResponse:
@@ -159,10 +167,10 @@ class MainHandler:
         event_logger.info("bridge_dispatch", extra={"geomcp_extra": {"action": action, "status": "started"}})
         if action == "search_location":
             return MainHandler.handle_location_search(data)
-        # elif action == "tool_a":
-        #     return MainHandler.handle_tool_a(data)
-        # elif action == "tool_b":
-        #     return MainHandler.handle_tool_b(data)
+        elif action == "tool_a":
+            return await MainHandler.handle_tool_a(data)
+        elif action == "tool_b":
+            return await MainHandler.handle_tool_b(data)
         else:
             raise TransferTypes.AppError("UNKNOWN_ACTION", f"Unsupported action: {action}")
 

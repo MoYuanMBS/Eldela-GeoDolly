@@ -205,12 +205,14 @@ class Tools:
         bbox: Geometry.BBox
         output: Overpass.FilteredOverpassResult | None
         recommended_viewport_area_factor: float
-        info: str | None = None
+        info: str
         effective_query_mode: Literal["tool_a", "tool_b", "basemap_only"]
-        effective_experts: list[str]
 
     class PyToolReply(StrictModel):
         """带 session 标识的 Tool A/B Bridge data。"""
 
         session_id: str
         result: Tools.PyToolResult
+
+        def to_dict(self) -> JsonDictType:
+            return cast(JsonDictType, self.model_dump(mode="json"))

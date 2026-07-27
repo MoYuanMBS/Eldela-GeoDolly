@@ -50,7 +50,7 @@ def crs_to_gis_bbox(crs_bbox: Polygon) -> tuple[float, float, float, float]:
 
 ##### BBox 预处理 #####
 
-def project_and_expand_bbox(crs_bbox: Polygon, expand_meter: float, max_area: float) -> tuple[bool, tuple[float, float, float, float] | None, float | None]:
+def project_and_expand_bbox(crs_bbox: Polygon, expand_meter: float, max_area: float) -> tuple[bool, tuple[float, float, float, float], float]:
     """扩展 CRS bbox，返回标准 GIS bbox 及其米制面积。"""
     epsg = int(get_srid(crs_bbox))
     if epsg == 0:
@@ -72,7 +72,7 @@ def project_and_expand_bbox(crs_bbox: Polygon, expand_meter: float, max_area: fl
             extra={"geomcp_extra": {"status": "fallback", "reason": "expanded_bbox_area_limit_exceeded"}}
         )
         return (True, crs_to_gis_bbox(metric_bbox), bbox_area_m2)
-    return (False, None, None)
+    return (False, crs_to_gis_bbox(metric_bbox), bbox_area_m2)
 
 
 ##### Geometry 投影与标准化 #####
