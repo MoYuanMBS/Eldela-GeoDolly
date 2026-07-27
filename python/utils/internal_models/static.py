@@ -55,6 +55,41 @@ class OverpassConfig(StrictModel):
     retry_delay_seconds: float = Field(ge=0, multiple_of=0.01)
 
 
+class FiltersConfig(StrictModel):
+    """`config/filters.yaml` 的 tag 清理规则。"""
+
+    remove_tags: list[str] = Field(default_factory=list)
+    remove_tag_key_patterns: list[re.Pattern[str]] = Field(default_factory=list)
+    drop_if_only_tags: list[str] = Field(default_factory=list)
+
+    @field_validator("remove_tag_key_patterns", mode="before")
+    @classmethod
+    def compile_remove_tag_key_patterns(cls, patterns: object) -> object:
+        """逐条编译 regex；语法错误只跳过当前规则。"""
+        if not isinstance(patterns, list):
+            return patterns
+
+        compiled_patterns: list[object] = []
+        for pattern in patterns:
+            if not isinstance(pattern, str):
+                compiled_patterns.append(pattern)
+                continue
+            try:
+                compiled_patterns.append(re.compile(pattern))
+            except re.error as error:
+                warning_logger.warning(
+                    "skip_invalid_tag_key_pattern",
+                    extra={"geomcp_extra": {
+                        "status": "skipped",
+                        "reason": "invalid_regex",
+                        "rule_source": "filters.remove_tag_key_patterns",
+                        "pattern": pattern,
+                        "error": str(error)
+                    }}
+                )
+        return compiled_patterns
+
+
 class FeatureIdScheme(StrictModel):
     """单个 Feature ID 命名空间的生成配置。"""
 
@@ -108,7 +143,7 @@ class IframeAdaptiveConfig(StrictModel):
     way_weight: float
     area_weight: float
     relation_weight: float
-    min_area_factor: float
+    secondary_factor_weight: float
     max_area_factor: float
 
 
@@ -120,47 +155,3 @@ class AppConfig(StrictModel):
     overpass: OverpassConfig
     feature_id: FeatureIdConfig
     iframe_adaptive: IframeAdaptiveConfig
-
-
-class FiltersConfig(StrictModel):
-    """`config/filters.yaml` 的 tag 清理规则。"""
-
-    remove_tags: list[str] = Field(default_factory=list)
-    remove_tag_key_patterns: list[re.Pattern[str]] = Field(default_factory=list)
-    drop_if_only_tags: list[str] = Field(default_factory=list)
-
-    @field_validator("remove_tag_key_patterns", mode="before")
-    @classmethod
-    def compile_remove_tag_key_patterns(cls, patterns: object) -> object:
-        """逐条编译 regex；语法错误只跳过当前规则。"""
-        if not isinstance(patterns, list):
-            return patterns
-
-        compiled_patterns: list[object] = []
-        for pattern in patterns:
-            if not isinstance(pattern, str):
-                compiled_patterns.append(pattern)
-                continue
-            try:
-                compiled_patterns.append(re.compile(pattern))
-            except re.error as error:
-                warning_logger.warning(
-                    "skip_invalid_tag_key_pattern",
-                    extra={"geomcp_extra": {
-                        "status": "skipped",
-                        "reason": "invalid_regex",
-                        "rule_source": "filters.remove_tag_key_patterns",
-                        "pattern": pattern,
-                        "error": str(error)
-                    }}
-                )
-        return compiled_patterns
-
-
-class TilesConfig(StrictModel):
-    """`config/tiles.yaml` 配置模型占位。
-
-    瓦片源格式等实现 tile_manager 时再正式补齐。
-    """
-
-    raw: dict[str, Any] = Field(default_factory=dict)

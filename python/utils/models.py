@@ -186,11 +186,31 @@ class TransferTypes:
 
     BridgeData: TypeAlias = JsonDictType | SupportsToDict
 
+
+################################ Tools 输入输出模型 ##############################################
 class Tools:
     """ToolA/B输入输出模型。"""
+
     class PyToolReq(StrictModel):
         """AI 确认候选后的选定地点级信息"""
+
         session_id: str
         selected_candidate: NominatimData.LocSearchCandidate
         attention_experts: list[str] | None = None
         basemap: BasemapType | None = None
+
+    class PyToolResult(StrictModel):
+        """Tool A/B pipeline 交给 TypeScript 的最终结果。"""
+
+        bbox: Geometry.BBox
+        output: Overpass.FilteredOverpassResult | None
+        recommended_viewport_area_factor: float
+        info: str | None = None
+        effective_query_mode: Literal["tool_a", "tool_b", "basemap_only"]
+        effective_experts: list[str]
+
+    class PyToolReply(StrictModel):
+        """带 session 标识的 Tool A/B Bridge data。"""
+
+        session_id: str
+        result: Tools.PyToolResult

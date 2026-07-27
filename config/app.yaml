@@ -130,10 +130,10 @@ iframe_adaptive:
   # 单个最终 area 计数单位的贡献权重；不展开或统计 area 内部元素。
   area_weight: 1.0
   # 单个最终 relation 记录对内容复杂度的贡献权重。
-  relation_weight: 0.5
-  # 推荐视口面积倍率下限；稀疏或空结果不会低于该倍率。
-  min_area_factor: 1.0
-  # 推荐视口面积倍率上限；避免复杂结果生成不可控的大画布。
+  relation_weight: 0.6
+  # 最终合成中次驱动超过基准倍率 1.0 的贡献比例。
+  secondary_factor_weight: 0.25
+  # 内容分支与最终推荐倍率共用的上限。
   max_area_factor: 4.0
 
 # --- TypeScript ScreenshotSpec 与 iframe 参数 ---
