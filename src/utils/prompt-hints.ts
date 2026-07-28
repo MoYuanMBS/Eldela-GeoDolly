@@ -4,7 +4,7 @@
  */
 
 import { type ToolPromptsConfigType, toolPromptsConfigSchema} from "../models/config-models.js";
-import { getAvailableExpertNames, getConfigSectionType} from "./config-loader.js";
+import { config } from "./config-loader.js";
 
 export type ChoiceFieldHintOptions = {
   fieldName: string;
@@ -48,10 +48,10 @@ function appendDescriptionHints(description: string, hints: Array<string>): stri
  * - basemap 后续若改成动态配置，应在本函数中按 tool_a / tool_b 分别追加，而不是改 index.ts。
  */
 export function getToolPromptsConfigWithHints(): ToolPromptsConfigType {
-  const toolPromptsConfig = getConfigSectionType("prompts", toolPromptsConfigSchema);
+  const toolPromptsConfig = config.getAppSection("prompts", toolPromptsConfigSchema);
   const toolBExpertHint = buildChoiceFieldHint({
     fieldName: "attention_experts",
-    values: getAvailableExpertNames(),
+    values: config.getAvailableExpertNames(),
     usage: "when a matching facility / area expert category is relevant",
   });
 

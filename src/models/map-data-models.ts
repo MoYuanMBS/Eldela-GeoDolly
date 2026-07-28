@@ -6,10 +6,12 @@
 
 import { z } from "zod";
 
+// bbox 固定为 (south, west, north, east)；GeoJSON 坐标固定为 [lon, lat]。
 export const bboxSchema = z.tuple([z.number(), z.number(), z.number(), z.number()]);
 export const identifiedOverlayFeatureTypeSchema = z.enum(["node", "way", "area", "relation"]);
 export const geoJsonPositionSchema = z.tuple([z.number(), z.number()]);
 
+// Overlay 只接受 Python 当前可能返回的五种 GeoJSON geometry。
 export const geoJsonPointSchema = z
   .object({
     type: z.literal("Point"),
@@ -53,6 +55,7 @@ export const overlayGeoJsonGeometrySchema = z.discriminatedUnion("type", [
   geoJsonMultiPolygonSchema,
 ]);
 
+// relation 不含自身 geometry，只保留成员引用，供渲染层对成员追加一层关系样式。
 export const identifiedRelationMemberSchema = z
   .object({
     type: z.enum(["node", "way", "relation"]),
@@ -61,6 +64,7 @@ export const identifiedRelationMemberSchema = z
   })
   .strict();
 
+// feature_id 是 Python 分配的内部稳定标识；osm_id 与 properties 均可能聚合多个来源值。
 const identifiedOverlayFeatureBaseSchema = z
   .object({
     type: z.literal("Feature"),
@@ -70,6 +74,7 @@ const identifiedOverlayFeatureBaseSchema = z
   })
   .strict();
 
+// node、way、area 各自约束 geometry；relation 则通过 members 表达成员关系。
 export const identifiedOverlayNodeFeatureSchema = identifiedOverlayFeatureBaseSchema.extend({
   feature_type: z.literal("node"),
   geometry: geoJsonPointSchema,
@@ -101,6 +106,19 @@ export const identifiedOverlayFeatureSchema = z.discriminatedUnion("feature_type
   identifiedOverlayRelationFeatureSchema,
 ]);
 
+// display_id 是 TypeScript 根据 render skin 派生的显示标识，canonical feature_id 保持不变。
+const identifiedOverlayNodeFeatureWithDisplayIdSchema = identifiedOverlayNodeFeatureSchema.extend({display_id: z.string()});
+const identifiedOverlayWayFeatureWithDisplayIdSchema = identifiedOverlayWayFeatureSchema.extend({display_id: z.string()});
+const identifiedOverlayAreaFeatureWithDisplayIdSchema = identifiedOverlayAreaFeatureSchema.extend({display_id: z.string()});
+const identifiedOverlayRelationFeatureWithDisplayIdSchema = identifiedOverlayRelationFeatureSchema.extend({display_id: z.string()});
+export const identifiedOverlayFeatureWithDisplayIdSchema = z.discriminatedUnion("feature_type", [
+  identifiedOverlayNodeFeatureWithDisplayIdSchema,
+  identifiedOverlayWayFeatureWithDisplayIdSchema,
+  identifiedOverlayAreaFeatureWithDisplayIdSchema,
+  identifiedOverlayRelationFeatureWithDisplayIdSchema,
+]);
+
+// AI Output 只保留原始 OSM 身份与 tags，不与用于最终渲染的 Overlay Feature 合并。
 export const aiOutputRecordSchema = z
   .object({
     osm_id: z.number().int(),
@@ -108,6 +126,7 @@ export const aiOutputRecordSchema = z
   })
   .strict();
 
+// 两条输出路径保持独立分组：AI 消费简化记录，前端消费带 geometry 的 Overlay。
 export const aiOutputGroupsSchema = z
   .object({
     node: z.array(aiOutputRecordSchema),
@@ -115,6 +134,17 @@ export const aiOutputGroupsSchema = z
     relation: z.array(aiOutputRecordSchema),
   })
   .strict();
+
+// AI Output 仍以 type + osm_id 为主体，只并列补充匹配到的 canonical/display ID。
+export const aiOutputRecordWithIdsSchema = aiOutputRecordSchema.extend({
+  feature_id: z.string().optional(),
+  display_id: z.string().optional(),
+});
+export const aiOutputGroupsWithIdsSchema = z.object({
+  node: z.array(aiOutputRecordWithIdsSchema),
+  way: z.array(aiOutputRecordWithIdsSchema),
+  relation: z.array(aiOutputRecordWithIdsSchema),
+}).strict();
 
 export const identifiedOverlayGroupsSchema = z
   .object({
@@ -125,6 +155,13 @@ export const identifiedOverlayGroupsSchema = z
   })
   .strict();
 
+export const identifiedOverlayGroupsWithDisplayIdSchema = z.object({
+  node: z.array(identifiedOverlayNodeFeatureWithDisplayIdSchema),
+  way: z.array(identifiedOverlayWayFeatureWithDisplayIdSchema),
+  area: z.array(identifiedOverlayAreaFeatureWithDisplayIdSchema),
+  relation: z.array(identifiedOverlayRelationFeatureWithDisplayIdSchema),
+}).strict();
+
 export const filteredOverpassResultSchema = z
   .object({
     ai_output: aiOutputGroupsSchema,
@@ -134,6 +171,7 @@ export const filteredOverpassResultSchema = z
 
 export const effectiveQueryModeSchema = z.enum(["tool_a", "tool_b", "basemap_only"]);
 
+// bbox、viewport factor 与实际查询模式始终存在；纯底图降级时 output 可以为 null。
 export const pyToolResultSchema = z
   .object({
     bbox: bboxSchema,
@@ -144,14 +182,19 @@ export const pyToolResultSchema = z
   })
   .strict();
 
+// 所有公开 TypeScript 类型均由对应边界 schema 推导。
 export type BBoxType = z.infer<typeof bboxSchema>;
 export type IdentifiedOverlayFeatureKindType = z.infer<typeof identifiedOverlayFeatureTypeSchema>;
 export type OverlayGeoJsonGeometryType = z.infer<typeof overlayGeoJsonGeometrySchema>;
 export type IdentifiedRelationMemberType = z.infer<typeof identifiedRelationMemberSchema>;
 export type IdentifiedOverlayFeatureType = z.infer<typeof identifiedOverlayFeatureSchema>;
+export type IdentifiedOverlayFeatureWithDisplayIdType = z.infer<typeof identifiedOverlayFeatureWithDisplayIdSchema>;
 export type AiOutputRecordType = z.infer<typeof aiOutputRecordSchema>;
 export type AiOutputGroupsType = z.infer<typeof aiOutputGroupsSchema>;
+export type AiOutputRecordWithIdsType = z.infer<typeof aiOutputRecordWithIdsSchema>;
+export type AiOutputGroupsWithIdsType = z.infer<typeof aiOutputGroupsWithIdsSchema>;
 export type IdentifiedOverlayGroupsType = z.infer<typeof identifiedOverlayGroupsSchema>;
+export type IdentifiedOverlayGroupsWithDisplayIdType = z.infer<typeof identifiedOverlayGroupsWithDisplayIdSchema>;
 export type FilteredOverpassResultType = z.infer<typeof filteredOverpassResultSchema>;
 export type EffectiveQueryModeType = z.infer<typeof effectiveQueryModeSchema>;
 export type PyToolResultType = z.infer<typeof pyToolResultSchema>;

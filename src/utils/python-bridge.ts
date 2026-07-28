@@ -30,7 +30,7 @@ import {
   BridgeActionsRegistry,
   pyToolReqSchema
 } from "../models/bridge-models.js";
-import { filterAvailableExpertNames } from "./config-loader.js";
+import { config } from "./config-loader.js";
 
 const PYTHON_ENTRYPOINT = "python/main.py";
 
@@ -277,6 +277,6 @@ export function exportToolsQueryForPython(
   return pyToolReqSchema.parse({
     session_id: query.session_id,
     selected_candidate: selected,
-    attention_experts: filterAvailableExpertNames(query.attention_experts ?? []),
+    attention_experts: config.filterAvailableExpertNames(query.attention_experts ?? []),
   });
 }

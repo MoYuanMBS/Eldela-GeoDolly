@@ -109,9 +109,14 @@ feature_id:
     way: {template: "{alpha}{num}", mode: grouped, group: 20}
     area: {template: "{num}{alpha}", mode: global}
     relation: {template: "{alpha}-{num}", mode: round}
-  # active_skins 为 default_skin 或空值时不做替换；也可以分别指定 alphabet / digits skin。
+  # 全部使用 canonical 字符时设为 default_skin；未配置 active_skins 时也使用该默认值。
+  # 启用 skin 时改为 mapping，alphabet / digits 可独立选择，缺少的一项仍使用 default_skin：
+  # active_skins:
+  #   alphabet: ganzhi
+  #   digits: chinese
   render:
     active_skins: default_skin
+    # skins 整体以及 alphabet / digits 子项均可选，只登记实际需要的 skin。
     skins:
       alphabet:
         ganzhi: "甲乙丙丁庚辛壬癸子丑"
