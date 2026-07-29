@@ -13,6 +13,7 @@ import type {
   IdentifiedOverlayFeatureWithDisplayIdType,
   IdentifiedOverlayGroupsWithDisplayIdType,
 } from "../models/map-data-models.js";
+import {logger} from "../logging/logger.js";
 
 function addFeaturesToOsmIndex(index: Map<number, {feature_id: string; display_id: string}>, features: Array<IdentifiedOverlayFeatureWithDisplayIdType>, osmType: "node" | "way" | "relation"): void {
   for (const feature of features) {
@@ -20,7 +21,18 @@ function addFeaturesToOsmIndex(index: Map<number, {feature_id: string; display_i
     for (const osmId of feature.osm_id) {
       const existingIds = index.get(osmId);
       if (existingIds !== undefined) {
-        throw new Error(`OSM ${osmType} ${osmId} maps to multiple Overlay Features: "${existingIds.feature_id}" and "${feature.feature_id}"`);
+        // 同一 typed OSM identity 只能回填一组 ID；保留先注册项并跳过冲突项。
+        logger.warning("skip_conflicting_overlay_osm_mapping", {
+          status: "skipped",
+          reason: "typed_osm_identity_conflict",
+          osm_type: osmType,
+          osm_id: osmId,
+          retained_feature_id: existingIds.feature_id,
+          retained_display_id: existingIds.display_id,
+          skipped_feature_id: feature.feature_id,
+          skipped_display_id: feature.display_id,
+        });
+        continue;
       }
       index.set(osmId, featureIds);
     }
