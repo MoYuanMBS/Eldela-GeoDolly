@@ -142,4 +142,15 @@ iframe_adaptive:
   max_area_factor: 4.0
 
 # --- TypeScript ScreenshotSpec 与 iframe 参数 ---
-  # TS 专用参数后续按截图规格和 iframe 展示语义追加在本段；Python loader 会忽略这些字段。
+  # 纯地图 MapSurface 的逻辑尺寸范围；不包含 attribution footer。
+  min_screenshot_width: 800
+  max_screenshot_width: 1600
+  min_screenshot_height: 500
+  max_screenshot_height: 1000
+  # 逻辑像素安全预算；与当前最大面积倍率下的参考面积一致。
+  max_screenshot_pixels: 1600000
+  # recommended_viewport_area_factor=1 时的参考逻辑面积。
+  reference_screenshot_area: 400000
+  # 截图画布允许使用的极端宽高比范围。
+  min_aspect_ratio: 0.8
+  max_aspect_ratio: 3.2

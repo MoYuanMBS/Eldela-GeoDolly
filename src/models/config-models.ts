@@ -137,9 +137,57 @@ export const featureIdDisplayConfigSchema = z
     }
   });
 
+//#########################iframe capture###############################
+
+// 参考面积和比例允许浮点数；CSS 尺寸与像素预算必须是正整数。
+const positiveFiniteNumberSchema = z.number().finite().positive();
+const positiveIntegerSchema = z.number().int().positive();
+
+// 只提取 TS 截图尺寸算法需要的字段；同 section 中的 Python 权重会由 Zod 自动剥离。
+export const iframeCaptureConfigSchema = z.object({
+  // MapSurface 四条硬尺寸边界。
+  min_screenshot_width: positiveIntegerSchema,
+  max_screenshot_width: positiveIntegerSchema,
+  min_screenshot_height: positiveIntegerSchema,
+  max_screenshot_height: positiveIntegerSchema,
+  // 独立像素预算用于限制宽高组合，而不只限制单边尺寸。
+  max_screenshot_pixels: positiveIntegerSchema,
+  // 参考面积乘以 Python factor 得到本次建议面积。
+  reference_screenshot_area: positiveFiniteNumberSchema,
+  // 投影 bbox 比例会被钳制在此范围，避免极端狭长画布。
+  min_aspect_ratio: positiveFiniteNumberSchema,
+  max_aspect_ratio: positiveFiniteNumberSchema,
+}).superRefine((captureConfig, context) => {
+  // 单字段类型合法仍不足以保证配置组合可解，因此集中校验跨字段关系。
+  if (captureConfig.min_screenshot_width > captureConfig.max_screenshot_width) {
+    context.addIssue({code: "custom", message: "min_screenshot_width must not exceed max_screenshot_width", path: ["min_screenshot_width"]});
+  }
+  if (captureConfig.min_screenshot_height > captureConfig.max_screenshot_height) {
+    context.addIssue({code: "custom", message: "min_screenshot_height must not exceed max_screenshot_height", path: ["min_screenshot_height"]});
+  }
+  if (captureConfig.min_aspect_ratio > captureConfig.max_aspect_ratio) {
+    context.addIssue({code: "custom", message: "min_aspect_ratio must not exceed max_aspect_ratio", path: ["min_aspect_ratio"]});
+  }
+  if (captureConfig.reference_screenshot_area > captureConfig.max_screenshot_pixels) {
+    context.addIssue({code: "custom", message: "reference_screenshot_area must not exceed max_screenshot_pixels", path: ["reference_screenshot_area"]});
+  }
+
+  // 比例范围两端都必须能在 min/max box 与像素预算内生成合法尺寸。
+  for (const [path, aspectRatio] of [["min_aspect_ratio", captureConfig.min_aspect_ratio], ["max_aspect_ratio", captureConfig.max_aspect_ratio]] as const) {
+    const requiredHeight = Math.max(captureConfig.min_screenshot_height, captureConfig.min_screenshot_width / aspectRatio);
+    const requiredWidth = requiredHeight * aspectRatio;
+    if (requiredWidth > captureConfig.max_screenshot_width || requiredHeight > captureConfig.max_screenshot_height) {
+      context.addIssue({code: "custom", message: `${path} cannot satisfy the configured min/max screenshot dimensions`, path: [path]});
+    } else if (requiredWidth * requiredHeight > captureConfig.max_screenshot_pixels) {
+      context.addIssue({code: "custom", message: `${path} cannot satisfy max_screenshot_pixels at the minimum dimensions`, path: [path]});
+    }
+  }
+});
+
 // 业务层类型全部从 schema 推导，避免配置模型与运行时校验规则分叉。
 export type ToolPromptConfigType = z.infer<typeof toolPromptConfigSchema>;
 export type ToolPromptsConfigType = z.infer<typeof toolPromptsConfigSchema>;
 export type ActiveFeatureIdSkinsType = z.infer<typeof activeFeatureIdSkinsSchema>;
 export type FeatureIdRenderConfigType = z.infer<typeof featureIdRenderConfigSchema>;
 export type FeatureIdDisplayConfigType = z.infer<typeof featureIdDisplayConfigSchema>;
+export type IframeCaptureConfigType = z.infer<typeof iframeCaptureConfigSchema>;

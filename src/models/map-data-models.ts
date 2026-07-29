@@ -6,7 +6,7 @@
 
 import { z } from "zod";
 
-// bbox 固定为 (south, west, north, east)；GeoJSON 坐标固定为 [lon, lat]。
+// Python Tool result 的 bbox 使用标准 GIS 顺序 (west, south, east, north)；GeoJSON 坐标固定为 [lon, lat]。
 export const bboxSchema = z.tuple([z.number(), z.number(), z.number(), z.number()]);
 export const identifiedOverlayFeatureTypeSchema = z.enum(["node", "way", "area", "relation"]);
 export const geoJsonPositionSchema = z.tuple([z.number(), z.number()]);
