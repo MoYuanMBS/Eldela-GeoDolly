@@ -14,15 +14,17 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 
 import {
+  type AiToolInputReqType,
   type LocSearchReplyRawType,
+  type ToolType,
   locSearchQueryReqSchema,
   locSearchReplyRawSchema,
   AitoolInputReqSchema,
 } from "./models/bridge-models.js";
+import {runToolFlow} from "./tools/tool-flow.js";
 import { getToolPromptsConfigWithHints } from "./utils/prompt-hints.js";
 import {
   callBridge,
-  exportToolsQueryForPython,
   sanitizeSearchResponseForAI,
 } from "./utils/python-bridge.js";
 
@@ -58,6 +60,19 @@ function getCachedSearchResponse(sessionId: string): LocSearchReplyRawType {
   }
 
   return cachedResponse;
+}
+
+/**
+ * Tool A / Tool B 共用同一套 TS 后处理；requested tool 只决定 Python action。
+ */
+async function executeMapTool(tool: ToolType, args: AiToolInputReqType) {
+  try {
+    const cachedResponse = getCachedSearchResponse(args.session_id);
+    const toolResponse = await runToolFlow(tool, cachedResponse, args);
+    return createTextToolResult(JSON.stringify(toolResponse, null, 2));
+  } catch (error) {
+    return createErrorToolResult(error);
+  }
 }
 
 function buildServer() {
@@ -96,17 +111,7 @@ function buildServer() {
       description: toolPromptsConfig.tool_a.description,
       inputSchema: AitoolInputReqSchema,
     },
-    async (args) => {
-      try {
-        const cachedResponse = getCachedSearchResponse(args.session_id);
-        const pythonQuery = exportToolsQueryForPython(cachedResponse, args);
-        const toolResponse = await callBridge("tool_a", pythonQuery);
-
-        return createTextToolResult(JSON.stringify(toolResponse, null, 2));
-      } catch (error) {
-        return createErrorToolResult(error);
-      }
-    },
+    async (args) => executeMapTool("tool_a", args),
   );
 
   server.registerTool(
@@ -116,17 +121,7 @@ function buildServer() {
       description: toolPromptsConfig.tool_b.description,
       inputSchema: AitoolInputReqSchema,
     },
-    async (args) => {
-      try {
-        const cachedResponse = getCachedSearchResponse(args.session_id);
-        const pythonQuery = exportToolsQueryForPython(cachedResponse, args);
-        const toolResponse = await callBridge("tool_b", pythonQuery);
-
-        return createTextToolResult(JSON.stringify(toolResponse, null, 2));
-      } catch (error) {
-        return createErrorToolResult(error);
-      }
-    },
+    async (args) => executeMapTool("tool_b", args),
   );
 
   return server;

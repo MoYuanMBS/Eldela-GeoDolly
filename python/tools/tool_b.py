@@ -74,12 +74,22 @@ async def run_tool_b(data: Tools.PyToolReq) -> Tools.PyToolReply:
 
 if __name__ == "__main__":
     import asyncio
+    from pathlib import Path
     from python.core.nominatim import query_request
     from python.utils.models import NominatimData
 
     location = "Square One"
-    country = " CA"
+    country = "CA"
+    filename = "test_python_output.json"
+    path =  Path(__file__).parent.parent.parent/"test" / filename
+    print(path)
+
     example_request = NominatimData.LocSearchQueryReq(queries=[NominatimData.LocSearchQuery(query=location, country_codes=[country])])
     search_request = query_request(example_request)
     result = asyncio.run(run_tool_b(Tools.PyToolReq(session_id=search_request.session_id, selected_candidate=search_request.candidates[0], attention_experts=[])))
-    print(result)
+
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(result.model_dump_json(indent=4))
+
+    print(f"Tool B output written to {path}")
+        
