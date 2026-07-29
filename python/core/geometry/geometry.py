@@ -70,9 +70,14 @@ def process_bbox(boundingbox: list[float], expand_meter: float, max_area_km2: fl
     """生成指定 bbox stage 的标准 GIS bbox 及其米制面积。"""
 
     bbox = nominatim_bbox_to_project_bbox(boundingbox)
+    effective_expand_meter = expand_meter
+    if area_check.bbox_has_zero_extent(bbox):
+        # 点状 bbox 继续走既有投影流程，只为本次调用额外增加 50 米扩展。
+        effective_expand_meter += 50.00
+        warning_logger.warning("zero_extent_bbox_expand",extra={"geomcp_extra": {"status": "fallback", "reason": "zero_extent_bbox", "original_expand_meter": expand_meter, "effective_expand_meter": effective_expand_meter}})
     passed, gis_bbox, bbox_area_m2 = preprocess.project_and_expand_bbox(
         preprocess.bbox_to_crs(bbox),
-        expand_meter,
+        effective_expand_meter,
         max_area_km2 * 1_000_000.00
     )
     return passed, gis_bbox, bbox_area_m2

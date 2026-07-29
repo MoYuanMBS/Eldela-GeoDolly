@@ -71,15 +71,14 @@ overpass:
   # 每次重试前的基础等待秒数。
   retry_delay_seconds: 5.00
 
-# Geometry 模块统一运行参数。
+# Geometry 模块统一运行参数；字段名明确标注各自单位。
 geometry:
-  # 预处理距离单位统一为米。
   # LineString / MultiLineString 投影到本地米制 CRS 后的 buffer 距离。
   line_buffer_meter: 5.00
-  # Tool A 查询 bbox 的扩展距离。
-  tool_a_bbox_expand_meter: 5.00
-  # Tool B tile bbox 的扩展距离。
-  tool_b_bbox_expand_meter: 5.00
+  # Tool A 查询 bbox 的扩展距离，调用 geometry 前转换为米。
+  tool_a_bbox_expand_km: 0.005
+  # Tool B tile bbox 的扩展距离，调用 geometry 前转换为米。
+  tool_b_bbox_expand_km: 0.005
 
   # --- Compression 运行参数 ---
   # tolerance 预测公式内部的算法调参常量仍定义在 compression.py 文件头。

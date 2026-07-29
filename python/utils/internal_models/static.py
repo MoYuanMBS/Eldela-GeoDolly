@@ -27,8 +27,8 @@ class GeometryConfig(StrictModel):
     """Geometry 模块统一运行配置。"""
 
     line_buffer_meter: float = Field(ge=0, multiple_of=0.01)
-    tool_a_bbox_expand_meter: float = Field(ge=0, multiple_of=0.01)
-    tool_b_bbox_expand_meter: float = Field(ge=0, multiple_of=0.01)
+    tool_a_bbox_expand_km: float = Field(ge=0, multiple_of=0.00001)
+    tool_b_bbox_expand_km: float = Field(ge=0, multiple_of=0.00001)
     base_tolerance_meter: float = Field(ge=0, multiple_of=0.01)
     max_tolerance_meter: float = Field(gt=0, multiple_of=0.01)
     max_node: int = Field(gt=0)

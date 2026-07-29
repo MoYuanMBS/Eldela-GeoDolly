@@ -24,7 +24,7 @@ async def run_tool_b(data: Tools.PyToolReq) -> Tools.PyToolReply:
     core_result = geometry.process_geometry(candidate.geojson, boundingbox)
     context_area_passed, context_bbox, context_bbox_area_m2 = geometry.process_bbox(
         boundingbox,
-        config.geometry.tool_b_bbox_expand_meter,
+        config.geometry.tool_b_bbox_expand_km * 1_000.00,
         config.geometry.tool_b_max_area_km2
     )
 
@@ -39,7 +39,7 @@ async def run_tool_b(data: Tools.PyToolReq) -> Tools.PyToolReply:
 
         context_area_passed, context_bbox, context_bbox_area_m2 = geometry.process_bbox(
             boundingbox,
-            config.geometry.tool_a_bbox_expand_meter,
+            config.geometry.tool_a_bbox_expand_km * 1_000.00,
             config.geometry.tool_a_max_area_km2
         )
         if not context_area_passed:

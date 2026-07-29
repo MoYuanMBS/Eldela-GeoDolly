@@ -22,6 +22,12 @@ def area_check(area_m2: float, max_area_m2: float) -> bool:
 
 ##### WGS84 面积计算 #####
 
+def bbox_has_zero_extent(bbox: Geometry.BBox) -> bool:
+    """检查 bbox 是否存在零宽或零高，顺序为 (south, west, north, east)。"""
+    south, west, north, east = bbox
+    return south == north or west == east
+
+
 def bbox_area_m2(bbox: Geometry.BBox) -> float:
     """计算 WGS84 bbox 的椭球面积，bbox 顺序为 (south, west, north, east)。"""
     south, west, north, east = bbox

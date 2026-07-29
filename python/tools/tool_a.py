@@ -22,7 +22,7 @@ async def run_tool_a(data: Tools.PyToolReq) -> Tools.PyToolReply:
 
     passed, gis_bbox, bbox_area_m2 = geometry.process_bbox(
         boundingbox,
-        config.geometry.tool_a_bbox_expand_meter,
+        config.geometry.tool_a_bbox_expand_km * 1_000.00,
         config.geometry.tool_a_max_area_km2
     )
     if not passed:
