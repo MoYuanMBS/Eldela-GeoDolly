@@ -12,6 +12,7 @@ import {
 } from "../models/bridge-models.js";
 import {addFeatureIdsToAiOutput} from "../map-data/ai-output.js";
 import {addDisplayIds} from "../map-data/display-id.js";
+import {buildRelationMemberFeaturesByRelation} from "../map-data/relation-membership.js";
 import {generateCaptureSize} from "../iframe-capture/capture-generator.js";
 import {generateCaptureCenter} from "../iframe-capture/center-generator.js";
 import {toLeafletBounds} from "../iframe-capture/leaflet-bounds.js";
@@ -43,11 +44,13 @@ export function processToolReply(toolReply: PyToolReplyType) {
   const info = toolReply.result.info; // 单独保留，供后续追加到 AI Output YAML 末尾。
   let aiOutput = null;
   let overlayOutput = null;
+  let relationMemberFeaturesByRelation = null;
 
-  // basemap-only 没有 AI / Overlay 数据；其他模式先完成 display ID，再按 typed OSM identity enrich AI Output。
+  // basemap-only 没有地图数据；其他模式统一完成 display ID、AI Output enrichment 与 relation 成员索引。
   if (output !== null) {
     overlayOutput = addDisplayIds(output.overlay_output);
     aiOutput = addFeatureIdsToAiOutput(output.ai_output, overlayOutput);
+    relationMemberFeaturesByRelation = buildRelationMemberFeaturesByRelation(overlayOutput);
   }
 
   // 截图尺寸和 center 属于后端稳定结果；Leaflet bounds 仅作为后续浏览器初始化格式。
@@ -60,6 +63,7 @@ export function processToolReply(toolReply: PyToolReplyType) {
     "effective_query_mode": effectiveQueryMode,
     "ai_output": aiOutput,
     "overlay_output": overlayOutput,
+    "relation_member_features_by_relation": relationMemberFeaturesByRelation,
     "screenshot_size": screenshotSize,
     "center": center,
     "leaflet_bbox": leafletBounds,

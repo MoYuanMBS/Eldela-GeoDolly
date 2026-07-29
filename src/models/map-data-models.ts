@@ -162,6 +162,17 @@ export const identifiedOverlayGroupsWithDisplayIdSchema = z.object({
   relation: z.array(identifiedOverlayRelationFeatureWithDisplayIdSchema),
 }).strict();
 
+// Relation 成员只保留后续渲染需要的 canonical feature_id 与 role。
+export const relationMemberFeatureSchema = z.object({feature_id: z.string(), role: z.string()}).strict();
+
+// Relation 渲染索引按项目自身 node / area / way 分组，便于后续直接遍历成员对象。
+export const relationMemberFeaturesSchema = z.object({
+  node: z.array(relationMemberFeatureSchema),
+  area: z.array(relationMemberFeatureSchema),
+  way: z.array(relationMemberFeatureSchema),
+}).strict();
+export const relationMemberFeaturesByRelationSchema = z.record(z.string(), relationMemberFeaturesSchema);
+
 export const filteredOverpassResultSchema = z
   .object({
     ai_output: aiOutputGroupsSchema,
@@ -195,6 +206,9 @@ export type AiOutputRecordWithIdsType = z.infer<typeof aiOutputRecordWithIdsSche
 export type AiOutputGroupsWithIdsType = z.infer<typeof aiOutputGroupsWithIdsSchema>;
 export type IdentifiedOverlayGroupsType = z.infer<typeof identifiedOverlayGroupsSchema>;
 export type IdentifiedOverlayGroupsWithDisplayIdType = z.infer<typeof identifiedOverlayGroupsWithDisplayIdSchema>;
+export type RelationMemberFeatureType = z.infer<typeof relationMemberFeatureSchema>;
+export type RelationMemberFeaturesType = z.infer<typeof relationMemberFeaturesSchema>;
+export type RelationMemberFeaturesByRelationType = z.infer<typeof relationMemberFeaturesByRelationSchema>;
 export type FilteredOverpassResultType = z.infer<typeof filteredOverpassResultSchema>;
 export type EffectiveQueryModeType = z.infer<typeof effectiveQueryModeSchema>;
 export type PyToolResultType = z.infer<typeof pyToolResultSchema>;
