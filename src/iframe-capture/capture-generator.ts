@@ -7,16 +7,17 @@
 import type {BBoxType} from "../models/map-data-models.js";
 import {iframeCaptureConfigSchema, type IframeCaptureConfigType} from "../models/config-models.js";
 import {config} from "../utils/config-loader.js";
+import {getContinuousEastLongitude, projectLatitude, projectLongitude} from "./projection.js";
 
-// Leaflet CRS.EPSG3857 使用的纬度上限；超过后会投影到同一极区边界。
-const MAX_MERCATOR_LATITUDE = 85.0511287798066;
-
-/** 将纬度换算为 EPSG:3857 的归一化 world Y，不依赖具体 tile size 或 zoom。 */
-function projectLatitude(latitude: number): number {
-  // Leaflet EPSG:3857 会在投影前截断极区纬度，避免 Mercator 在两极发散。
-  const clampedLatitude = Math.max(-MAX_MERCATOR_LATITUDE, Math.min(MAX_MERCATOR_LATITUDE, latitude));
-  const sinLatitude = Math.sin(clampedLatitude * Math.PI / 180);
-  return 0.5 - Math.log((1 + sinLatitude) / (1 - sinLatitude)) / (4 * Math.PI);
+/**
+ * 将标准 GIS bbox 投影为连续 world 坐标 [west, north, east, south]。
+ * 跨日期变更线时 east 放到 west 右侧的下一个世界副本。
+ */
+function projectBbox(bbox: BBoxType): [number, number, number, number] {
+  const [west, south, east, north] = bbox;
+  const projectedWest = projectLongitude(west);
+  const projectedEast = projectLongitude(getContinuousEastLongitude(west, east));
+  return [projectedWest, projectLatitude(north), projectedEast, projectLatitude(south)];
 }
 
 /**
@@ -24,12 +25,9 @@ function projectLatitude(latitude: number): number {
  * 经纬度比例不能直接使用，因为 Mercator 的纬向尺度会随纬度发生非线性变化。
  */
 function getProjectedAspectRatio(bbox: BBoxType): number {
-  const [west, south, east, north] = bbox;
-  const projectedWest = (west + 180) / 360;
-  let projectedEast = (east + 180) / 360;
-  if (east < west) projectedEast += 1; // 日期变更线 bbox 在 west 右侧的连续世界副本中计算。
+  const [projectedWest, projectedNorth, projectedEast, projectedSouth] = projectBbox(bbox);
   const projectedWidth = projectedEast - projectedWest;
-  const projectedHeight = Math.abs(projectLatitude(south) - projectLatitude(north));
+  const projectedHeight = Math.abs(projectedSouth - projectedNorth);
   return projectedWidth / projectedHeight;
 }
 
