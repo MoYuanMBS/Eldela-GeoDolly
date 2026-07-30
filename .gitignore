@@ -59,6 +59,9 @@ htmlcov/
 .nox/
 coverage.xml
 *.cover
+test-results/
+playwright-report/
+blob-report/
 
 # ---------- 日志和临时文件 ----------
 *.log
@@ -159,6 +162,7 @@ pnpm-debug.log*
 *.tsbuildinfo
 .eslintcache
 .parcel-cache/
+.vite/
 .cache/
 coverage/
 .npm/
