@@ -12,7 +12,10 @@ import {
 } from "../models/bridge-models.js";
 import {addFeatureIdsToAiOutput} from "../map-data/ai-output.js";
 import {addDisplayIds} from "../map-data/display-id.js";
-import {buildRelationMemberFeaturesByRelation} from "../map-data/relation-membership.js";
+import {
+  buildRelationMemberFeaturesByRelation,
+  buildRelationMembershipByFeatureId,
+} from "../map-data/relation-membership.js";
 import {generateCaptureSize} from "../iframe-capture/capture-generator.js";
 import {generateCaptureCenter} from "../iframe-capture/center-generator.js";
 import {toLeafletBounds} from "../iframe-capture/leaflet-bounds.js";
@@ -45,12 +48,14 @@ export function processToolReply(toolReply: PyToolReplyType) {
   let aiOutput = null;
   let overlayOutput = null;
   let relationMemberFeaturesByRelation = null;
+  let relationMembershipByFeatureId = null;
 
   // basemap-only 没有地图数据；其他模式统一完成 display ID、AI Output enrichment 与 relation 成员索引。
   if (output !== null) {
     overlayOutput = addDisplayIds(output.overlay_output);
     aiOutput = addFeatureIdsToAiOutput(output.ai_output, overlayOutput);
     relationMemberFeaturesByRelation = buildRelationMemberFeaturesByRelation(overlayOutput);
+    relationMembershipByFeatureId = buildRelationMembershipByFeatureId(relationMemberFeaturesByRelation);
   }
 
   // 截图尺寸和 center 属于后端稳定结果；Leaflet bounds 仅作为后续浏览器初始化格式。
@@ -64,6 +69,7 @@ export function processToolReply(toolReply: PyToolReplyType) {
     "ai_output": aiOutput,
     "overlay_output": overlayOutput,
     "relation_member_features_by_relation": relationMemberFeaturesByRelation,
+    "relation_membership_by_feature_id": relationMembershipByFeatureId,
     "screenshot_size": screenshotSize,
     "center": center,
     "leaflet_bbox": leafletBounds,

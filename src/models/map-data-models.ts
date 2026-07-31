@@ -193,7 +193,7 @@ export const pyToolResultSchema = z
   })
   .strict();
 
-// 所有公开 TypeScript 类型均由对应边界 schema 推导。
+// 所有公开边界 TypeScript 类型均由对应边界 schema 推导。
 export type BBoxType = z.infer<typeof bboxSchema>;
 export type IdentifiedOverlayFeatureKindType = z.infer<typeof identifiedOverlayFeatureTypeSchema>;
 export type OverlayGeoJsonGeometryType = z.infer<typeof overlayGeoJsonGeometrySchema>;
@@ -209,6 +209,13 @@ export type IdentifiedOverlayGroupsWithDisplayIdType = z.infer<typeof identified
 export type RelationMemberFeatureType = z.infer<typeof relationMemberFeatureSchema>;
 export type RelationMemberFeaturesType = z.infer<typeof relationMemberFeaturesSchema>;
 export type RelationMemberFeaturesByRelationType = z.infer<typeof relationMemberFeaturesByRelationSchema>;
+// 反向索引只在浏览器运行时派生，不进入 Bridge 或 session 边界，因此不增加 Zod schema。
+export type RelationFeatureIdsByFeatureIdType = Record<string, Array<string>>;
+export interface RelationMembershipByFeatureIdType {
+  node: RelationFeatureIdsByFeatureIdType;
+  area: RelationFeatureIdsByFeatureIdType;
+  way: RelationFeatureIdsByFeatureIdType;
+}
 export type FilteredOverpassResultType = z.infer<typeof filteredOverpassResultSchema>;
 export type EffectiveQueryModeType = z.infer<typeof effectiveQueryModeSchema>;
 export type PyToolResultType = z.infer<typeof pyToolResultSchema>;

@@ -9,6 +9,8 @@ import type {
   IdentifiedRelationMemberType,
   RelationMemberFeatureType,
   RelationMemberFeaturesByRelationType,
+  RelationFeatureIdsByFeatureIdType,
+  RelationMembershipByFeatureIdType,
 } from "../models/map-data-models.js";
 
 /** 从 relation members 提取指定 OSM primitive type 的 ref → role；重复 ref 保留先出现的 role。 */
@@ -53,5 +55,46 @@ export function buildRelationMemberFeaturesByRelation(overlayOutput: IdentifiedO
       result[relation.feature_id] = {node: nodeRoles, area: areaRoles, way: wayRoles};
     }
   }
+  return result;
+}
+
+////////////////////////////////relation membership 反爬流程 /////////////////////////////////////////////
+
+/** 将 relation feature_id 追加到每个空间 Feature 的反向成员数组。 */
+function addRelationFeatureId(
+  result: RelationFeatureIdsByFeatureIdType,
+  members: ReadonlyArray<RelationMemberFeatureType>,
+  relationFeatureId: string,
+): void {
+  for (const member of members) {
+    const relationFeatureIds = result[member.feature_id];
+    if (relationFeatureIds === undefined) result[member.feature_id] = [relationFeatureId];
+    else relationFeatureIds.push(relationFeatureId);
+  }
+}
+
+/**
+ * 建立 `node / area / way feature_id → relation feature_id[]` 的渲染反向索引。
+ *
+ * 权威 relation 字典及其 role 数据保持不变；反向索引只供后续按空间 Feature 查找 relation。
+ */
+export function buildRelationMembershipByFeatureId(
+  relationMemberFeaturesByRelation: RelationMemberFeaturesByRelationType,
+): RelationMembershipByFeatureIdType {
+  const result: RelationMembershipByFeatureIdType = {
+    node: {},
+    area: {},
+    way: {},
+  };
+
+  // 权威 relation 字典只遍历一次，并在同一轮填充三种空间 Feature 的反向索引。
+  for (const relationFeatureId in relationMemberFeaturesByRelation) {
+    if (!Object.hasOwn(relationMemberFeaturesByRelation, relationFeatureId)) continue;
+    const membersByType = relationMemberFeaturesByRelation[relationFeatureId];
+    addRelationFeatureId(result.node, membersByType.node, relationFeatureId);
+    addRelationFeatureId(result.area, membersByType.area, relationFeatureId);
+    addRelationFeatureId(result.way, membersByType.way, relationFeatureId);
+  }
+
   return result;
 }
