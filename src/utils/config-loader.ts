@@ -8,12 +8,6 @@ import { readFileSync, existsSync, readdirSync } from "node:fs";
 import path from "node:path";
 import type { ZodType } from "zod";
 import { parse } from "yaml";
-import {
-  userCssStyleRuleConfigSchema,
-  userCssStyleRulesDocumentSchema,
-  type UserCssStyleRuleConfig,
-} from "../models/style/user-css-style-models.js";
-import {logger} from "./logger.js";
 
 /**
  * 读取单个 YAML 文件；raw 数据只用于当次 schema 构建，不进入 loader 缓存。
@@ -26,7 +20,6 @@ export class ConfigLoader {
   private readonly configDirPath = path.join(process.cwd(), "config");
   private readonly cachedConfigSections = new Map<string, unknown>();
   private cachedAvailableExpertNames: Set<string> | null = null;
-  private cachedUserStyleRules: ReadonlyArray<UserCssStyleRuleConfig> | null = null;
 
   /**
    * 读取、校验并缓存 `config/app.yaml` 中的指定 section。
@@ -94,42 +87,11 @@ export class ConfigLoader {
     return filteredExpertNames;
   }
 
-  /** 只加载用户 tag rule 配置；regex 编译和 CSS 对照由 resolver 负责。 */
-  getUserStyleRules(): ReadonlyArray<UserCssStyleRuleConfig> {
-    if (this.cachedUserStyleRules !== null) return this.cachedUserStyleRules;
-    const rulesPath = path.join(this.configDirPath, "style", "style-rules.yaml");
-    // 用户规则可选；缺失时保留内置样式路径，不产生配置错误。
-    if (!existsSync(rulesPath)) {
-      this.cachedUserStyleRules = [];
-      return this.cachedUserStyleRules;
-    }
-
-    const rawDocument = userCssStyleRulesDocumentSchema.parse(loadYamlFile(rulesPath));
-    const loadedRules: Array<UserCssStyleRuleConfig> = [];
-    // 顶层文档错误直接抛出；单条 rule 可跳过，且这里不编译 regex、不读取 CSS。
-    for (const [ruleIndex, rawRule] of rawDocument.rules.entries()) {
-      const parsedRule = userCssStyleRuleConfigSchema.safeParse(rawRule);
-      if (!parsedRule.success) {
-        logger.warning("skip_invalid_user_css_style_rule", {rule_index: ruleIndex, reason: parsedRule.error.message});
-        continue;
-      }
-      loadedRules.push(parsedRule.data);
-    }
-    this.cachedUserStyleRules = loadedRules;
-    return this.cachedUserStyleRules;
-  }
-
-  /** 最终样式缓存建立后释放 raw YAML rule，其他配置缓存不受影响。 */
-  clearUserStyleRulesCache(): void {
-    this.cachedUserStyleRules = null;
-  }
-
   /**
    * 清空当前实例持有的配置缓存。
    */
   resetCache(): void {
     this.cachedAvailableExpertNames = null;
-    this.cachedUserStyleRules = null;
     this.cachedConfigSections.clear();
   }
 }

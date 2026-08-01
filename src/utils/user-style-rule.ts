@@ -1,28 +1,37 @@
-/** 进程级样式缓存；模块首次加载时构建一次，后续 import 直接复用。 */
+/** Node 用户样式系统唯一公开入口；初始化后只暴露冻结的可序列化结果。 */
 
-import {BUILT_IN_CANVAS_STYLE_RULES} from "../leaflet/styles/built-in-style-rules.js";
-import type {PreparedStyleCache, PreparedStyleRule} from "../models/style/user-css-style-models.js";
-import {config} from "./config-loader.js";
-import {userCssLoader} from "./user-css-loader.js";
-import {prepareUserStyle} from "./user-style-rule-resolver.js";
+import type {SerializableUserStyle} from "../models/style/user-css-style-models.js";
+import {logger} from "./logger.js";
+import {userCssLoader} from "./style/user-css-loader.js";
+import {userStyleConfigLoader} from "./style/user-style-config-loader.js";
+import {validateUserStyle} from "./style/user-style-validator.js";
 
-function buildStyleCache(): PreparedStyleCache {
-  const rawCss = userCssLoader.getCss();
-  const rawUserRules = config.getUserStyleRules();
-  try {
-    const preparedUserStyle = prepareUserStyle(rawCss, rawUserRules);
-    const rules: Array<PreparedStyleRule> = [];
+let cachedUserStyle: SerializableUserStyle | null = null;
 
-    // 用户规则排在前面便于后续单次候选遍历，但最终优先级仍应读取 source，不能只依赖数组顺序。
-    for (const rule of preparedUserStyle.rules) rules.push(Object.freeze({...rule, source: "user"}));
-    for (const rule of BUILT_IN_CANVAS_STYLE_RULES) rules.push(Object.freeze({...rule, source: "builtIn"}));
-
-    return Object.freeze({css: preparedUserStyle.css, rules: Object.freeze(rules)});
-  } finally {
-    // 正式缓存已经持有处理后的 CSS/rules；释放 loader 的重复 raw 引用，且不支持运行期热更新。
+/** 重新读取并校验用户样式；已有结果和原始数据缓存会在读取前清空。 */
+export function initializeUserStyle(): SerializableUserStyle {
+  if (cachedUserStyle !== null) {
+    cachedUserStyle = null;
     userCssLoader.resetCache();
-    config.clearUserStyleRulesCache();
+    userStyleConfigLoader.resetCache();
+  }
+  try {
+    const rawCssSource = userCssLoader.getSource();
+    const rawUserRules = userStyleConfigLoader.getRules();
+    cachedUserStyle = validateUserStyle(rawCssSource, rawUserRules);
+    return cachedUserStyle;
+  } finally {
+    // 最终缓存已持有合法 CSS/rules，立即释放两份只用于启动校验的 raw cache。
+    userCssLoader.resetCache();
+    userStyleConfigLoader.resetCache();
   }
 }
 
-export const USER_STYLE_CACHE = buildStyleCache();
+/** 其他 Node 模块只从这里读取；缓存为空时记录 warning 并自动完成初始化。 */
+export function getUserStyle(): SerializableUserStyle {
+  if (cachedUserStyle === null) {
+    logger.warning("user_style_initialized_on_first_read", {reason: "cache_empty"});
+    return initializeUserStyle();
+  }
+  return cachedUserStyle;
+}

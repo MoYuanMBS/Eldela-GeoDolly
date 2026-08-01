@@ -1,7 +1,7 @@
 /** 用户 OSM tag rule；匹配结果只选择 CSS class，不生成 Canvas recipe。 */
 
 import {z} from "zod";
-import type {BuiltInCanvasStyleRule, CanvasStyleTargetType} from "../built-in-style-models.js";
+import type {CanvasStyleTargetType} from "../built-in-style-models.js";
 import type {CanvasSpatialFeatureType} from "./base-canvas-style.js";
 
 // 用户 key 只允许 exact；value 的字符串表示 exact，`regex` 对象表示待编译的 source。
@@ -76,13 +76,14 @@ export type UserCssStyleRule = UserCssBorderStyleRule | UserCssBaseStyleRule | U
 
 export type UserCssStyleRuleConfig = z.infer<typeof userCssStyleRuleConfigSchema>;
 
-/** 启动阶段组装后的统一规则；source 决定最终使用 Canvas styleId 还是 CSS className。 */
-export type PreparedStyleRule =
-  | (BuiltInCanvasStyleRule & {source: "builtIn"})
-  | (UserCssStyleRule & {source: "user"});
-
-/** 后续渲染模块只消费这一份不可热更新的样式缓存。 */
-export interface PreparedStyleCache {
+/** CSS loader 内部结果；classNames 只用于启动校验，不进入传输缓存。 */
+export interface UserCssSource {
   css: string;
-  rules: ReadonlyArray<PreparedStyleRule>;
+  classNames: ReadonlySet<string>;
+}
+
+/** Node 启动时生成、可直接传输给 iframe 的用户样式。 */
+export interface SerializableUserStyle {
+  css: string;
+  rules: ReadonlyArray<UserCssStyleRuleConfig>;
 }

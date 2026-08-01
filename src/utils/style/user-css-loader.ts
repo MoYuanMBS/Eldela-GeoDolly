@@ -1,19 +1,21 @@
-/** 用户 CSS 的独立加载器；不经过 ConfigLoader，也不参与 Canvas style 计算。 */
+/** 用户 CSS 的内部 loader；不经过通用 ConfigLoader，也不参与 Canvas style 计算。 */
 
 import {existsSync, readFileSync, realpathSync, statSync} from "node:fs";
 import path from "node:path";
-import {transform, type ImportDependency} from "lightningcss";
+import {transform, type ImportDependency, type Selector} from "lightningcss";
+import type {UserCssSource} from "../../models/style/user-css-style-models.js";
 
 // 这些是加载边界而非用户配置，避免递归导入拖垮地图服务或占用无界内存。
 const MAX_IMPORT_DEPTH = 16;
 const MAX_FILE_COUNT = 64;
 const MAX_FILE_BYTES = 256 * 1024;
 const MAX_TOTAL_BYTES = 1024 * 1024;
+const OVERLAY_SCOPE_CLASS = "geomcp-user-overlay";
 
 interface LoadState {
   // activeFiles 用于识别当前递归链中的循环；loadedFiles 复用已完成的解析结果。
   activeFiles: Set<string>;
-  loadedFiles: Map<string, string>;
+  loadedFiles: Map<string, UserCssSource>;
   totalBytes: number;
   layersDirPath: string;
 }
@@ -37,7 +39,23 @@ function resolveLocalImport(specifier: string, sourceFilePath: string, layersDir
   return resolvedPath;
 }
 
-function loadCssFile(filePath: string, state: LoadState, depth: number): string {
+/** 只收集与 Overlay 作用域位于同一 compound selector 的 Feature class。 */
+function collectOverlayClassNames(selector: Selector, output: Set<string>): void {
+  let compoundClassNames: Array<string> = [];
+  const flushCompound = (): void => {
+    if (compoundClassNames.includes(OVERLAY_SCOPE_CLASS)) {
+      for (const className of compoundClassNames) output.add(className);
+    }
+    compoundClassNames = [];
+  };
+  for (const component of selector) {
+    if (component.type === "combinator") flushCompound();
+    else if (component.type === "class") compoundClassNames.push(component.name);
+  }
+  flushCompound();
+}
+
+function loadCssFile(filePath: string, state: LoadState, depth: number): UserCssSource {
   const resolvedFilePath = realpathSync(filePath);
   const cachedResult = state.loadedFiles.get(resolvedFilePath);
   if (cachedResult !== undefined) return cachedResult;
@@ -54,7 +72,8 @@ function loadCssFile(filePath: string, state: LoadState, depth: number): string 
 
   state.activeFiles.add(resolvedFilePath);
   try {
-    // Lightning CSS 同时承担严格语法解析和依赖提取；不使用正则识别 @import。
+    const classNames = new Set<string>();
+    // Lightning CSS 同时承担严格语法解析、class 提取和依赖分析，不使用字符串搜索 CSS。
     const transformResult = transform({
       filename: resolvedFilePath,
       code: readFileSync(resolvedFilePath),
@@ -62,6 +81,7 @@ function loadCssFile(filePath: string, state: LoadState, depth: number): string 
       sourceMap: false,
       errorRecovery: false,
       analyzeDependencies: {preserveImports: true},
+      visitor: {Selector: (selector) => collectOverlayClassNames(selector, classNames)},
     });
     if (transformResult.warnings.length > 0) {
       throw new Error(`Invalid user CSS in ${resolvedFilePath}: ${transformResult.warnings[0].message}`);
@@ -76,15 +96,17 @@ function loadCssFile(filePath: string, state: LoadState, depth: number): string 
       if (importDependency.media !== null || importDependency.supports !== null) {
         throw new Error(`Conditional @import is not supported in user CSS: ${importDependency.url}`);
       }
-      const importedCss = loadCssFile(resolveLocalImport(importDependency.url, resolvedFilePath, state.layersDirPath), state, depth + 1);
+      const importedSource = loadCssFile(resolveLocalImport(importDependency.url, resolvedFilePath, state.layersDirPath), state, depth + 1);
       const generatedImport = `@import ${JSON.stringify(importDependency.placeholder)};`;
       if (!cssText.includes(generatedImport)) throw new Error(`Unable to expand user CSS import: ${importDependency.url}`);
       // 在 parser 生成的占位位置展开，保持用户声明的 cascade 顺序。
-      cssText = cssText.replace(generatedImport, importedCss);
+      cssText = cssText.replace(generatedImport, importedSource.css);
+      for (const className of importedSource.classNames) classNames.add(className);
     }
 
-    state.loadedFiles.set(resolvedFilePath, cssText);
-    return cssText;
+    const source = Object.freeze({css: cssText, classNames});
+    state.loadedFiles.set(resolvedFilePath, source);
+    return source;
   } finally {
     // 解析成功或失败都必须退出当前递归链，否则后续加载会被误判为循环。
     state.activeFiles.delete(resolvedFilePath);
@@ -93,17 +115,17 @@ function loadCssFile(filePath: string, state: LoadState, depth: number): string 
 
 /** 加载并缓存 `config/style/style.css` 及其本地 layers。 */
 export class UserCssLoader {
-  private cachedCss: string | null = null;
+  private cachedSource: UserCssSource | null = null;
 
   constructor(private readonly styleDirPath = path.join(process.cwd(), "config", "style")) {}
 
-  getCss(): string {
-    if (this.cachedCss !== null) return this.cachedCss;
+  getSource(): UserCssSource {
+    if (this.cachedSource !== null) return this.cachedSource;
     const stylePath = path.join(this.styleDirPath, "style.css");
     // 用户 CSS 是可选配置；入口不存在时返回空结果而不是阻断地图渲染。
     if (!existsSync(stylePath)) {
-      this.cachedCss = "";
-      return this.cachedCss;
+      this.cachedSource = Object.freeze({css: "", classNames: new Set<string>()});
+      return this.cachedSource;
     }
 
     const resolvedStyleDirPath = realpathSync(this.styleDirPath);
@@ -114,17 +136,17 @@ export class UserCssLoader {
     if (!isPathInside(resolvedStyleDirPath, layersDirPath) || !statSync(layersDirPath).isDirectory()) {
       throw new Error("User CSS layers directory must remain inside config/style");
     }
-    this.cachedCss = loadCssFile(resolvedStylePath, {
+    this.cachedSource = loadCssFile(resolvedStylePath, {
       activeFiles: new Set<string>(),
-      loadedFiles: new Map<string, string>(),
+      loadedFiles: new Map<string, UserCssSource>(),
       totalBytes: 0,
       layersDirPath,
     }, 0);
-    return this.cachedCss;
+    return this.cachedSource;
   }
 
   resetCache(): void {
-    this.cachedCss = null;
+    this.cachedSource = null;
   }
 }
 
