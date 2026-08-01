@@ -27,6 +27,7 @@ import {
   callBridge,
   sanitizeSearchResponseForAI,
 } from "./utils/python-bridge.js";
+import {config} from "./utils/config-loader.js";
 import {initializeUserStyle} from "./utils/user-style-rule.js";
 
 //#################################################################################
@@ -129,7 +130,8 @@ function buildServer() {
 }
 
 async function main() {
-  // 用户 CSS/YAML 在工具注册前只初始化一次；失败时服务不进入可调用状态。
+  // 配置与用户 CSS/YAML 在工具注册前完成校验；失败时服务不进入可调用状态。
+  config.initialize();
   initializeUserStyle();
   // GeoMCP 当前先使用 stdio transport，供本地 MCP client / AI 进程拉起。
   const server = buildServer();

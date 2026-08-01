@@ -8,6 +8,7 @@ import { readFileSync, existsSync, readdirSync } from "node:fs";
 import path from "node:path";
 import type { ZodType } from "zod";
 import { parse } from "yaml";
+import {featureIdDisplayConfigSchema, iframeAdaptiveConfigSchema, toolPromptsConfigSchema} from "../models/config-models.js";
 
 /**
  * 读取单个 YAML 文件；raw 数据只用于当次 schema 构建，不进入 loader 缓存。
@@ -20,6 +21,17 @@ export class ConfigLoader {
   private readonly configDirPath = path.join(process.cwd(), "config");
   private readonly cachedConfigSections = new Map<string, unknown>();
   private cachedAvailableExpertNames: Set<string> | null = null;
+
+  /**
+   * 在 MCP Server 注册工具前预载当前 TypeScript 会消费的全部配置。
+   * 各业务模块仍通过原 getter 读取同一份已校验缓存，不在 Tool 调用期间重新解析 YAML。
+   */
+  initialize(): void {
+    this.getAppSection("prompts", toolPromptsConfigSchema);
+    this.getAppSection("feature_id", featureIdDisplayConfigSchema);
+    this.getAppSection("iframe_adaptive", iframeAdaptiveConfigSchema);
+    this.getAvailableExpertNames();
+  }
 
   /**
    * 读取、校验并缓存 `config/app.yaml` 中的指定 section。

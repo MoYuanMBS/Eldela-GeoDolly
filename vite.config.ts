@@ -12,6 +12,9 @@ const iframeAdaptiveConfig = config.getAppSection("iframe_adaptive", iframeAdapt
 export default defineConfig({
   root: webRoot,
   plugins: [react()],
+  css: {
+    transformer: "lightningcss",
+  },
   define: {
     __GEOMCP_MAP_PADDING__: JSON.stringify(iframeAdaptiveConfig.padding),
   },

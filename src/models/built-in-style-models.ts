@@ -1,6 +1,6 @@
 /** 内置 Canvas tag rule 的分层模型。 */
 
-import type {CanvasSpatialFeatureType} from "./style/base-canvas-style.js";
+import type {CanvasBaseStyleRecipe, CanvasSpatialFeatureType} from "./style/base-canvas-style.js";
 
 export type CanvasStyleTargetType = CanvasSpatialFeatureType | "relation";
 export type CanvasTagMatcher = string | RegExp;
@@ -47,3 +47,10 @@ export type BuiltInCanvasStyleRule<StyleId extends string = string> =
   | BuiltInCanvasBorderStyleRule<StyleId>
   | BuiltInCanvasBaseStyleRule<StyleId>
   | BuiltInCanvasTranslucentStyleRule<StyleId>;
+
+/** 浏览器启动时一次性构建的内置 Canvas 样式缓存。 */
+export interface BuiltInCanvasStyleCache<StyleId extends string = string> {
+  defaultBaseStyleIds: Readonly<Record<CanvasSpatialFeatureType, StyleId>>;
+  baseStyles: Readonly<Record<StyleId, CanvasBaseStyleRecipe>>;
+  rules: ReadonlyArray<BuiltInCanvasStyleRule<StyleId>>;
+}
