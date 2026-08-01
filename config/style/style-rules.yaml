@@ -1,0 +1,27 @@
+rules:
+  - id: user-amenity-node
+    renderLayer: base
+    featureType: node
+    priority: 100
+    key: amenity
+    value:
+      regex: ".+"
+    className: geomcp-user-amenity-node
+
+  - id: user-primary-road
+    renderLayer: base
+    featureType: way
+    priority: 100
+    key: highway
+    value:
+      regex: "^(primary|primary_link)$"
+    className: geomcp-user-primary-road
+
+  - id: user-building-area
+    renderLayer: base
+    featureType: area
+    priority: 100
+    key: building
+    value:
+      regex: "^(?!no$).+"
+    className: geomcp-user-building-area
