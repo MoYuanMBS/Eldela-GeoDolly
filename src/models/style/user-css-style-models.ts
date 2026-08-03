@@ -10,6 +10,8 @@ const valueMatcherSchema = z.union([
 
 const commonRuleFields = {
   id: z.string().min(1),
+  // 用户当前只支持 CSS；仍显式传输 kind，使 Node 与浏览器共用同一拍平规则结构。
+  kind: z.literal("css"),
   // YAML 中保存用户自己的非负 priority；传到浏览器后再统一加 500。
   priority: z.number().int().nonnegative(),
   key: z.string().min(1),

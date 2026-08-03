@@ -45,7 +45,7 @@ function freezeFeatureIndexes(indexes: Record<"border" | "base" | "translucent",
  * resolver 用它恢复候选顺序，并在 priority 并列时确定性地选择数组第 0 项。
  */
 function addPlanOrder(rule: CompiledStyleRule, planOrder: number): RuntimeStyleRule {
-  const runtimeRule = {...rule, target: Object.freeze({...rule.target}), planOrder};
+  const runtimeRule = {...rule, planOrder};
   switch (runtimeRule.renderLayer) {
     case "border": return Object.freeze(runtimeRule);
     case "base": return Object.freeze(runtimeRule);

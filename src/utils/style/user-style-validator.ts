@@ -7,7 +7,7 @@ import {logger} from "../logger.js";
 function getRuleSignature(rule: UserCssStyleRuleConfig): string {
   const valueMatcher = typeof rule.value === "string" ? ["exact", rule.value] : ["regex", rule.value.regex];
   const effectType = rule.renderLayer === "base" ? null : rule.effectType;
-  return JSON.stringify([rule.renderLayer, rule.featureType, effectType, rule.key, valueMatcher, rule.className]);
+  return JSON.stringify([rule.kind, rule.renderLayer, rule.featureType, effectType, rule.key, valueMatcher, rule.className]);
 }
 
 function freezeRule(rule: UserCssStyleRuleConfig): UserCssStyleRuleConfig {

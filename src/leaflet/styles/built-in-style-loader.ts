@@ -5,11 +5,11 @@
  * 和 tag rules 组装为只读 bundle，但不向 DOM 注入 CSS，也不执行 Feature 匹配。
  */
 
-import {USER_STYLE_PRIORITY_OFFSET, type BuiltInStyleRule, type CanvasTagMatcher, type StyleRuleTarget} from "../../models/built-in-style-models.js";
+import {USER_STYLE_PRIORITY_OFFSET, type BuiltInStyleRule, type CanvasTagMatcher} from "../../models/built-in-style-models.js";
 import type {CanvasBaseStyleRecipe, CanvasDrawOperation} from "../../models/style/base-canvas-style.js";
 import type {CompiledStyleBundle, CompiledStyleRule} from "../../models/style/runtime-style-models.js";
 import builtInCss from "./built-in/built-in-css.css?inline";
-import {BUILT_IN_CANVAS_STYLE_RULES, DEFAULT_CANVAS_BASE_STYLE_IDS} from "./built-in/built-in-style-rules.js";
+import {BUILT_IN_STYLE_RULES, DEFAULT_CANVAS_BASE_STYLE_IDS} from "./built-in/built-in-style-rules.js";
 import {BUILT_IN_CANVAS_STYLES} from "./built-in/built-in-style.js";
 
 type BuiltInStyleId = keyof typeof BUILT_IN_CANVAS_STYLES;
@@ -20,11 +20,6 @@ let cachedBuiltInStyle: CompiledStyleBundle<BuiltInStyleId> | null = null;
 /** 复制 RegExp，避免运行时规则继续引用入口文件中可变的 matcher 实例。 */
 function freezeMatcher(matcher: CanvasTagMatcher): CanvasTagMatcher {
   return typeof matcher === "string" ? matcher : Object.freeze(new RegExp(matcher.source, matcher.flags));
-}
-
-/** target 可能是 Canvas style ID，也可能是 CSS class，两种目标都在此切断可变引用。 */
-function freezeTarget(target: StyleRuleTarget<BuiltInStyleId>): StyleRuleTarget<BuiltInStyleId> {
-  return Object.freeze({...target});
 }
 
 /** line dash 是 operation 内唯一的数组字段，需要额外复制后冻结。 */
@@ -54,7 +49,6 @@ function freezeRule(rule: BuiltInStyleRule<BuiltInStyleId>): CompiledStyleRule<B
     ...rule,
     key: freezeMatcher(rule.key),
     value: freezeMatcher(rule.value),
-    target: freezeTarget(rule.target),
   };
   switch (frozenRule.renderLayer) {
     case "border": return Object.freeze(frozenRule);
@@ -73,7 +67,7 @@ export function initializeBuiltInStyle(): CompiledStyleBundle<BuiltInStyleId> {
     css: builtInCss,
     canvasStyles: freezeCanvasStyles(),
     defaultBaseStyleIds: Object.freeze({...DEFAULT_CANVAS_BASE_STYLE_IDS}),
-    rules: Object.freeze(BUILT_IN_CANVAS_STYLE_RULES.map(freezeRule)),
+    rules: Object.freeze(BUILT_IN_STYLE_RULES.map(freezeRule)),
   });
   return cachedBuiltInStyle;
 }

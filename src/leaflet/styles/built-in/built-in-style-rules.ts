@@ -1,5 +1,5 @@
 /**
- * OSM tag → 内置地图 style 对照表；target 可以指向 Canvas recipe 或 CSS class。
+ * OSM tag → 内置地图 style 对照表；kind 与 className/styleId 直接展开在 rule 上。
  *
  * key/value matcher 都允许 exact string 或预编译 RegExp；resolver 后续按 priority 选择唯一 Base。
  */
@@ -14,7 +14,7 @@ export const DEFAULT_CANVAS_BASE_STYLE_IDS = {
   area: "area-default",
 } as const satisfies Record<CanvasSpatialFeatureType, keyof typeof BUILT_IN_CANVAS_STYLES>;
 
-export const BUILT_IN_CANVAS_STYLE_RULES = [
+export const BUILT_IN_STYLE_RULES = [
   {
     id: "node-highway-traffic-signals",
     renderLayer: "base",
@@ -22,7 +22,8 @@ export const BUILT_IN_CANVAS_STYLE_RULES = [
     priority: 150,
     key: "highway",
     value: "traffic_signals",
-    target: {kind: "css", className: "geomcp-built-in-node-traffic-signals"},
+    kind: "css",
+    className: "geomcp-built-in-node-traffic-signals",
   },
   {
     id: "node-rail-station",
@@ -31,7 +32,8 @@ export const BUILT_IN_CANVAS_STYLE_RULES = [
     priority: 145,
     key: "railway",
     value: /^(?:station|halt|tram_stop)$/u,
-    target: {kind: "css", className: "geomcp-built-in-node-rail-station"},
+    kind: "css",
+    className: "geomcp-built-in-node-rail-station",
   },
   {
     id: "node-medical",
@@ -40,7 +42,8 @@ export const BUILT_IN_CANVAS_STYLE_RULES = [
     priority: 140,
     key: "amenity",
     value: /^(?:hospital|clinic|doctors)$/u,
-    target: {kind: "css", className: "geomcp-built-in-node-medical"},
+    kind: "css",
+    className: "geomcp-built-in-node-medical",
   },
   {
     id: "node-transit-stop",
@@ -49,7 +52,8 @@ export const BUILT_IN_CANVAS_STYLE_RULES = [
     priority: 135,
     key: /^(?:highway|public_transport)$/u,
     value: /^(?:bus_stop|platform|stop_position)$/u,
-    target: {kind: "css", className: "geomcp-built-in-node-transit-stop"},
+    kind: "css",
+    className: "geomcp-built-in-node-transit-stop",
   },
   {
     id: "highway-motorway",
@@ -58,7 +62,8 @@ export const BUILT_IN_CANVAS_STYLE_RULES = [
     priority: 110,
     key: "highway",
     value: /^(?:motorway|motorway_link)$/u,
-    target: {kind: "canvas", styleId: "way-highway-motorway"},
+    kind: "canvas",
+    styleId: "way-highway-motorway",
   },
   {
     id: "highway-trunk",
@@ -67,7 +72,8 @@ export const BUILT_IN_CANVAS_STYLE_RULES = [
     priority: 110,
     key: "highway",
     value: /^(?:trunk|trunk_link)$/u,
-    target: {kind: "canvas", styleId: "way-highway-trunk"},
+    kind: "canvas",
+    styleId: "way-highway-trunk",
   },
   {
     id: "highway-primary",
@@ -76,7 +82,8 @@ export const BUILT_IN_CANVAS_STYLE_RULES = [
     priority: 110,
     key: "highway",
     value: /^(?:primary|primary_link)$/u,
-    target: {kind: "canvas", styleId: "way-highway-primary"},
+    kind: "canvas",
+    styleId: "way-highway-primary",
   },
   {
     id: "highway-secondary",
@@ -85,7 +92,8 @@ export const BUILT_IN_CANVAS_STYLE_RULES = [
     priority: 110,
     key: "highway",
     value: /^(?:secondary|secondary_link)$/u,
-    target: {kind: "canvas", styleId: "way-highway-secondary"},
+    kind: "canvas",
+    styleId: "way-highway-secondary",
   },
   {
     id: "highway-tertiary",
@@ -94,7 +102,8 @@ export const BUILT_IN_CANVAS_STYLE_RULES = [
     priority: 110,
     key: "highway",
     value: /^(?:tertiary|tertiary_link)$/u,
-    target: {kind: "canvas", styleId: "way-highway-tertiary"},
+    kind: "canvas",
+    styleId: "way-highway-tertiary",
   },
   {
     id: "highway-residential",
@@ -103,7 +112,8 @@ export const BUILT_IN_CANVAS_STYLE_RULES = [
     priority: 110,
     key: "highway",
     value: "residential",
-    target: {kind: "canvas", styleId: "way-highway-residential"},
+    kind: "canvas",
+    styleId: "way-highway-residential",
   },
   {
     id: "highway-unclassified",
@@ -112,7 +122,8 @@ export const BUILT_IN_CANVAS_STYLE_RULES = [
     priority: 110,
     key: "highway",
     value: "unclassified",
-    target: {kind: "canvas", styleId: "way-highway-unclassified"},
+    kind: "canvas",
+    styleId: "way-highway-unclassified",
   },
   {
     id: "highway-living-street",
@@ -121,7 +132,8 @@ export const BUILT_IN_CANVAS_STYLE_RULES = [
     priority: 110,
     key: "highway",
     value: "living_street",
-    target: {kind: "canvas", styleId: "way-highway-living-street"},
+    kind: "canvas",
+    styleId: "way-highway-living-street",
   },
   {
     id: "highway-service",
@@ -130,7 +142,8 @@ export const BUILT_IN_CANVAS_STYLE_RULES = [
     priority: 110,
     key: "highway",
     value: "service",
-    target: {kind: "canvas", styleId: "way-highway-service"},
+    kind: "canvas",
+    styleId: "way-highway-service",
   },
   {
     id: "highway-track",
@@ -139,7 +152,8 @@ export const BUILT_IN_CANVAS_STYLE_RULES = [
     priority: 110,
     key: "highway",
     value: "track",
-    target: {kind: "canvas", styleId: "way-highway-track"},
+    kind: "canvas",
+    styleId: "way-highway-track",
   },
   {
     id: "highway-pedestrian",
@@ -148,7 +162,8 @@ export const BUILT_IN_CANVAS_STYLE_RULES = [
     priority: 110,
     key: "highway",
     value: "pedestrian",
-    target: {kind: "canvas", styleId: "way-highway-pedestrian"},
+    kind: "canvas",
+    styleId: "way-highway-pedestrian",
   },
   {
     id: "highway-path",
@@ -157,7 +172,8 @@ export const BUILT_IN_CANVAS_STYLE_RULES = [
     priority: 110,
     key: "highway",
     value: "path",
-    target: {kind: "canvas", styleId: "way-highway-path"},
+    kind: "canvas",
+    styleId: "way-highway-path",
   },
   {
     id: "highway-footway",
@@ -166,7 +182,8 @@ export const BUILT_IN_CANVAS_STYLE_RULES = [
     priority: 110,
     key: "highway",
     value: "footway",
-    target: {kind: "canvas", styleId: "way-highway-footway"},
+    kind: "canvas",
+    styleId: "way-highway-footway",
   },
   {
     id: "highway-cycleway",
@@ -175,7 +192,8 @@ export const BUILT_IN_CANVAS_STYLE_RULES = [
     priority: 110,
     key: "highway",
     value: "cycleway",
-    target: {kind: "canvas", styleId: "way-highway-cycleway"},
+    kind: "canvas",
+    styleId: "way-highway-cycleway",
   },
   {
     id: "highway-bridleway",
@@ -184,7 +202,8 @@ export const BUILT_IN_CANVAS_STYLE_RULES = [
     priority: 110,
     key: "highway",
     value: "bridleway",
-    target: {kind: "canvas", styleId: "way-highway-bridleway"},
+    kind: "canvas",
+    styleId: "way-highway-bridleway",
   },
   {
     id: "highway-steps",
@@ -193,7 +212,8 @@ export const BUILT_IN_CANVAS_STYLE_RULES = [
     priority: 110,
     key: "highway",
     value: "steps",
-    target: {kind: "canvas", styleId: "way-highway-steps"},
+    kind: "canvas",
+    styleId: "way-highway-steps",
   },
   {
     id: "highway-default",
@@ -202,7 +222,8 @@ export const BUILT_IN_CANVAS_STYLE_RULES = [
     priority: 100,
     key: "highway",
     value: /^.+$/u,
-    target: {kind: "canvas", styleId: "way-highway-road"},
+    kind: "canvas",
+    styleId: "way-highway-road",
   },
   {
     id: "building",
@@ -211,7 +232,8 @@ export const BUILT_IN_CANVAS_STYLE_RULES = [
     priority: 200,
     key: "building",
     value: /^(?!no$).+$/u,
-    target: {kind: "canvas", styleId: "area-building"},
+    kind: "canvas",
+    styleId: "area-building",
   },
   {
     id: "landuse-green",
@@ -220,7 +242,8 @@ export const BUILT_IN_CANVAS_STYLE_RULES = [
     priority: 110,
     key: "landuse",
     value: /^(?:allotments|flowerbed|forest|grass|recreation_ground|village_green)$/u,
-    target: {kind: "canvas", styleId: "area-landuse-green"},
+    kind: "canvas",
+    styleId: "area-landuse-green",
   },
   {
     id: "landuse-water",
@@ -229,7 +252,8 @@ export const BUILT_IN_CANVAS_STYLE_RULES = [
     priority: 110,
     key: "landuse",
     value: /^(?:basin|reservoir|salt_pond)$/u,
-    target: {kind: "canvas", styleId: "area-landuse-water"},
+    kind: "canvas",
+    styleId: "area-landuse-water",
   },
   {
     id: "landuse-residential",
@@ -238,7 +262,8 @@ export const BUILT_IN_CANVAS_STYLE_RULES = [
     priority: 110,
     key: "landuse",
     value: /^(?:construction|residential)$/u,
-    target: {kind: "canvas", styleId: "area-landuse-residential"},
+    kind: "canvas",
+    styleId: "area-landuse-residential",
   },
   {
     id: "landuse-commercial",
@@ -247,7 +272,8 @@ export const BUILT_IN_CANVAS_STYLE_RULES = [
     priority: 110,
     key: "landuse",
     value: /^(?:commercial|landfill|military|retail)$/u,
-    target: {kind: "canvas", styleId: "area-landuse-commercial"},
+    kind: "canvas",
+    styleId: "area-landuse-commercial",
   },
   {
     id: "landuse-industrial",
@@ -256,7 +282,8 @@ export const BUILT_IN_CANVAS_STYLE_RULES = [
     priority: 110,
     key: "landuse",
     value: "industrial",
-    target: {kind: "canvas", styleId: "area-landuse-industrial"},
+    kind: "canvas",
+    styleId: "area-landuse-industrial",
   },
   {
     id: "landuse-agricultural",
@@ -265,7 +292,8 @@ export const BUILT_IN_CANVAS_STYLE_RULES = [
     priority: 110,
     key: "landuse",
     value: /^(?:cemetery|farmland|meadow|orchard|plant_nursery|vineyard)$/u,
-    target: {kind: "canvas", styleId: "area-landuse-agricultural"},
+    kind: "canvas",
+    styleId: "area-landuse-agricultural",
   },
   {
     id: "landuse-farmyard",
@@ -274,7 +302,8 @@ export const BUILT_IN_CANVAS_STYLE_RULES = [
     priority: 110,
     key: "landuse",
     value: "farmyard",
-    target: {kind: "canvas", styleId: "area-landuse-farmyard"},
+    kind: "canvas",
+    styleId: "area-landuse-farmyard",
   },
   {
     id: "landuse-default",
@@ -283,6 +312,7 @@ export const BUILT_IN_CANVAS_STYLE_RULES = [
     priority: 100,
     key: "landuse",
     value: /^.+$/u,
-    target: {kind: "canvas", styleId: "area-landuse-default"},
+    kind: "canvas",
+    styleId: "area-landuse-default",
   },
 ] as const satisfies ReadonlyArray<BuiltInStyleRule<keyof typeof BUILT_IN_CANVAS_STYLES>>;

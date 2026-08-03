@@ -1,5 +1,6 @@
 rules:
   - id: user-amenity-node
+    kind: css
     renderLayer: base
     featureType: node
     priority: 100
@@ -9,6 +10,7 @@ rules:
     className: geomcp-user-amenity-node
 
   - id: user-primary-road
+    kind: css
     renderLayer: base
     featureType: way
     priority: 100
@@ -18,6 +20,7 @@ rules:
     className: geomcp-user-primary-road
 
   - id: user-building-area
+    kind: css
     renderLayer: base
     featureType: area
     priority: 100

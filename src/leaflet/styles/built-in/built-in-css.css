@@ -1,6 +1,6 @@
 /*
  * 内置地图 CSS 样式主入口；只作用于 SVG / HTML Overlay，不向 Canvas recipe 提供参数。
- * class 自身包含 built-in 命名空间，renderer 只需应用 rule target 返回的 className。
+ * class 自身包含 built-in 命名空间，renderer 只需应用拍平 rule 返回的 className。
  * 后续样式增多时可在这里通过本地 @import 汇总分类文件。
  */
 

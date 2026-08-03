@@ -3,34 +3,33 @@
  * 这些类型不记录规则来源；built-in/user 的覆盖关系已经完全编码进最终 priority。
  */
 
-import type {CanvasTagMatcher, StyleRuleTarget, StyleTargetType} from "../built-in-style-models.js";
+import type {CanvasTagMatcher, StyleRuleStyleFields, StyleTargetType} from "../built-in-style-models.js";
 import type {CanvasBaseStyleRecipe, CanvasSpatialFeatureType} from "./base-canvas-style.js";
 
 /** loader/compiler 已完成格式转换，但尚未进入全局排序和索引的统一规则。 */
-interface CompiledStyleRuleCommon<StyleId extends string> {
+interface CompiledStyleRuleCommon {
   id: string;
   priority: number;
   key: CanvasTagMatcher;
   value: CanvasTagMatcher;
-  target: StyleRuleTarget<StyleId>;
 }
 
-export type CompiledBorderStyleRule<StyleId extends string = string> = Readonly<CompiledStyleRuleCommon<StyleId> & {
+export type CompiledBorderStyleRule<StyleId extends string = string> = Readonly<CompiledStyleRuleCommon & {
   renderLayer: "border";
   featureType: CanvasSpatialFeatureType;
   effectType: string;
-}>;
+} & StyleRuleStyleFields<StyleId>>;
 
-export type CompiledBaseStyleRule<StyleId extends string = string> = Readonly<CompiledStyleRuleCommon<StyleId> & {
+export type CompiledBaseStyleRule<StyleId extends string = string> = Readonly<CompiledStyleRuleCommon & {
   renderLayer: "base";
   featureType: CanvasSpatialFeatureType;
-}>;
+} & StyleRuleStyleFields<StyleId>>;
 
-export type CompiledTranslucentStyleRule<StyleId extends string = string> = Readonly<CompiledStyleRuleCommon<StyleId> & {
+export type CompiledTranslucentStyleRule<StyleId extends string = string> = Readonly<CompiledStyleRuleCommon & {
   renderLayer: "translucent";
   featureType: StyleTargetType;
   effectType: string;
-}>;
+} & StyleRuleStyleFields<StyleId>>;
 
 export type CompiledStyleRule<StyleId extends string = string> =
   | CompiledBorderStyleRule<StyleId>
@@ -79,13 +78,12 @@ export interface RuntimeStylePlan<StyleId extends string = string> {
   rulesByFeatureType: Readonly<Record<StyleTargetType, RuntimeStyleFeatureRuleIndexes<StyleId>>>;
 }
 
-/** Base 只选择一个 target；rule 为 null 表示使用 Feature 类型的默认 Canvas recipe。 */
-export interface ResolvedBaseStyle<StyleId extends string = string> {
-  target: StyleRuleTarget<StyleId>;
+/** Base 的 kind/className/styleId 保持拍平；rule 为 null 表示使用类型默认 Canvas recipe。 */
+export type ResolvedBaseStyle<StyleId extends string = string> = Readonly<{
   rule: RuntimeStyleRule<StyleId> | null;
-}
+} & StyleRuleStyleFields<StyleId>>;
 
-/** resolver 输出的绘制选择；renderer 根据 target.kind 分发至 Canvas 或 CSS 路径。 */
+/** resolver 输出的绘制选择；renderer 直接根据 base/rule.kind 分发至 Canvas 或 CSS 路径。 */
 export interface ResolvedFeatureStyle<StyleId extends string = string> {
   base: ResolvedBaseStyle<StyleId> | null;
   border: ReadonlyArray<RuntimeStyleRule<StyleId>>;

@@ -5,7 +5,7 @@
  * priority 分区，并输出与 built-in loader 完全相同的 CompiledStyleBundle。
  */
 
-import {USER_STYLE_PRIORITY_OFFSET, type StyleRuleTarget} from "../../models/built-in-style-models.js";
+import {USER_STYLE_PRIORITY_OFFSET} from "../../models/built-in-style-models.js";
 import type {CompiledStyleBundle, CompiledStyleRule} from "../../models/style/runtime-style-models.js";
 import type {SerializableUserStyle, UserCssStyleRuleConfig} from "../../models/style/user-css-style-models.js";
 
@@ -21,19 +21,15 @@ function compileValueMatcher(rule: UserCssStyleRuleConfig): string | RegExp {
 }
 
 /**
- * 将用户 className 包装为统一 CSS target，并把用户 priority 整体移入 500+ 分区。
- * 转换后 RuntimeStylePlan 无需再识别规则来自 built-in 还是 user。
+ * 用户 rule 已携带拍平的 kind/className；这里只把 priority 整体移入 500+ 分区。
+ * 转换后 RuntimeStylePlan 无需识别规则来自 built-in 还是 user。
  */
 function compileRule(rule: UserCssStyleRuleConfig): CompiledStyleRule {
-  const {className, ...ruleFields} = rule;
-  const target: StyleRuleTarget = Object.freeze({kind: "css", className});
   const compiledRule = {
-    ...ruleFields,
+    ...rule,
     priority: rule.priority + USER_STYLE_PRIORITY_OFFSET,
     value: compileValueMatcher(rule),
-    target,
   };
-  // className 只属于传输配置；统一运行时规则通过 target 表达绘制方式。
   switch (compiledRule.renderLayer) {
     case "border": return Object.freeze(compiledRule);
     case "base": return Object.freeze(compiledRule);
@@ -41,7 +37,7 @@ function compileRule(rule: UserCssStyleRuleConfig): CompiledStyleRule {
   }
 }
 
-/** 用户目前只提供 CSS target，因此 Canvas recipe 与默认 Canvas style 映射保持为空。 */
+/** 用户目前只提供 CSS rule，因此 Canvas recipe 与默认 Canvas style 映射保持为空。 */
 export function compileUserStyle(userStyle: SerializableUserStyle): CompiledStyleBundle {
   return Object.freeze({
     css: userStyle.css,

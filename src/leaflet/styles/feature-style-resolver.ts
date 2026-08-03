@@ -80,17 +80,18 @@ function resolveAddonRules(feature: IdentifiedOverlayFeatureType, renderLayer: "
   return Object.freeze(selectedRules);
 }
 
-/** 为一个 Overlay Feature 生成最终 target 集合；未命中的空间 Base 使用类型默认 recipe。 */
+/** 为一个 Overlay Feature 生成拍平的最终样式；未命中的空间 Base 使用类型默认 recipe。 */
 export function resolveFeatureStyle(feature: IdentifiedOverlayFeatureType, plan: RuntimeStylePlan): ResolvedFeatureStyle {
   const featureIndexes = plan.rulesByFeatureType[feature.feature_type];
   const baseRule = selectHighestPriorityRule(feature, "base", null, collectMatchingRules(featureIndexes.base, feature.properties));
   // relation 没有自身 geometry，因此不生成 Base；它只消费 translucent membership 样式。
   const base = feature.feature_type === "relation"
     ? null
-    : Object.freeze({
-      target: baseRule?.target ?? Object.freeze({kind: "canvas" as const, styleId: plan.defaultBaseStyleIds[feature.feature_type]}),
-      rule: baseRule,
-    });
+    : baseRule === null
+      ? Object.freeze({kind: "canvas" as const, styleId: plan.defaultBaseStyleIds[feature.feature_type], rule: null})
+      : baseRule.kind === "canvas"
+        ? Object.freeze({kind: "canvas" as const, styleId: baseRule.styleId, rule: baseRule})
+        : Object.freeze({kind: "css" as const, className: baseRule.className, rule: baseRule});
   return Object.freeze({
     base,
     border: resolveAddonRules(feature, "border", collectMatchingRules(featureIndexes.border, feature.properties)),
