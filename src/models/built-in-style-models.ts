@@ -1,56 +1,61 @@
-/** 内置 Canvas tag rule 的分层模型。 */
+/** 内置地图 tag rule 的分层模型。 */
 
-import type {CanvasBaseStyleRecipe, CanvasSpatialFeatureType} from "./style/base-canvas-style.js";
+import type {CanvasSpatialFeatureType} from "./style/base-canvas-style.js";
 
-export type CanvasStyleTargetType = CanvasSpatialFeatureType | "relation";
+export type StyleTargetType = CanvasSpatialFeatureType | "relation";
 export type CanvasTagMatcher = string | RegExp;
-export type CanvasRenderLayer = "border" | "base" | "translucent";
+export type StyleRenderLayer = "border" | "base" | "translucent";
 
-interface BuiltInCanvasStyleRuleCommon<StyleId extends string> {
+// 0-499 保留给内置规则；浏览器编译用户规则时统一加 500，之后只比较最终 priority。
+export const USER_STYLE_PRIORITY_OFFSET = 500;
+
+/** CSS 与 Canvas 只区分 renderer 消费方式，不影响 tag 匹配、priority 或分层语义。 */
+export type StyleRuleTarget<StyleId extends string = string> =
+  | Readonly<{kind: "canvas"; styleId: StyleId}>
+  | Readonly<{kind: "css"; className: string}>;
+
+interface BuiltInStyleRuleCommon<StyleId extends string> {
+  /** 用于配置定位和并列 warning，不参与排序。 */
   id: string;
+  /** 数值越大越优先；内置声明必须位于 0-499。 */
   priority: number;
+  /** 内置规则的 key/value 均支持 exact string 或 RegExp。 */
   key: CanvasTagMatcher;
   value: CanvasTagMatcher;
-  styleId: StyleId;
+  /** 命中后交给 Canvas renderer 的 recipe，或交给 CSS renderer 的 class。 */
+  target: StyleRuleTarget<StyleId>;
 }
 
 /**
  * Border 在 Base 下方绘制；同一 effectType 只选择最高优先级规则，
  * 不同 effectType 可以同时存在。
  */
-export type BuiltInCanvasBorderStyleRule<StyleId extends string = string> =
-  BuiltInCanvasStyleRuleCommon<StyleId> & {
+export type BuiltInBorderStyleRule<StyleId extends string = string> =
+  BuiltInStyleRuleCommon<StyleId> & {
     renderLayer: "border";
     featureType: CanvasSpatialFeatureType;
     effectType: string;
   };
 
 /** Base 位于中层；一个空间 Feature 全局只选择一个规则，不参与合并。 */
-export type BuiltInCanvasBaseStyleRule<StyleId extends string = string> =
-  BuiltInCanvasStyleRuleCommon<StyleId> & {
+export type BuiltInBaseStyleRule<StyleId extends string = string> =
+  BuiltInStyleRuleCommon<StyleId> & {
     renderLayer: "base";
     featureType: CanvasSpatialFeatureType;
   };
 
 /**
- * Translucent 位于上层；同一 effectType 的匹配全部保留，
- * 由对应 compositor 合并 Relation 或 Area 提示性绘制。
+ * Translucent 位于上层；同一 effectType 选择最高 priority 规则，
+ * 平级时由 resolver 按稳定 planOrder 选择第一项。
  */
-export type BuiltInCanvasTranslucentStyleRule<StyleId extends string = string> =
-  BuiltInCanvasStyleRuleCommon<StyleId> & {
+export type BuiltInTranslucentStyleRule<StyleId extends string = string> =
+  BuiltInStyleRuleCommon<StyleId> & {
     renderLayer: "translucent";
-    featureType: CanvasStyleTargetType;
+    featureType: StyleTargetType;
     effectType: string;
   };
 
-export type BuiltInCanvasStyleRule<StyleId extends string = string> =
-  | BuiltInCanvasBorderStyleRule<StyleId>
-  | BuiltInCanvasBaseStyleRule<StyleId>
-  | BuiltInCanvasTranslucentStyleRule<StyleId>;
-
-/** 浏览器启动时一次性构建的内置 Canvas 样式缓存。 */
-export interface BuiltInCanvasStyleCache<StyleId extends string = string> {
-  defaultBaseStyleIds: Readonly<Record<CanvasSpatialFeatureType, StyleId>>;
-  baseStyles: Readonly<Record<StyleId, CanvasBaseStyleRecipe>>;
-  rules: ReadonlyArray<BuiltInCanvasStyleRule<StyleId>>;
-}
+export type BuiltInStyleRule<StyleId extends string = string> =
+  | BuiltInBorderStyleRule<StyleId>
+  | BuiltInBaseStyleRule<StyleId>
+  | BuiltInTranslucentStyleRule<StyleId>;

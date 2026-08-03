@@ -1,11 +1,15 @@
 /**
- * 内置 Canvas Base style recipes。
+ * 内置 Canvas Base style recipes 主入口。
  *
  * 这里只描述单个 Feature 的绘制 operations；CSS、Relation membership 与其他 addons 不参与。
  */
 
-import type {CanvasBaseStyleRecipe} from "../../models/style/base-canvas-style.js";
+import type {CanvasBaseStyleRecipe} from "../../../models/style/base-canvas-style.js";
 
+/**
+ * OSM iD 风格道路 recipe：先画较宽 casing，再画内部主线。
+ * operation 顺序就是 Canvas 绘制顺序，因此这里不能交换两条 line。
+ */
 function wayStyle(
   casingColor: string,
   strokeColor: string,
@@ -34,6 +38,9 @@ function wayStyle(
   };
 }
 
+/**
+ * Area Base 使用一次填充加边线；mainColor 留给后续 relation 内侧填充带合成自身颜色。
+ */
 function areaStyle(fillColor: string, fillOpacity: number, strokeColor = fillColor): CanvasBaseStyleRecipe {
   return {
     featureType: "area",
@@ -49,7 +56,8 @@ function areaStyle(fillColor: string, fillOpacity: number, strokeColor = fillCol
   };
 }
 
-export const BUILT_IN_CANVAS_BASE_STYLES = {
+/** 内置默认样式和当前 highway/landuse/building recipe；rule 文件只通过 ID 引用这里。 */
+export const BUILT_IN_CANVAS_STYLES = {
   "node-default": {
     featureType: "node",
     operations: [{

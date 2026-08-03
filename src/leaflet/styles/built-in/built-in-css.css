@@ -1,0 +1,40 @@
+/*
+ * 内置地图 CSS 样式主入口；只作用于 SVG / HTML Overlay，不向 Canvas recipe 提供参数。
+ * class 自身包含 built-in 命名空间，renderer 只需应用 rule target 返回的 className。
+ * 后续样式增多时可在这里通过本地 @import 汇总分类文件。
+ */
+
+/* 特殊 Node 共用非缩放描边；地图缩放时仍保持一致的屏幕像素宽度。 */
+.geomcp-built-in-node-traffic-signals,
+.geomcp-built-in-node-transit-stop,
+.geomcp-built-in-node-rail-station,
+.geomcp-built-in-node-medical {
+  fill-opacity: 1;
+  stroke-opacity: 1;
+  stroke-width: 2px;
+  vector-effect: non-scaling-stroke;
+}
+
+/* highway=traffic_signals：深色灯体配黄色外圈。 */
+.geomcp-built-in-node-traffic-signals {
+  fill: #30343b;
+  stroke: #f1c40f;
+}
+
+/* 公交站与 public_transport 停靠点使用易与道路区分的蓝色。 */
+.geomcp-built-in-node-transit-stop {
+  fill: #2f80ed;
+  stroke: #fff;
+}
+
+/* 铁路 station / halt / tram_stop 使用紫色，避免与普通公交站混淆。 */
+.geomcp-built-in-node-rail-station {
+  fill: #8e44ad;
+  stroke: #fff;
+}
+
+/* hospital / clinic / doctors 使用医疗设施的红白配色。 */
+.geomcp-built-in-node-medical {
+  fill: #d64545;
+  stroke: #fff;
+}

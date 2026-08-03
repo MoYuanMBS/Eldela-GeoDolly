@@ -1,8 +1,6 @@
 /** 用户 OSM tag rule；匹配结果只选择 CSS class，不生成 Canvas recipe。 */
 
 import {z} from "zod";
-import type {CanvasStyleTargetType} from "../built-in-style-models.js";
-import type {CanvasSpatialFeatureType} from "./base-canvas-style.js";
 
 // 用户 key 只允许 exact；value 的字符串表示 exact，`regex` 对象表示待编译的 source。
 const valueMatcherSchema = z.union([
@@ -12,7 +10,8 @@ const valueMatcherSchema = z.union([
 
 const commonRuleFields = {
   id: z.string().min(1),
-  priority: z.number().int(),
+  // YAML 中保存用户自己的非负 priority；传到浏览器后再统一加 500。
+  priority: z.number().int().nonnegative(),
   key: z.string().min(1),
   value: valueMatcherSchema,
   className: z.string().regex(/^[A-Za-z_][A-Za-z0-9_-]*$/u),
@@ -43,36 +42,6 @@ export const userCssStyleRuleConfigSchema = z.discriminatedUnion("renderLayer", 
 export const userCssStyleRulesDocumentSchema = z.object({
   rules: z.array(z.unknown()),
 }).strict();
-
-export type UserCssValueMatcher = string | RegExp;
-
-/** resolver 编译后的公共运行时字段。 */
-interface UserCssStyleRuleCommon {
-  id: string;
-  priority: number;
-  key: string;
-  value: UserCssValueMatcher;
-  className: string;
-}
-
-export type UserCssBorderStyleRule = UserCssStyleRuleCommon & {
-  renderLayer: "border";
-  featureType: CanvasSpatialFeatureType;
-  effectType: string;
-};
-
-export type UserCssBaseStyleRule = UserCssStyleRuleCommon & {
-  renderLayer: "base";
-  featureType: CanvasSpatialFeatureType;
-};
-
-export type UserCssTranslucentStyleRule = UserCssStyleRuleCommon & {
-  renderLayer: "translucent";
-  featureType: CanvasStyleTargetType;
-  effectType: string;
-};
-
-export type UserCssStyleRule = UserCssBorderStyleRule | UserCssBaseStyleRule | UserCssTranslucentStyleRule;
 
 export type UserCssStyleRuleConfig = z.infer<typeof userCssStyleRuleConfigSchema>;
 
