@@ -38,11 +38,10 @@ export type CompiledStyleRule<StyleId extends string = string> =
 
 /**
  * built-in loader 与 user compiler 的共同输出边界。
- * 用户当前只贡献 CSS 和 rules，因此其 canvasStyles/defaultBaseStyleIds 为空对象。
+ * CSS 由浏览器样式表与独立用户 style 节点承载，不进入运行时规则 bundle。
+ * 用户当前只贡献 rules，因此其 canvasStyles/defaultBaseStyleIds 为空对象。
  */
 export interface CompiledStyleBundle<StyleId extends string = string> {
-  /** 已完成各自 import 展开的地图样式文本，尚未注入 DOM。 */
-  css: string;
   /** Canvas target 引用的只读绘制 recipe。 */
   canvasStyles: Readonly<Record<StyleId, CanvasBaseStyleRecipe>>;
   /** 无 Base rule 命中时的兜底 recipe；允许单个 bundle 只提供其中一部分。 */
@@ -70,8 +69,6 @@ export interface RuntimeStyleFeatureRuleIndexes<StyleId extends string = string>
 
 /** 浏览器初始化时构建一次、供所有 Feature 解析共享的完整只读计划。 */
 export interface RuntimeStylePlan<StyleId extends string = string> {
-  /** 按 bundle 输入顺序拼接的 built-in + user 地图 CSS。 */
-  css: string;
   defaultBaseStyleIds: Readonly<Record<CanvasSpatialFeatureType, StyleId>>;
   canvasStyles: Readonly<Record<StyleId, CanvasBaseStyleRecipe>>;
   rules: ReadonlyArray<RuntimeStyleRule<StyleId>>;

@@ -11,6 +11,7 @@ const MAX_FILE_COUNT = 64;
 const MAX_FILE_BYTES = 256 * 1024;
 const MAX_TOTAL_BYTES = 1024 * 1024;
 const OVERLAY_SCOPE_CLASS = "geomcp-user-overlay";
+const BUILT_IN_CLASS_PREFIX = "geomcp-built-in-";
 
 interface LoadState {
   // activeFiles 用于识别当前递归链中的循环；loadedFiles 复用已完成的解析结果。
@@ -39,20 +40,75 @@ function resolveLocalImport(specifier: string, sourceFilePath: string, layersDir
   return resolvedPath;
 }
 
-/** 只收集与 Overlay 作用域位于同一 compound selector 的 Feature class。 */
-function collectOverlayClassNames(selector: Selector, output: Set<string>): void {
+/** 提取 pseudo selector 中的子 selector，确保禁止项不能藏在 :is() / :not() 等参数里。 */
+function getNestedSelectors(component: Selector[number]): ReadonlyArray<Selector> {
+  const selectorContainer = component as unknown as {
+    selectors?: Selector | Array<Selector> | null;
+    selector?: Selector | null;
+    of?: Array<Selector> | null;
+  };
+  const nestedSelectors: Array<Selector> = [];
+  const selectors = selectorContainer.selectors;
+  if (selectors !== undefined && selectors !== null && selectors.length > 0) {
+    if (Array.isArray(selectors[0])) nestedSelectors.push(...selectors as Array<Selector>);
+    else nestedSelectors.push(selectors as Selector);
+  }
+  if (selectorContainer.selector !== undefined && selectorContainer.selector !== null) nestedSelectors.push(selectorContainer.selector);
+  if (selectorContainer.of !== undefined && selectorContainer.of !== null) nestedSelectors.push(...selectorContainer.of);
+  return nestedSelectors;
+}
+
+/** 禁止 ID 与 built-in 命名空间，包括嵌套 pseudo selector 中的引用。 */
+function validateSelectorComponents(selector: Selector): void {
+  for (const component of selector) {
+    if (component.type === "id") throw new Error(`#${component.name} is not allowed in user CSS selectors`);
+    if (component.type === "class" && component.name.startsWith(BUILT_IN_CLASS_PREFIX)) {
+      throw new Error(`.${component.name} cannot be referenced by user CSS`);
+    }
+    for (const nestedSelector of getNestedSelectors(component)) validateSelectorComponents(nestedSelector);
+  }
+}
+
+/** 校验 Overlay 作用域，并只收集与作用域位于同一 compound selector 的 Feature class。 */
+function validateAndCollectOverlayClassNames(selector: Selector, output: Set<string>): void {
+  validateSelectorComponents(selector);
   let compoundClassNames: Array<string> = [];
-  const flushCompound = (): void => {
+  let lastScopeNextCombinator: string | null | undefined;
+  const flushCompound = (nextCombinator: string | null): void => {
     if (compoundClassNames.includes(OVERLAY_SCOPE_CLASS)) {
-      for (const className of compoundClassNames) output.add(className);
+      lastScopeNextCombinator = nextCombinator;
+      for (const className of compoundClassNames) {
+        // scope class 是 renderer 的边界标记，不允许被 rule 当成 Feature 样式身份。
+        if (className !== OVERLAY_SCOPE_CLASS) output.add(className);
+      }
     }
     compoundClassNames = [];
   };
   for (const component of selector) {
-    if (component.type === "combinator") flushCompound();
+    if (component.type === "combinator") flushCompound(component.value);
     else if (component.type === "class") compoundClassNames.push(component.name);
   }
-  flushCompound();
+  flushCompound(null);
+  if (lastScopeNextCombinator === undefined) throw new Error(`User CSS selector must include .${OVERLAY_SCOPE_CLASS}`);
+  // scope 后只允许进入其子树；紧邻/普通兄弟组合符会把最终目标移到 Overlay 外部。
+  if (lastScopeNextCombinator !== null && lastScopeNextCombinator !== "child" && lastScopeNextCombinator !== "descendant") {
+    throw new Error(`User CSS selector cannot escape .${OVERLAY_SCOPE_CLASS} through ${lastScopeNextCombinator}`);
+  }
+}
+
+/** import 全部展开后再压缩一次，缓存和 payload 不保留注释或文件级冗余空白。 */
+function minifyExpandedCss(source: UserCssSource, entryFilePath: string): UserCssSource {
+  const transformResult = transform({
+    filename: entryFilePath,
+    code: Buffer.from(source.css),
+    minify: true,
+    sourceMap: false,
+    errorRecovery: false,
+  });
+  if (transformResult.warnings.length > 0) {
+    throw new Error(`Invalid expanded user CSS in ${entryFilePath}: ${transformResult.warnings[0].message}`);
+  }
+  return Object.freeze({css: Buffer.from(transformResult.code).toString("utf8"), classNames: source.classNames});
 }
 
 function loadCssFile(filePath: string, state: LoadState, depth: number): UserCssSource {
@@ -81,7 +137,7 @@ function loadCssFile(filePath: string, state: LoadState, depth: number): UserCss
       sourceMap: false,
       errorRecovery: false,
       analyzeDependencies: {preserveImports: true},
-      visitor: {Selector: (selector) => collectOverlayClassNames(selector, classNames)},
+      visitor: {Selector: (selector) => validateAndCollectOverlayClassNames(selector, classNames)},
     });
     if (transformResult.warnings.length > 0) {
       throw new Error(`Invalid user CSS in ${resolvedFilePath}: ${transformResult.warnings[0].message}`);
@@ -136,12 +192,13 @@ export class UserCssLoader {
     if (!isPathInside(resolvedStyleDirPath, layersDirPath) || !statSync(layersDirPath).isDirectory()) {
       throw new Error("User CSS layers directory must remain inside config/style");
     }
-    this.cachedSource = loadCssFile(resolvedStylePath, {
+    const expandedSource = loadCssFile(resolvedStylePath, {
       activeFiles: new Set<string>(),
       loadedFiles: new Map<string, UserCssSource>(),
       totalBytes: 0,
       layersDirPath,
     }, 0);
+    this.cachedSource = minifyExpandedCss(expandedSource, resolvedStylePath);
     return this.cachedSource;
   }
 

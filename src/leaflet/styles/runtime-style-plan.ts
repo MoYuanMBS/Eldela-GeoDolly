@@ -1,8 +1,8 @@
 /**
  * 浏览器样式计划构建阶段。
  *
- * 该阶段只在地图初始化前运行一次：合并所有统一 bundle，固定规则顺序并建立索引。
- * Feature 渲染热路径只读取 RuntimeStylePlan，不再合并配置或编译 RegExp。
+ * 该阶段只在地图初始化前运行一次：先解决 built-in/user 身份冲突，再固定规则顺序
+ * 并建立索引。Feature 热路径只读取不含来源信息的 RuntimeStylePlan。
  */
 
 import type {CanvasSpatialFeatureType} from "../../models/style/base-canvas-style.js";
@@ -53,16 +53,29 @@ function addPlanOrder(rule: CompiledStyleRule, planOrder: number): RuntimeStyleR
   }
 }
 
-/** 合并 Canvas recipe；同名 recipe 含义不明确，因此直接拒绝重复 style ID。 */
-function mergeCanvasStyles(bundles: ReadonlyArray<CompiledStyleBundle>): RuntimeStylePlan["canvasStyles"] {
+/** 合并 Canvas recipe；跨来源同名时固定保留 built-in，避免用户改写内置身份。 */
+function mergeCanvasStyles(builtInBundle: CompiledStyleBundle, userBundle: CompiledStyleBundle): RuntimeStylePlan["canvasStyles"] {
   const canvasStyles: Record<string, CompiledStyleBundle["canvasStyles"][string]> = Object.create(null) as Record<string, CompiledStyleBundle["canvasStyles"][string]>;
-  for (const bundle of bundles) {
-    for (const [styleId, recipe] of Object.entries(bundle.canvasStyles)) {
-      if (canvasStyles[styleId] !== undefined) throw new Error(`Duplicate Canvas style ID "${styleId}"`);
-      canvasStyles[styleId] = recipe;
+  for (const [styleId, recipe] of Object.entries(builtInBundle.canvasStyles)) canvasStyles[styleId] = recipe;
+  for (const [styleId, recipe] of Object.entries(userBundle.canvasStyles)) {
+    if (canvasStyles[styleId] !== undefined) {
+      console.warn("canvas_style_id_collision", {style_id: styleId, kept_source: "built-in", skipped_source: "user"});
+      continue;
     }
+    canvasStyles[styleId] = recipe;
   }
   return Object.freeze(canvasStyles);
+}
+
+/** rule ID 也是全局身份；用户撞到内置 ID 时 warning 并丢弃用户规则。 */
+function mergeRules(builtInBundle: CompiledStyleBundle, userBundle: CompiledStyleBundle): Array<CompiledStyleRule> {
+  const builtInRuleIds = new Set(builtInBundle.rules.map((rule) => rule.id));
+  const userRules = userBundle.rules.filter((rule) => {
+    if (!builtInRuleIds.has(rule.id)) return true;
+    console.warn("style_rule_id_collision", {rule_id: rule.id, kept_source: "built-in", skipped_source: "user"});
+    return false;
+  });
+  return [...builtInBundle.rules, ...userRules];
 }
 
 /**
@@ -88,15 +101,14 @@ function resolveDefaultBaseStyleIds(canvasStyles: CompiledStyleBundle["canvasSty
 }
 
 /**
- * 全部 bundle 使用完全相同的格式；priority 已在各自 compiler/loader 中转换为最终值。
- * 此处只按 priority 稳定排序，平级规则通过 planOrder 保留原始声明顺序。
+ * 两侧 bundle 使用相同格式；priority 已在 compiler/loader 中转换为最终值。来源只用于
+ * 解决 ID 冲突，之后按 priority 稳定排序并通过 planOrder 保留声明顺序。
  */
-export function createRuntimeStylePlan(bundles: ReadonlyArray<CompiledStyleBundle>): RuntimeStylePlan {
-  // CSS 保留 bundle 输入顺序；后出现的声明可继续遵循 CSS 自身的 cascade 规则。
-  const css = bundles.map((bundle) => bundle.css).filter((cssText) => cssText.length > 0).join("\n");
-  const canvasStyles = mergeCanvasStyles(bundles);
+export function createRuntimeStylePlan(builtInBundle: CompiledStyleBundle, userBundle: CompiledStyleBundle): RuntimeStylePlan {
+  const bundles = [builtInBundle, userBundle];
+  const canvasStyles = mergeCanvasStyles(builtInBundle, userBundle);
   const defaultBaseStyleIds = resolveDefaultBaseStyleIds(canvasStyles, bundles);
-  const sortedRules = bundles.flatMap((bundle) => bundle.rules).sort((left, right) => right.priority - left.priority);
+  const sortedRules = mergeRules(builtInBundle, userBundle).sort((left, right) => right.priority - left.priority);
   const rules = Object.freeze(sortedRules.map(addPlanOrder));
 
   const mutableIndexes = {
@@ -122,7 +134,6 @@ export function createRuntimeStylePlan(bundles: ReadonlyArray<CompiledStyleBundl
   }
 
   return Object.freeze({
-    css,
     defaultBaseStyleIds,
     canvasStyles,
     rules,

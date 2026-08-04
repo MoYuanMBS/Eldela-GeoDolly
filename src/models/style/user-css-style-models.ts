@@ -16,7 +16,8 @@ const commonRuleFields = {
   priority: z.number().int().nonnegative(),
   key: z.string().min(1),
   value: valueMatcherSchema,
-  className: z.string().regex(/^[A-Za-z_][A-Za-z0-9_-]*$/u),
+  // 用户 class 必须保留独立命名空间，避免与固定 built-in selector 形成身份冲突。
+  className: z.string().regex(/^geomcp-user-[A-Za-z0-9_-]+$/u),
 };
 
 // 三种 render layer 与内置规则保持同样的 feature/effectType 约束，但结果改为 CSS class。
@@ -47,13 +48,21 @@ export const userCssStyleRulesDocumentSchema = z.object({
 
 export type UserCssStyleRuleConfig = z.infer<typeof userCssStyleRuleConfigSchema>;
 
+/** 单次地图生成时固定进 render payload 的可序列化用户样式快照。 */
+export const renderStylePayloadSchema = z.object({
+  user_css: z.string(),
+  user_rules: z.array(userCssStyleRuleConfigSchema),
+}).strict();
+
+export type RenderStylePayload = z.infer<typeof renderStylePayloadSchema>;
+
 /** CSS loader 内部结果；classNames 只用于启动校验，不进入传输缓存。 */
 export interface UserCssSource {
   css: string;
   classNames: ReadonlySet<string>;
 }
 
-/** Node 启动时生成、可直接传输给 iframe 的用户样式。 */
+/** Node 启动时生成、随后复制进每份 render payload 的用户样式缓存。 */
 export interface SerializableUserStyle {
   css: string;
   rules: ReadonlyArray<UserCssStyleRuleConfig>;

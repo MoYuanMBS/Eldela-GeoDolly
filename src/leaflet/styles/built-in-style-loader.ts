@@ -1,14 +1,13 @@
 /**
  * 浏览器内置地图样式的唯一加载入口。
  *
- * 三个 built-in 主入口由 bundler 递归解析 import；这里把 CSS 文本、Canvas recipe
- * 和 tag rules 组装为只读 bundle，但不向 DOM 注入 CSS，也不执行 Feature 匹配。
+ * 这里把 Canvas recipe 和 tag rules 组装为只读 bundle，不执行 Feature 匹配。
+ * built-in CSS 由 web 入口作为固定样式表加载，不进入此运行时对象。
  */
 
 import {USER_STYLE_PRIORITY_OFFSET, type BuiltInStyleRule, type CanvasTagMatcher} from "../../models/built-in-style-models.js";
 import type {CanvasBaseStyleRecipe, CanvasDrawOperation} from "../../models/style/base-canvas-style.js";
 import type {CompiledStyleBundle, CompiledStyleRule} from "../../models/style/runtime-style-models.js";
-import builtInCss from "./built-in/built-in-css.css?inline";
 import {BUILT_IN_STYLE_RULES, DEFAULT_CANVAS_BASE_STYLE_IDS} from "./built-in/built-in-style-rules.js";
 import {BUILT_IN_CANVAS_STYLES} from "./built-in/built-in-style.js";
 
@@ -57,6 +56,16 @@ function freezeRule(rule: BuiltInStyleRule<BuiltInStyleId>): CompiledStyleRule<B
   }
 }
 
+/** 内置 rule ID 属于源码身份；重复会让后续跨来源冲突策略失去确定含义。 */
+function freezeRules(): ReadonlyArray<CompiledStyleRule<BuiltInStyleId>> {
+  const seenRuleIds = new Set<string>();
+  return Object.freeze(BUILT_IN_STYLE_RULES.map((rule) => {
+    if (seenRuleIds.has(rule.id)) throw new Error(`Duplicate built-in style rule ID "${rule.id}"`);
+    seenRuleIds.add(rule.id);
+    return freezeRule(rule);
+  }));
+}
+
 /**
  * 初始化并缓存内置 bundle。内置资源属于受控源码，因此语法、import 或 priority
  * 分区错误会直接终止构建/页面初始化，不在这里做逐条降级。
@@ -64,10 +73,9 @@ function freezeRule(rule: BuiltInStyleRule<BuiltInStyleId>): CompiledStyleRule<B
 export function initializeBuiltInStyle(): CompiledStyleBundle<BuiltInStyleId> {
   if (cachedBuiltInStyle !== null) return cachedBuiltInStyle;
   cachedBuiltInStyle = Object.freeze({
-    css: builtInCss,
     canvasStyles: freezeCanvasStyles(),
     defaultBaseStyleIds: Object.freeze({...DEFAULT_CANVAS_BASE_STYLE_IDS}),
-    rules: Object.freeze(BUILT_IN_STYLE_RULES.map(freezeRule)),
+    rules: freezeRules(),
   });
   return cachedBuiltInStyle;
 }

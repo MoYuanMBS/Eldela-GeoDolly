@@ -1,5 +1,7 @@
 import {useEffect, useState, type CSSProperties} from "react";
 import {z} from "zod";
+import {initializeRuntimeStyle} from "../leaflet/styles/runtime-style-initializer.js";
+import {renderStylePayloadSchema} from "../models/style/user-css-style-models.js";
 import {UI_BUILT_IN_CONFIG} from "./built-in-config.js";
 import {MapSurfaceView} from "./map-surface-view.js";
 
@@ -12,6 +14,7 @@ const mapPayloadSchema = z.object({
     z.tuple([finiteNumberSchema, finiteNumberSchema]),
     z.tuple([finiteNumberSchema, finiteNumberSchema]),
   ]),
+  render_style: renderStylePayloadSchema,
 });
 
 type MapPayload = z.infer<typeof mapPayloadSchema>;
@@ -49,6 +52,8 @@ export function MapPage({mapDataUrl}: MapPageProps) {
           throw new Error(`Map data request failed with HTTP ${response.status}`);
         }
         const payload = mapPayloadSchema.parse(await response.json());
+        // 样式注入、regex 编译和索引构建必须先完成，ready render 才会创建 Leaflet。
+        initializeRuntimeStyle(payload.render_style);
         setLoadState({status: "ready", payload});
       } catch (error) {
         if (abortController.signal.aborted) return;

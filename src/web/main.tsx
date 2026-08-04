@@ -1,10 +1,11 @@
 import {createRoot} from "react-dom/client";
 import "leaflet/dist/leaflet.css";
+import "../leaflet/styles/built-in/built-in-css.css";
 import "../../styles/web.css";
 import {initializeBuiltInStyle} from "../leaflet/styles/built-in-style-loader.js";
 import {MapPage} from "./map-page.js";
 
-// 三个内置地图样式主入口在 Leaflet 创建前加载一次，后续 runtime plan 只读取冻结缓存。
+// 内置 Canvas recipes/rules 在 Leaflet 前冻结；built-in CSS 已由上方静态 import 交给 Vite。
 initializeBuiltInStyle();
 
 const rootElement = document.getElementById("root");

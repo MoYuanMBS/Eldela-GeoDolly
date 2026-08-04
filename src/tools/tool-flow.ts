@@ -20,6 +20,7 @@ import {generateCaptureSize} from "../iframe-capture/capture-generator.js";
 import {generateCaptureCenter} from "../iframe-capture/center-generator.js";
 import {toLeafletBounds} from "../iframe-capture/leaflet-bounds.js";
 import {callBridge, exportToolsQueryForPython} from "../utils/python-bridge.js";
+import {getUserStyle} from "../utils/user-style-rule.js";
 
 /**
  * 单独执行 Python Tool 调用；失败时补充 requested tool 上下文，并保留原错误为 cause。
@@ -36,7 +37,8 @@ export async function callPythonTool(tool: ToolType, cachedSelection: LocSearchR
 }
 
 /**
- * 纯 TypeScript 后处理入口，不启动 Python 子进程，便于使用固定 reply 调试和测试。
+ * 纯 TypeScript 后处理入口，不启动 Python 子进程；用户样式从 Node 启动缓存复制为
+ * 本次 render payload 的固定快照，不在浏览器请求时重新读取配置文件。
  */
 export function processToolReply(toolReply: PyToolReplyType) {
   const sessionId = toolReply.session_id;
@@ -45,6 +47,7 @@ export function processToolReply(toolReply: PyToolReplyType) {
   const areaFactor = toolReply.result.recommended_viewport_area_factor;
   const effectiveQueryMode = toolReply.result.effective_query_mode;
   const info = toolReply.result.info; // 单独保留，供后续追加到 AI Output YAML 末尾。
+  const userStyle = getUserStyle();
   let aiOutput = null;
   let overlayOutput = null;
   let relationMemberFeaturesByRelation = null;
@@ -73,6 +76,10 @@ export function processToolReply(toolReply: PyToolReplyType) {
     "screenshot_size": screenshotSize,
     "center": center,
     "leaflet_bbox": leafletBounds,
+    "render_style": {
+      "user_css": userStyle.css,
+      "user_rules": userStyle.rules,
+    },
     "info": info,
   };
 }
