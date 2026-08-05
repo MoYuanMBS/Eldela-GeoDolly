@@ -9,7 +9,7 @@ import {USER_STYLE_PRIORITY_OFFSET, type BuiltInStyleRule, type CanvasTagMatcher
 import type {CanvasBaseStyleRecipe, CanvasDrawOperation} from "../../models/style/base-canvas-style.js";
 import type {CompiledStyleBundle, CompiledStyleRule} from "../../models/style/runtime-style-models.js";
 import {BUILT_IN_STYLE_RULES, DEFAULT_CANVAS_BASE_STYLE_IDS} from "./built-in/built-in-style-rules.js";
-import {BUILT_IN_CANVAS_STYLES} from "./built-in/built-in-style.js";
+import {BUILT_IN_CANVAS_STYLES, BUILT_IN_RELATION_MEMBERSHIP_STYLE} from "./built-in/built-in-style.js";
 
 type BuiltInStyleId = keyof typeof BUILT_IN_CANVAS_STYLES;
 
@@ -75,6 +75,7 @@ export function initializeBuiltInStyle(): CompiledStyleBundle<BuiltInStyleId> {
   cachedBuiltInStyle = Object.freeze({
     canvasStyles: freezeCanvasStyles(),
     defaultBaseStyleIds: Object.freeze({...DEFAULT_CANVAS_BASE_STYLE_IDS}),
+    relationMembershipStyle: Object.freeze({...BUILT_IN_RELATION_MEMBERSHIP_STYLE}),
     rules: freezeRules(),
   });
   return cachedBuiltInStyle;

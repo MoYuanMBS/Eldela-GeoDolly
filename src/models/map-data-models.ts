@@ -199,6 +199,7 @@ export type IdentifiedOverlayFeatureKindType = z.infer<typeof identifiedOverlayF
 export type OverlayGeoJsonGeometryType = z.infer<typeof overlayGeoJsonGeometrySchema>;
 export type IdentifiedRelationMemberType = z.infer<typeof identifiedRelationMemberSchema>;
 export type IdentifiedOverlayFeatureType = z.infer<typeof identifiedOverlayFeatureSchema>;
+export type IdentifiedOverlayRelationFeatureType = z.infer<typeof identifiedOverlayRelationFeatureSchema>;
 export type IdentifiedOverlayFeatureWithDisplayIdType = z.infer<typeof identifiedOverlayFeatureWithDisplayIdSchema>;
 export type AiOutputRecordType = z.infer<typeof aiOutputRecordSchema>;
 export type AiOutputGroupsType = z.infer<typeof aiOutputGroupsSchema>;

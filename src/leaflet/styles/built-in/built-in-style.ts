@@ -1,10 +1,11 @@
 /**
- * 内置 Canvas Base style recipes 主入口。
+ * 内置 Canvas style 主入口。
  *
- * 这里只描述单个 Feature 的绘制 operations；CSS、Relation membership 与其他 addons 不参与。
+ * 这里保存空间 Feature 的 Base operations，以及 Relation membership 的固定 addon 参数；
+ * CSS 和 tag 匹配规则由各自入口独立加载。
  */
 
-import type {CanvasBaseStyleRecipe} from "../../../models/style/base-canvas-style.js";
+import type {CanvasBaseStyleRecipe, CanvasRelationMembershipStyle} from "../../../models/style/base-canvas-style.js";
 
 /**
  * OSM iD 风格道路 recipe：先画较宽 casing，再画内部主线。
@@ -55,6 +56,12 @@ function areaStyle(fillColor: string, fillOpacity: number, strokeColor = fillCol
     }],
   };
 }
+
+/** Relation 没有 Base geometry；这里仅定义 membership addon 的默认颜色与固定透明度。 */
+export const BUILT_IN_RELATION_MEMBERSHIP_STYLE = {
+  defaultColor: "#352012",
+  opacity: 0.4,
+} as const satisfies CanvasRelationMembershipStyle;
 
 /** 内置默认样式和当前 highway/landuse/building recipe；rule 文件只通过 ID 引用这里。 */
 export const BUILT_IN_CANVAS_STYLES = {

@@ -5,8 +5,8 @@
  * Border/Translucent 则允许不同 effectType 各取一条。这里不执行 CSS/Canvas 绘制。
  */
 
-import type {IdentifiedOverlayFeatureType} from "../../models/map-data-models.js";
-import type {ResolvedFeatureStyle, RuntimeStylePlan, RuntimeStyleRule, RuntimeStyleRuleIndex} from "../../models/style/runtime-style-models.js";
+import type {IdentifiedOverlayFeatureType, IdentifiedOverlayRelationFeatureType} from "../models/map-data-models.js";
+import type {ResolvedFeatureStyle, RuntimeRelationTranslucentStyleRule, RuntimeStylePlan, RuntimeStyleRule, RuntimeStyleRuleIndex} from "../models/style/runtime-style-models.js";
 
 type RuntimeAddonStyleRule = Extract<RuntimeStyleRule, {renderLayer: "border" | "translucent"}>;
 
@@ -80,18 +80,26 @@ function resolveAddonRules(feature: IdentifiedOverlayFeatureType, renderLayer: "
   return Object.freeze(selectedRules);
 }
 
+/** Relation 只匹配 translucent 索引，避免为不存在的 Base/Border 重复扫描 properties。 */
+export function resolveRelationTranslucentRules(relation: IdentifiedOverlayRelationFeatureType, plan: RuntimeStylePlan): ReadonlyArray<RuntimeRelationTranslucentStyleRule> {
+  const candidates = collectMatchingRules(plan.rulesByFeatureType.relation.translucent, relation.properties);
+  const selectedRules = resolveAddonRules(relation, "translucent", candidates);
+  return Object.freeze(selectedRules.filter((rule): rule is RuntimeRelationTranslucentStyleRule => rule.renderLayer === "translucent" && rule.featureType === "relation"));
+}
+
 /** 为一个 Overlay Feature 生成拍平的最终样式；未命中的空间 Base 使用类型默认 recipe。 */
 export function resolveFeatureStyle(feature: IdentifiedOverlayFeatureType, plan: RuntimeStylePlan): ResolvedFeatureStyle {
+  // Relation 的公开解析结果也严格只有 translucent，不能从未来的错误配置泄漏 Base/Border。
+  if (feature.feature_type === "relation") {
+    return Object.freeze({base: null, border: Object.freeze([]), translucent: resolveRelationTranslucentRules(feature, plan)});
+  }
   const featureIndexes = plan.rulesByFeatureType[feature.feature_type];
   const baseRule = selectHighestPriorityRule(feature, "base", null, collectMatchingRules(featureIndexes.base, feature.properties));
-  // relation 没有自身 geometry，因此不生成 Base；它只消费 translucent membership 样式。
-  const base = feature.feature_type === "relation"
-    ? null
-    : baseRule === null
-      ? Object.freeze({kind: "canvas" as const, styleId: plan.defaultBaseStyleIds[feature.feature_type], rule: null})
-      : baseRule.kind === "canvas"
-        ? Object.freeze({kind: "canvas" as const, styleId: baseRule.styleId, rule: baseRule})
-        : Object.freeze({kind: "css" as const, className: baseRule.className, rule: baseRule});
+  const base = baseRule === null
+    ? Object.freeze({kind: "canvas" as const, styleId: plan.defaultBaseStyleIds[feature.feature_type], rule: null})
+    : baseRule.kind === "canvas"
+      ? Object.freeze({kind: "canvas" as const, styleId: baseRule.styleId, rule: baseRule})
+      : Object.freeze({kind: "css" as const, className: baseRule.className, rule: baseRule});
   return Object.freeze({
     base,
     border: resolveAddonRules(feature, "border", collectMatchingRules(featureIndexes.border, feature.properties)),

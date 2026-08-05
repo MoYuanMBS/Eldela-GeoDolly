@@ -7,6 +7,7 @@
 
 import type {CanvasSpatialFeatureType} from "../../models/style/base-canvas-style.js";
 import type {CompiledStyleBundle, CompiledStyleRule, RuntimeStyleFeatureRuleIndexes, RuntimeStylePlan, RuntimeStyleRule, RuntimeStyleRuleIndex} from "../../models/style/runtime-style-models.js";
+import {BUILT_IN_RELATION_MEMBERSHIP_STYLE} from "./built-in/built-in-style.js";
 
 interface MutableRuleIndex {
   exactKeyRules: Record<string, Array<RuntimeStyleRule>>;
@@ -100,6 +101,14 @@ function resolveDefaultBaseStyleIds(canvasStyles: CompiledStyleBundle["canvasSty
   return Object.freeze({node: getDefaultStyleId("node"), way: getDefaultStyleId("way"), area: getDefaultStyleId("area")});
 }
 
+/** Relation membership 参数通常由 built-in bundle 提供；独立 fixture 缺省时仍使用同一内置默认值。 */
+function resolveRelationMembershipStyle(bundles: ReadonlyArray<CompiledStyleBundle>): RuntimeStylePlan["relationMembershipStyle"] {
+  const styles = bundles.flatMap((bundle) => bundle.relationMembershipStyle === undefined ? [] : [bundle.relationMembershipStyle]);
+  if (styles.length === 0) return Object.freeze({...BUILT_IN_RELATION_MEMBERSHIP_STYLE});
+  if (styles.length > 1) throw new Error("Multiple default relation membership styles were loaded");
+  return Object.freeze({...styles[0]});
+}
+
 /**
  * 两侧 bundle 使用相同格式；priority 已在 compiler/loader 中转换为最终值。来源只用于
  * 解决 ID 冲突，之后按 priority 稳定排序并通过 planOrder 保留声明顺序。
@@ -108,6 +117,7 @@ export function createRuntimeStylePlan(builtInBundle: CompiledStyleBundle, userB
   const bundles = [builtInBundle, userBundle];
   const canvasStyles = mergeCanvasStyles(builtInBundle, userBundle);
   const defaultBaseStyleIds = resolveDefaultBaseStyleIds(canvasStyles, bundles);
+  const relationMembershipStyle = resolveRelationMembershipStyle(bundles);
   const sortedRules = mergeRules(builtInBundle, userBundle).sort((left, right) => right.priority - left.priority);
   const rules = Object.freeze(sortedRules.map(addPlanOrder));
 
@@ -136,6 +146,7 @@ export function createRuntimeStylePlan(builtInBundle: CompiledStyleBundle, userB
   return Object.freeze({
     defaultBaseStyleIds,
     canvasStyles,
+    relationMembershipStyle,
     rules,
     rulesByFeatureType: Object.freeze({
       node: freezeFeatureIndexes(mutableIndexes.node),

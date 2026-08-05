@@ -4,7 +4,7 @@
  */
 
 import type {CanvasTagMatcher, StyleRuleStyleFields, StyleTargetType} from "../built-in-style-models.js";
-import type {CanvasBaseStyleRecipe, CanvasSpatialFeatureType} from "./base-canvas-style.js";
+import type {CanvasBaseStyleRecipe, CanvasRelationMembershipStyle, CanvasSpatialFeatureType} from "./base-canvas-style.js";
 
 /** loader/compiler 已完成格式转换，但尚未进入全局排序和索引的统一规则。 */
 interface CompiledStyleRuleCommon {
@@ -46,6 +46,8 @@ export interface CompiledStyleBundle<StyleId extends string = string> {
   canvasStyles: Readonly<Record<StyleId, CanvasBaseStyleRecipe>>;
   /** 无 Base rule 命中时的兜底 recipe；允许单个 bundle 只提供其中一部分。 */
   defaultBaseStyleIds: Readonly<Partial<Record<CanvasSpatialFeatureType, StyleId>>>;
+  /** Relation membership 的固定 Canvas 参数；用户 CSS bundle 不提供此项。 */
+  relationMembershipStyle?: Readonly<CanvasRelationMembershipStyle>;
   rules: ReadonlyArray<CompiledStyleRule<StyleId>>;
 }
 
@@ -54,6 +56,23 @@ export type RuntimeStyleRule<StyleId extends string = string> =
   | Readonly<CompiledBorderStyleRule<StyleId> & {planOrder: number}>
   | Readonly<CompiledBaseStyleRule<StyleId> & {planOrder: number}>
   | Readonly<CompiledTranslucentStyleRule<StyleId> & {planOrder: number}>;
+
+/** Relation 没有 Base/Border；context 只缓存已经完成优先级选择的 translucent rules。 */
+export type RuntimeRelationTranslucentStyleRule<StyleId extends string = string> = Readonly<
+  RuntimeStyleRule<StyleId> & {renderLayer: "translucent"; featureType: "relation"}
+>;
+
+/** 单个有效 relation 的预解析结果；rules 为空时使用 context 中的默认颜色。 */
+export interface RelationTranslucentRuleSelection<StyleId extends string = string> {
+  usesDefaultColor: boolean;
+  rules: ReadonlyArray<RuntimeRelationTranslucentStyleRule<StyleId>>;
+}
+
+/** relation ID 的预解析缓存；空间 Feature 热路径通过现有反向 membership 索引查询。 */
+export interface RelationTranslucentContext<StyleId extends string = string> {
+  membershipStyle: Readonly<CanvasRelationMembershipStyle>;
+  byRelationFeatureId: Readonly<Record<string, RelationTranslucentRuleSelection<StyleId>>>;
+}
 
 /** exact key 可直接索引；regex key 保持独立列表供 resolver 执行。 */
 export interface RuntimeStyleRuleIndex<StyleId extends string = string> {
@@ -71,6 +90,7 @@ export interface RuntimeStyleFeatureRuleIndexes<StyleId extends string = string>
 export interface RuntimeStylePlan<StyleId extends string = string> {
   defaultBaseStyleIds: Readonly<Record<CanvasSpatialFeatureType, StyleId>>;
   canvasStyles: Readonly<Record<StyleId, CanvasBaseStyleRecipe>>;
+  relationMembershipStyle: Readonly<CanvasRelationMembershipStyle>;
   rules: ReadonlyArray<RuntimeStyleRule<StyleId>>;
   rulesByFeatureType: Readonly<Record<StyleTargetType, RuntimeStyleFeatureRuleIndexes<StyleId>>>;
 }
