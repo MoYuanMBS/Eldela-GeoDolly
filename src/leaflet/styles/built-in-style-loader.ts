@@ -3,6 +3,8 @@
  *
  * 这里把 Canvas recipe 和 tag rules 组装为只读 bundle，不执行 Feature 匹配。
  * built-in CSS 由 web 入口作为固定样式表加载，不进入此运行时对象。
+ *
+ * 执行顺序：复制并冻结源码声明 → 缓存 CompiledStyleBundle → 由 RuntimeStylePlan 与用户 bundle 合并。
  */
 
 import {USER_STYLE_PRIORITY_OFFSET, type BuiltInStyleRule, type CanvasTagMatcher} from "../../models/built-in-style-models.js";
@@ -31,6 +33,7 @@ function freezeOperation(operation: CanvasDrawOperation): CanvasDrawOperation {
 
 /** 深度冻结每个 recipe 的 operations，保证 RuntimeStylePlan 可以安全共享这些对象。 */
 function freezeCanvasStyles(): Readonly<Record<BuiltInStyleId, CanvasBaseStyleRecipe>> {
+  // 复制而不是直接冻结源码 export，避免 loader 的初始化副作用污染声明文件本身。
   const entries = Object.entries(BUILT_IN_CANVAS_STYLES).map(([styleId, recipe]) => [
     styleId,
     Object.freeze({...recipe, operations: Object.freeze(recipe.operations.map(freezeOperation))}),
@@ -71,6 +74,7 @@ function freezeRules(): ReadonlyArray<CompiledStyleRule<BuiltInStyleId>> {
  * 分区错误会直接终止构建/页面初始化，不在这里做逐条降级。
  */
 export function initializeBuiltInStyle(): CompiledStyleBundle<BuiltInStyleId> {
+  // 内置资源不会热更新；同一浏览器页面只构建一次，后续地图直接共享冻结对象。
   if (cachedBuiltInStyle !== null) return cachedBuiltInStyle;
   cachedBuiltInStyle = Object.freeze({
     canvasStyles: freezeCanvasStyles(),

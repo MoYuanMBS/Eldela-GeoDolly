@@ -3,6 +3,9 @@
  *
  * resolver 只匹配已经编译、排序并建立索引的 RuntimeStylePlan：Base 全局只取一条，
  * Border/Translucent 则允许不同 effectType 各取一条。这里不执行 CSS/Canvas 绘制。
+ *
+ * 单 Feature 流程：读取本类型三层索引 → 收集 tag 命中 → 做 priority/effectType 选择 →
+ * 输出拍平的 ResolvedFeatureStyle。Renderer 只看 kind 与 styleId/className，不再理解 tag。
  */
 
 import type {IdentifiedOverlayFeatureType, IdentifiedOverlaySpatialFeatureType} from "../models/map-data-models.js";
@@ -23,11 +26,13 @@ function matchesText(matcher: string | RegExp, text: string): boolean {
  */
 function collectMatchingRules(index: RuntimeStyleRuleIndex, properties: Record<string, Array<string>>): Array<RuntimeStyleRule> {
   const matchedRulesByOrder = new Map<number, RuntimeStyleRule>();
+  // exact key 只访问当前 Feature 实际拥有的 property，常见规则不会退化成全表扫描。
   for (const [key, values] of Object.entries(properties)) {
     for (const rule of index.exactKeyRules[key] ?? []) {
       if (values.some((value) => matchesText(rule.value, value))) matchedRulesByOrder.set(rule.planOrder, rule);
     }
   }
+  // regex key 无法建立字符串字典，只扫描已经按 featureType/renderLayer 缩小后的列表。
   for (const rule of index.regexKeyRules) {
     const matched = Object.entries(properties).some(([key, values]) => matchesText(rule.key, key) && values.some((value) => matchesText(rule.value, value)));
     if (matched) matchedRulesByOrder.set(rule.planOrder, rule);
@@ -85,6 +90,7 @@ export function resolveFeatureStyle(feature: IdentifiedOverlayFeatureType, plan:
   // 保留旧的宽 Feature 入参边界，但 relation 不再拥有规则索引，也不能进入空间样式解析。
   if (feature.feature_type === "relation") throw new Error("Relation does not support tag-based feature styles");
   const featureIndexes = plan.rulesByFeatureType[feature.feature_type];
+  // Base 不做字段级混合：命中最高规则就完整使用其 CSS class 或 Canvas recipe。
   const baseRule = selectHighestPriorityRule(feature, "base", null, collectMatchingRules(featureIndexes.base, feature.properties));
   const base = baseRule === null
     ? Object.freeze({kind: "canvas" as const, styleId: plan.defaultBaseStyleIds[feature.feature_type], rule: null})
@@ -93,6 +99,7 @@ export function resolveFeatureStyle(feature: IdentifiedOverlayFeatureType, plan:
       : Object.freeze({kind: "css" as const, className: baseRule.className, rule: baseRule});
   return Object.freeze({
     base,
+    // Addon 仍按 effectType 去重，因此 bridge 与 tunnel 可以并存，同类效果只保留一个胜者。
     border: resolveAddonRules(feature, "border", collectMatchingRules(featureIndexes.border, feature.properties)),
     translucent: resolveAddonRules(feature, "translucent", collectMatchingRules(featureIndexes.translucent, feature.properties)),
   });

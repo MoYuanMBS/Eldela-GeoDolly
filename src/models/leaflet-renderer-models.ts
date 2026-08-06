@@ -1,6 +1,6 @@
 /** Leaflet Overlay renderer 的浏览器运行时模型；不进入 Bridge 或 session 序列化。 */
 
-import type {LatLngTuple, LayerGroup, Map as LeafletMap} from "leaflet";
+import type {LatLngTuple, LayerGroup, Map as LeafletMap, Path} from "leaflet";
 import type {IdentifiedOverlayGroupsWithDisplayIdType, RelationMemberFeaturesByRelationType} from "./map-data-models.js";
 import type {CanvasRelationMembershipStyle, CanvasSpatialFeatureType} from "./style/base-canvas-style.js";
 import type {RuntimeStylePlan} from "./style/runtime-style-models.js";
@@ -11,6 +11,16 @@ export type LeafletSpatialGeometry =
   | Readonly<{featureType: "node"; center: LatLngTuple}>
   | Readonly<{featureType: "way"; latLngs: Array<LatLngTuple> | Array<Array<LatLngTuple>>}>
   | Readonly<{featureType: "area"; latLngs: Array<Array<LatLngTuple>> | Array<Array<Array<LatLngTuple>>>}>;
+
+/** 单 Canvas Label layer 使用的轻量候选；geometry 已经展开到连续世界。 */
+export interface OverlayLabelCandidate {
+  featureId: string;
+  displayId: string;
+  nameText?: string;
+  geometry: LeafletSpatialGeometry;
+  /** 仅 Node 使用，用于让标签偏移跟随实际外圈半径。 */
+  nodeBaseRadius?: number;
+}
 
 /** 固定 Relation 样式和按空间 Feature 反查 relation IDs 的一次性上下文。 */
 export interface RelationTranslucentContext {
@@ -24,6 +34,8 @@ export interface OverlayFeatureLayerEntry {
   featureId: string;
   displayId: string;
   layer: LayerGroup;
+  /** 后续 hover/click 只绑定这一层，视觉重复层始终不接事件。 */
+  interactionLayer: Path;
 }
 
 export type OverlayFeatureLayerIndex = Readonly<Record<CanvasSpatialFeatureType, Readonly<Record<string, OverlayFeatureLayerEntry>>>>;

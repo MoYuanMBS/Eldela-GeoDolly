@@ -3,6 +3,7 @@
  *
  * Node 已完成 CSS 读取、class 对照和规则校验；CSS 由浏览器独立注入，这里仅恢复
  * RegExp、转换 priority 分区，并输出与 built-in loader 相同的规则 bundle。
+ * 输出仍是可合并声明，不建立 Feature 索引，也不读取正式 Overlay properties。
  */
 
 import {USER_STYLE_PRIORITY_OFFSET} from "../../models/built-in-style-models.js";
@@ -13,6 +14,7 @@ import type {UserCssStyleRuleConfig} from "../../models/style/user-css-style-mod
 function compileValueMatcher(rule: UserCssStyleRuleConfig): string | RegExp {
   if (typeof rule.value === "string") return rule.value;
   try {
+    // 用户侧只允许 value regex；统一附加 Unicode flag 后交给 resolver 反复复用。
     return Object.freeze(new RegExp(rule.value.regex, "u"));
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
@@ -39,6 +41,7 @@ function compileRule(rule: UserCssStyleRuleConfig): CompiledStyleRule {
 
 /** 用户目前只提供 CSS rule，因此 Canvas recipe 与默认 Canvas style 映射保持为空。 */
 export function compileUserStyle(rules: ReadonlyArray<UserCssStyleRuleConfig>): CompiledStyleBundle {
+  // 用户 CSS rule 不得声明 relation、默认样式或 Canvas recipe，这些边界已在 Node 校验阶段固定。
   return Object.freeze({
     canvasStyles: Object.freeze({}),
     defaultBaseStyleIds: Object.freeze({}),

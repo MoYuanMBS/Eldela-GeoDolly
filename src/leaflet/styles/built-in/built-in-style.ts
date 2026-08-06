@@ -3,6 +3,7 @@
  *
  * 这里保存空间 Feature 的 Base operations，以及 Relation membership 的固定 addon 参数；
  * CSS 和 tag 匹配规则由各自入口独立加载。
+ * 本文件只声明“如何画”，不声明“什么 tag 命中”；operations 的数组顺序就是同一 Base 内的绘制顺序。
  */
 
 import type {CanvasBaseStyleRecipe, CanvasRelationMembershipStyle} from "../../../models/style/base-canvas-style.js";
@@ -65,27 +66,29 @@ export const BUILT_IN_RELATION_MEMBERSHIP_STYLE = {
 
 /** 固定 Relation addon 的屏幕像素尺寸；不进入用户样式或 tag rule。 */
 export const BUILT_IN_RELATION_MEMBERSHIP_DIMENSIONS = {
-  nodeRadius: 10,
-  nodeStrokeWidth: 3,
+  nodeRadius: 8,
+  nodeStrokeWidth: 2.5,
   wayWidth: 4,
-  areaBandWidth: 4,
+  /** Area 内侧带的总可见宽度；主色与 Relation 异色时各占一半。 */
+  areaBandTotalWidth: 12,
 } as const;
 
 /** 内置默认样式和当前 highway/landuse/building recipe；rule 文件只通过 ID 引用这里。 */
 export const BUILT_IN_CANVAS_STYLES = {
+  // Node 默认样式由外圈白底黑边与中心黑点两次 operation 组成，并由 zoom controller 整体缩放。
   "node-default": {
     featureType: "node",
     operations: [{
       kind: "circle",
-      radius: 7,
+      radius: 5,
       fillColor: "#ffffff",
       fillOpacity: 1,
       strokeColor: "#000000",
       strokeOpacity: 1,
-      strokeWidth: 2,
+      strokeWidth: 1.5,
     }, {
       kind: "circle",
-      radius: 2,
+      radius: 1.5,
       fillColor: "#000000",
       fillOpacity: 1,
       strokeColor: "#000000",
@@ -94,6 +97,7 @@ export const BUILT_IN_CANVAS_STYLES = {
     }],
   },
 
+  // Way recipe 保持 OSM iD 风格的 casing → 主线顺序；这些宽度也为透明 hit layer 提供基准。
   "way-default": wayStyle("#444444", "#cccccc", 5, 3),
   "way-highway-motorway": wayStyle("#70372f", "#cf2081", 10, 8),
   "way-highway-trunk": wayStyle("#70372f", "#dd2f22", 10, 8),
@@ -113,6 +117,7 @@ export const BUILT_IN_CANVAS_STYLES = {
   "way-highway-bridleway": wayStyle("#e06d5f", "#ffffff", 5, 3, [6, 6]),
   "way-highway-steps": wayStyle("#ffffff", "#81d25c", 5, 3, [3, 3]),
 
+  // Area mainColor 除了 Base fill，也会在 Relation membership 内侧带中作为最高优先主色复用。
   "area-default": areaStyle("#aaaaaa", 0.18),
   "area-building": areaStyle("#b08e7c", 0.38, "#7d6255"),
   "area-landuse-green": areaStyle("#8cd05f", 0.3),

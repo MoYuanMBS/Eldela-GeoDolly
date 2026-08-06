@@ -1,5 +1,8 @@
 /**
  * 固定尺寸 MapSurface 与 Leaflet 初始视口。
+ *
+ * 调用位置位于浏览器样式初始化之后、Overlay renderer 之前。本模块只建立地图容器与
+ * viewport，不知道 tag rule、Feature geometry、标签和交互图层，避免视口计算反向依赖渲染结果。
  */
 
 import {
@@ -53,6 +56,7 @@ export function createMapSurface(options: MapSurfaceOptions): LeafletMap {
   const bounds = latLngBounds(leafletBounds);
   // getBoundsZoom 接收的是横纵总 padding，而不是单边 padding。
   const totalPadding = point(padding.left + padding.right, padding.top + padding.bottom);
+  // bbox 只负责决定 zoom；跨日期变更线已经由上游展开，最终视口中心仍使用后端给出的 center。
   const initialZoom = leafletMap.getBoundsZoom(bounds, false, totalPadding);
   leafletMap.setView(center, initialZoom, {animate: false});
   return leafletMap;

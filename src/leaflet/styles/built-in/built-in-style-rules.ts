@@ -2,6 +2,7 @@
  * OSM tag → 内置地图 style 对照表；kind 与 className/styleId 直接展开在 rule 上。
  *
  * key/value matcher 都允许 exact string 或预编译 RegExp；resolver 后续按 priority 选择唯一 Base。
+ * 本文件只声明“什么 tag 选择什么目标”，不包含 Canvas 绘制参数，也不执行正式 Feature 匹配。
  */
 
 import type {BuiltInStyleRule} from "../../../models/built-in-style-models.js";
@@ -15,6 +16,7 @@ export const DEFAULT_CANVAS_BASE_STYLE_IDS = {
 } as const satisfies Record<CanvasSpatialFeatureType, keyof typeof BUILT_IN_CANVAS_STYLES>;
 
 export const BUILT_IN_STYLE_RULES = [
+  // Node 特殊符号走 SVG/CSS Base；geometry/radius 仍由默认 Node recipe 提供稳定种子。
   {
     id: "node-highway-traffic-signals",
     renderLayer: "base",
@@ -55,6 +57,7 @@ export const BUILT_IN_STYLE_RULES = [
     kind: "css",
     className: "geomcp-built-in-node-transit-stop",
   },
+  // Highway Base 走 Canvas recipe；同 priority 的不同 highway value 互斥，不需要合并 operations。
   {
     id: "highway-motorway",
     renderLayer: "base",
@@ -225,6 +228,7 @@ export const BUILT_IN_STYLE_RULES = [
     kind: "canvas",
     styleId: "way-highway-road",
   },
+  // Area 先让高 priority building 覆盖 landuse，再由对应 recipe 提供 mainColor 与半透明 fill。
   {
     id: "building",
     renderLayer: "base",

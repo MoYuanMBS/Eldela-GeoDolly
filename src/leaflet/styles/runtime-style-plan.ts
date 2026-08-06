@@ -3,6 +3,9 @@
  *
  * 该阶段只在地图初始化前运行一次：先解决 built-in/user 身份冲突，再固定规则顺序
  * 并建立索引。Feature 热路径只读取不含来源信息的 RuntimeStylePlan。
+ *
+ * 这里不做 tag 匹配。最终步骤依次为：合并 recipe/rule → 解析三类默认 Base →
+ * priority 排序与 planOrder 固化 → 按 featureType/renderLayer/key 类型建立只读索引。
  */
 
 import type {CanvasSpatialFeatureType} from "../../models/style/base-canvas-style.js";
@@ -119,6 +122,7 @@ export function createRuntimeStylePlan(builtInBundle: CompiledStyleBundle, userB
   const defaultBaseStyleIds = resolveDefaultBaseStyleIds(canvasStyles, bundles);
   const relationMembershipStyle = resolveRelationMembershipStyle(bundles);
   const sortedRules = mergeRules(builtInBundle, userBundle).sort((left, right) => right.priority - left.priority);
+  // 现代 JS sort 是稳定排序；相同 priority 保留合并后的声明顺序，再由 planOrder 显式记录。
   const rules = Object.freeze(sortedRules.map(addPlanOrder));
 
   const mutableIndexes = {
