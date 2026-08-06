@@ -2,7 +2,7 @@
 
 import type {CanvasSpatialFeatureType} from "./style/base-canvas-style.js";
 
-export type StyleTargetType = CanvasSpatialFeatureType | "relation";
+export type StyleTargetType = CanvasSpatialFeatureType;
 export type CanvasTagMatcher = string | RegExp;
 export type StyleRenderLayer = "border" | "base" | "translucent";
 
@@ -49,7 +49,7 @@ export type BuiltInBaseStyleRule<StyleId extends string = string> =
 export type BuiltInTranslucentStyleRule<StyleId extends string = string> =
   BuiltInStyleRuleCommon & {
     renderLayer: "translucent";
-    featureType: StyleTargetType;
+    featureType: CanvasSpatialFeatureType;
     effectType: string;
   } & StyleRuleStyleFields<StyleId>;
 

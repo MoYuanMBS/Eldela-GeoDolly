@@ -42,7 +42,7 @@ export interface CanvasBaseStyleRecipe {
   operations: ReadonlyArray<CanvasDrawOperation>;
 }
 
-/** Relation membership 的固定 Canvas 参数；命中规则时只替换默认颜色。 */
+/** Relation membership 进入运行时计划的固定颜色参数。 */
 export interface CanvasRelationMembershipStyle {
   defaultColor: string;
   opacity: number;

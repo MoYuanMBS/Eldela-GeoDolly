@@ -36,7 +36,7 @@ export const userCssStyleRuleConfigSchema = z.discriminatedUnion("renderLayer", 
   z.object({
     ...commonRuleFields,
     renderLayer: z.literal("translucent"),
-    featureType: z.enum(["node", "way", "area", "relation"]),
+    featureType: z.enum(["node", "way", "area"]),
     effectType: z.string().min(1),
   }).strict(),
 ]);

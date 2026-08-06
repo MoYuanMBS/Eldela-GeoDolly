@@ -125,7 +125,6 @@ export function createRuntimeStylePlan(builtInBundle: CompiledStyleBundle, userB
     node: createMutableFeatureIndexes(),
     way: createMutableFeatureIndexes(),
     area: createMutableFeatureIndexes(),
-    relation: createMutableFeatureIndexes(),
   };
   for (const rule of rules) {
     const index = mutableIndexes[rule.featureType][rule.renderLayer];
@@ -152,7 +151,6 @@ export function createRuntimeStylePlan(builtInBundle: CompiledStyleBundle, userB
       node: freezeFeatureIndexes(mutableIndexes.node),
       way: freezeFeatureIndexes(mutableIndexes.way),
       area: freezeFeatureIndexes(mutableIndexes.area),
-      relation: freezeFeatureIndexes(mutableIndexes.relation),
     }),
   });
 }

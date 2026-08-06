@@ -5,8 +5,8 @@
  * Border/Translucent 则允许不同 effectType 各取一条。这里不执行 CSS/Canvas 绘制。
  */
 
-import type {IdentifiedOverlayFeatureType, IdentifiedOverlayRelationFeatureType} from "../models/map-data-models.js";
-import type {ResolvedFeatureStyle, RuntimeRelationTranslucentStyleRule, RuntimeStylePlan, RuntimeStyleRule, RuntimeStyleRuleIndex} from "../models/style/runtime-style-models.js";
+import type {IdentifiedOverlayFeatureType, IdentifiedOverlaySpatialFeatureType} from "../models/map-data-models.js";
+import type {ResolvedFeatureStyle, RuntimeStylePlan, RuntimeStyleRule, RuntimeStyleRuleIndex} from "../models/style/runtime-style-models.js";
 
 type RuntimeAddonStyleRule = Extract<RuntimeStyleRule, {renderLayer: "border" | "translucent"}>;
 
@@ -40,7 +40,7 @@ function collectMatchingRules(index: RuntimeStyleRuleIndex, properties: Record<s
  * 从同一选择范围中取最高 priority。真正影响当前 Feature 的并列才 warning；
  * 并列项已按 planOrder 排列，因此固定取数组第 0 项即可得到可复现结果。
  */
-function selectHighestPriorityRule(feature: IdentifiedOverlayFeatureType, renderLayer: "base" | "border" | "translucent", effectType: string | null, candidates: ReadonlyArray<RuntimeStyleRule>): RuntimeStyleRule | null {
+function selectHighestPriorityRule(feature: IdentifiedOverlaySpatialFeatureType, renderLayer: "base" | "border" | "translucent", effectType: string | null, candidates: ReadonlyArray<RuntimeStyleRule>): RuntimeStyleRule | null {
   if (candidates.length === 0) return null;
   const highestPriority = candidates[0].priority;
   const tiedRules = candidates.filter((rule) => rule.priority === highestPriority);
@@ -61,9 +61,9 @@ function selectHighestPriorityRule(feature: IdentifiedOverlayFeatureType, render
 
 /**
  * Border/Translucent 先按 effectType 分组：同组覆盖，只留最高 priority；不同组并存，
- * 从而允许 bridge、tunnel 或多个 relation color 等不同附加效果一起进入 renderer。
+ * 从而允许 bridge、tunnel 等不同空间 Feature 附加效果一起进入 renderer。
  */
-function resolveAddonRules(feature: IdentifiedOverlayFeatureType, renderLayer: "border" | "translucent", candidates: ReadonlyArray<RuntimeStyleRule>): ReadonlyArray<RuntimeAddonStyleRule> {
+function resolveAddonRules(feature: IdentifiedOverlaySpatialFeatureType, renderLayer: "border" | "translucent", candidates: ReadonlyArray<RuntimeStyleRule>): ReadonlyArray<RuntimeAddonStyleRule> {
   const candidatesByEffectType = new Map<string, Array<RuntimeAddonStyleRule>>();
   for (const candidate of candidates) {
     if (candidate.renderLayer !== renderLayer) continue;
@@ -80,19 +80,10 @@ function resolveAddonRules(feature: IdentifiedOverlayFeatureType, renderLayer: "
   return Object.freeze(selectedRules);
 }
 
-/** Relation 只匹配 translucent 索引，避免为不存在的 Base/Border 重复扫描 properties。 */
-export function resolveRelationTranslucentRules(relation: IdentifiedOverlayRelationFeatureType, plan: RuntimeStylePlan): ReadonlyArray<RuntimeRelationTranslucentStyleRule> {
-  const candidates = collectMatchingRules(plan.rulesByFeatureType.relation.translucent, relation.properties);
-  const selectedRules = resolveAddonRules(relation, "translucent", candidates);
-  return Object.freeze(selectedRules.filter((rule): rule is RuntimeRelationTranslucentStyleRule => rule.renderLayer === "translucent" && rule.featureType === "relation"));
-}
-
 /** 为一个 Overlay Feature 生成拍平的最终样式；未命中的空间 Base 使用类型默认 recipe。 */
 export function resolveFeatureStyle(feature: IdentifiedOverlayFeatureType, plan: RuntimeStylePlan): ResolvedFeatureStyle {
-  // Relation 的公开解析结果也严格只有 translucent，不能从未来的错误配置泄漏 Base/Border。
-  if (feature.feature_type === "relation") {
-    return Object.freeze({base: null, border: Object.freeze([]), translucent: resolveRelationTranslucentRules(feature, plan)});
-  }
+  // 保留旧的宽 Feature 入参边界，但 relation 不再拥有规则索引，也不能进入空间样式解析。
+  if (feature.feature_type === "relation") throw new Error("Relation does not support tag-based feature styles");
   const featureIndexes = plan.rulesByFeatureType[feature.feature_type];
   const baseRule = selectHighestPriorityRule(feature, "base", null, collectMatchingRules(featureIndexes.base, feature.properties));
   const base = baseRule === null

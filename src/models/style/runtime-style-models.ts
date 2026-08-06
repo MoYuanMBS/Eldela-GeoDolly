@@ -57,23 +57,6 @@ export type RuntimeStyleRule<StyleId extends string = string> =
   | Readonly<CompiledBaseStyleRule<StyleId> & {planOrder: number}>
   | Readonly<CompiledTranslucentStyleRule<StyleId> & {planOrder: number}>;
 
-/** Relation 没有 Base/Border；context 只缓存已经完成优先级选择的 translucent rules。 */
-export type RuntimeRelationTranslucentStyleRule<StyleId extends string = string> = Readonly<
-  RuntimeStyleRule<StyleId> & {renderLayer: "translucent"; featureType: "relation"}
->;
-
-/** 单个有效 relation 的预解析结果；rules 为空时使用 context 中的默认颜色。 */
-export interface RelationTranslucentRuleSelection<StyleId extends string = string> {
-  usesDefaultColor: boolean;
-  rules: ReadonlyArray<RuntimeRelationTranslucentStyleRule<StyleId>>;
-}
-
-/** relation ID 的预解析缓存；空间 Feature 热路径通过现有反向 membership 索引查询。 */
-export interface RelationTranslucentContext<StyleId extends string = string> {
-  membershipStyle: Readonly<CanvasRelationMembershipStyle>;
-  byRelationFeatureId: Readonly<Record<string, RelationTranslucentRuleSelection<StyleId>>>;
-}
-
 /** exact key 可直接索引；regex key 保持独立列表供 resolver 执行。 */
 export interface RuntimeStyleRuleIndex<StyleId extends string = string> {
   exactKeyRules: Readonly<Record<string, ReadonlyArray<RuntimeStyleRule<StyleId>>>>;
@@ -92,7 +75,7 @@ export interface RuntimeStylePlan<StyleId extends string = string> {
   canvasStyles: Readonly<Record<StyleId, CanvasBaseStyleRecipe>>;
   relationMembershipStyle: Readonly<CanvasRelationMembershipStyle>;
   rules: ReadonlyArray<RuntimeStyleRule<StyleId>>;
-  rulesByFeatureType: Readonly<Record<StyleTargetType, RuntimeStyleFeatureRuleIndexes<StyleId>>>;
+  rulesByFeatureType: Readonly<Record<CanvasSpatialFeatureType, RuntimeStyleFeatureRuleIndexes<StyleId>>>;
 }
 
 /** Base 的 kind/className/styleId 保持拍平；rule 为 null 表示使用类型默认 Canvas recipe。 */
@@ -102,7 +85,7 @@ export type ResolvedBaseStyle<StyleId extends string = string> = Readonly<{
 
 /** resolver 输出的绘制选择；renderer 直接根据 base/rule.kind 分发至 Canvas 或 CSS 路径。 */
 export interface ResolvedFeatureStyle<StyleId extends string = string> {
-  base: ResolvedBaseStyle<StyleId> | null;
+  base: ResolvedBaseStyle<StyleId>;
   border: ReadonlyArray<RuntimeStyleRule<StyleId>>;
   translucent: ReadonlyArray<RuntimeStyleRule<StyleId>>;
 }

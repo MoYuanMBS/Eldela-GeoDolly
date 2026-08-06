@@ -63,6 +63,14 @@ export const BUILT_IN_RELATION_MEMBERSHIP_STYLE = {
   opacity: 0.4,
 } as const satisfies CanvasRelationMembershipStyle;
 
+/** 固定 Relation addon 的屏幕像素尺寸；不进入用户样式或 tag rule。 */
+export const BUILT_IN_RELATION_MEMBERSHIP_DIMENSIONS = {
+  nodeRadius: 10,
+  nodeStrokeWidth: 3,
+  wayWidth: 4,
+  areaBandWidth: 4,
+} as const;
+
 /** 内置默认样式和当前 highway/landuse/building recipe；rule 文件只通过 ID 引用这里。 */
 export const BUILT_IN_CANVAS_STYLES = {
   "node-default": {
