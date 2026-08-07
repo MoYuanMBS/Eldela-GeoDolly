@@ -6,18 +6,16 @@
  */
 
 import {DomUtil, Layer, point, type LatLngTuple, type Map as LeafletMap, type Point} from "leaflet";
-import type {LeafletConfigType} from "../models/config-models.js";
-import type {LeafletSpatialGeometry, OverlayLabelCandidate} from "../models/leaflet-renderer-models.js";
+import type {LeafletSpatialGeometry, OverlayLabelCandidate, OverlayVisualMeasurement} from "../models/leaflet-renderer-models.js";
 import type {CanvasSpatialFeatureType} from "../models/style/base-canvas-style.js";
 import {LEAFLET_INTERNAL_RENDER_CONFIG} from "../utils/leaflet-internal-render-config.js";
-import {getNodeZoomScale} from "./node-zoom-controller.js";
 
 const LABEL_CONFIG = LEAFLET_INTERNAL_RENDER_CONFIG.label;
 // 字体尺寸仍是屏幕逻辑像素；Canvas bitmap 再按实际 DPR 扩大，二者不能混为同一个单位。
 const LABEL_FONT = `${LABEL_CONFIG.nameFontWeight} ${LABEL_CONFIG.fontSizePx}px ${LABEL_CONFIG.fontFamily}`;
 const LABEL_ID_FONT = `${LABEL_CONFIG.idFontWeight} ${LABEL_CONFIG.fontSizePx}px ${LABEL_CONFIG.fontFamily}`;
 
-function getFeatureVisibilityKey(featureType: CanvasSpatialFeatureType, featureId: string): string {
+function getFeatureMeasurementKey(featureType: CanvasSpatialFeatureType, featureId: string): string {
   // canonical feature_id 只保证类型内唯一，因此 key 必须同时包含 feature_type。
   return `${featureType}\u0000${featureId}`;
 }
@@ -295,14 +293,10 @@ function drawBlockLabel(context: CanvasRenderingContext2D, candidate: OverlayLab
  */
 export class OverlayLabelLayer extends Layer {
   private readonly candidates: Record<CanvasSpatialFeatureType, Array<OverlayLabelCandidate>> = {node: [], way: [], area: []};
-  private readonly hiddenGeometryFeatures = new Set<string>();
+  private readonly visualMeasurements = new Map<string, OverlayVisualMeasurement>();
   private canvas: HTMLCanvasElement | null = null;
   private frameId: number | null = null;
   private fontReady = false;
-
-  constructor(private readonly nodeZoomConfig: LeafletConfigType["node_zoom"]) {
-    super();
-  }
 
   /**
    * `document.fonts.load()` 会同时触发打包 WOFF2 的实际下载/解码。Renderer 在挂载本层前等待它，
@@ -321,14 +315,18 @@ export class OverlayLabelLayer extends Layer {
   }
 
   /**
-   * interaction 同步器在 computed style 确定后回写几何可见性。完全没有 fill/stroke/Relation
-   * 可见像素的 Feature 不应留下孤立文字；状态可以先于 Canvas 挂载写入，首帧直接使用最终结果。
+   * Interaction 同步器回写与命中层相同的最终测量。Node 标签直接消费 visualSizePx，不能再用
+   * 初始半径和 zoom scale 重复推导；状态可先于 Canvas 挂载写入，首帧直接使用最终结果。
    */
-  setFeatureGeometryVisible(featureType: CanvasSpatialFeatureType, featureId: string, visible: boolean): void {
-    const key = getFeatureVisibilityKey(featureType, featureId);
-    const changed = visible ? this.hiddenGeometryFeatures.delete(key) : !this.hiddenGeometryFeatures.has(key);
-    if (!visible) this.hiddenGeometryFeatures.add(key);
-    if (changed && this.canvas !== null) this.scheduleRedraw();
+  setFeatureVisualMeasurement(featureType: CanvasSpatialFeatureType, featureId: string, measurement: OverlayVisualMeasurement): void {
+    const key = getFeatureMeasurementKey(featureType, featureId);
+    const previous = this.visualMeasurements.get(key);
+    const changed = previous === undefined
+      || previous.hasVisiblePaint !== measurement.hasVisiblePaint
+      || previous.visualSizePx !== measurement.visualSizePx;
+    if (!changed) return;
+    this.visualMeasurements.set(key, Object.freeze({...measurement}));
+    if (this.canvas !== null) this.scheduleRedraw();
   }
 
   override onAdd(map: LeafletMap): this {
@@ -388,7 +386,8 @@ export class OverlayLabelLayer extends Layer {
     // 碰撞优先级集中在内部配置；改变视觉策略时不需要在绘制流程里寻找三段独立循环。
     for (const featureType of LABEL_CONFIG.featurePriority) {
       for (const candidate of this.candidates[featureType]) {
-        if (this.hiddenGeometryFeatures.has(getFeatureVisibilityKey(featureType, candidate.featureId))) continue;
+        const measurement = this.visualMeasurements.get(getFeatureMeasurementKey(featureType, candidate.featureId));
+        if (measurement === undefined || !measurement.hasVisiblePaint) continue;
         if (featureType === "node") this.drawNodeLabel(context, collisions, candidate, size.x, size.y, map);
         else if (featureType === "way") this.drawWayLabel(context, collisions, candidate, size.x, size.y, map);
         else this.drawAreaLabel(context, collisions, candidate, size.x, size.y, map);
@@ -398,15 +397,15 @@ export class OverlayLabelLayer extends Layer {
 
   private drawNodeLabel(context: CanvasRenderingContext2D, collisions: LabelCollisionIndex, candidate: OverlayLabelCandidate, viewportWidth: number, viewportHeight: number, map: LeafletMap): void {
     if (candidate.geometry.featureType !== "node") return;
-    const scale = getNodeZoomScale(map.getZoom(), this.nodeZoomConfig);
-    if (scale === 0) return;
+    const measurement = this.visualMeasurements.get(getFeatureMeasurementKey("node", candidate.featureId));
+    if (measurement === undefined || !measurement.hasVisiblePaint) return;
     const anchor = map.latLngToContainerPoint(candidate.geometry.center);
     const lines = getLabelLines(candidate);
     const block = getBlockSize(context, lines);
     // 两行文字整体置于实际缩放后外圈上方，name 行比 display_id 更靠近 Node。
     const center = point(
       anchor.x,
-      anchor.y - (candidate.nodeBaseRadius ?? LABEL_CONFIG.nodeFallbackRadiusPx) * scale - LABEL_CONFIG.nodeGapPx - block.height / 2,
+      anchor.y - measurement.visualSizePx - LABEL_CONFIG.nodeGapPx - block.height / 2,
     );
     const rect = getCenteredRect(center, block.width, block.height);
     if (!isVisibleRect(rect, viewportWidth, viewportHeight) || collisions.collides(rect)) return;

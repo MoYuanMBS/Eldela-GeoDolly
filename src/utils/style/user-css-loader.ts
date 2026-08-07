@@ -2,7 +2,7 @@
 
 import {existsSync, readFileSync, realpathSync, statSync} from "node:fs";
 import path from "node:path";
-import {transform, type ImportDependency, type Selector} from "lightningcss";
+import {transform, type Declaration, type ImportDependency, type Selector} from "lightningcss";
 import type {UserCssSource} from "../../models/style/user-css-style-models.js";
 
 // 这些是加载边界而非用户配置，避免递归导入拖垮地图服务或占用无界内存。
@@ -12,6 +12,29 @@ const MAX_FILE_BYTES = 256 * 1024;
 const MAX_TOTAL_BYTES = 1024 * 1024;
 const OVERLAY_SCOPE_CLASS = "geomcp-user-overlay";
 const BUILT_IN_CLASS_PREFIX = "geomcp-built-in-";
+
+/**
+ * 用户 CSS 只能修改 SVG presentation。几何、动画和滤镜会绕过 Leaflet radius 或让透明命中层
+ * 无法在离散生命周期中同步，因此采用明确允许列表，而不是只维护一份容易遗漏的禁止列表。
+ */
+const ALLOWED_OVERLAY_DECLARATIONS = new Set([
+  "display",
+  "fill",
+  "fill-opacity",
+  "fill-rule",
+  "opacity",
+  "paint-order",
+  "stroke",
+  "stroke-dasharray",
+  "stroke-dashoffset",
+  "stroke-linecap",
+  "stroke-linejoin",
+  "stroke-miterlimit",
+  "stroke-opacity",
+  "stroke-width",
+  "vector-effect",
+  "visibility",
+]);
 
 interface LoadState {
   // activeFiles 用于识别当前递归链中的循环；loadedFiles 复用已完成的解析结果。
@@ -96,6 +119,23 @@ function validateAndCollectOverlayClassNames(selector: Selector, output: Set<str
   }
 }
 
+function getDeclarationPropertyName(declaration: Declaration): string {
+  // Lightning CSS 把 r/cx/cy、vector-effect 等未内建的 SVG 属性表示为 custom declaration；
+  // `--variable` 也走同一分支，所以必须检查实际 name，不能笼统允许或拒绝 custom。
+  if (declaration.property === "custom") return String(declaration.value.name);
+  // 已知属性使用 var() 等未解析值时会保留为 unparsed，但 propertyId 仍能提供真实属性名。
+  if (declaration.property === "unparsed") return declaration.value.propertyId.property;
+  return declaration.property;
+}
+
+/** 拒绝 r/cx/cy/transform/animation/filter 等所有不属于稳定 SVG presentation 的声明。 */
+function validateOverlayDeclaration(declaration: Declaration): void {
+  const propertyName = getDeclarationPropertyName(declaration);
+  if (!ALLOWED_OVERLAY_DECLARATIONS.has(propertyName)) {
+    throw new Error(`${propertyName} is not allowed in user Overlay CSS declarations`);
+  }
+}
+
 /** import 全部展开后再压缩一次，缓存和 payload 不保留注释或文件级冗余空白。 */
 function minifyExpandedCss(source: UserCssSource, entryFilePath: string): UserCssSource {
   const transformResult = transform({
@@ -137,7 +177,10 @@ function loadCssFile(filePath: string, state: LoadState, depth: number): UserCss
       sourceMap: false,
       errorRecovery: false,
       analyzeDependencies: {preserveImports: true},
-      visitor: {Selector: (selector) => validateAndCollectOverlayClassNames(selector, classNames)},
+      visitor: {
+        Selector: (selector) => validateAndCollectOverlayClassNames(selector, classNames),
+        Declaration: validateOverlayDeclaration,
+      },
     });
     if (transformResult.warnings.length > 0) {
       throw new Error(`Invalid user CSS in ${resolvedFilePath}: ${transformResult.warnings[0].message}`);

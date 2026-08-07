@@ -422,7 +422,7 @@ export async function renderOverlay(options: OverlayRendererOptions): Promise<Ov
   const rootLayer = layerGroup().addTo(options.map);
   const nodeZoomController = new NodeZoomController(options.leafletConfig.node_zoom);
   const interactionMetricsController = new OverlayInteractionMetricsController(options.leafletConfig);
-  const labelLayer = new OverlayLabelLayer(options.leafletConfig.node_zoom);
+  const labelLayer = new OverlayLabelLayer();
   // 注册顺序刻意保持 Node zoom 在前、CSS 尺寸同步在后；同一次 zoomend 先得到最终圆半径，再测量 hit layer。
   rootLayer.addLayer(nodeZoomController);
   rootLayer.addLayer(interactionMetricsController);
@@ -458,7 +458,6 @@ export async function renderOverlay(options: OverlayRendererOptions): Promise<Ov
     const visualLayers = getVisualPathLayers(featureLayer);
     const nodeVisualCircles = feature.feature_type === "node" ? getNodeCircleLayers(featureLayer) : [];
     const initialVisualMeasurement = getInitialOverlayVisualMeasurement(geometry, visualLayers);
-    const nodeVisualRadius = feature.feature_type === "node" ? initialVisualMeasurement.visualSizePx : 0;
     // interactionLayer 是唯一 interactive Path；不可见 Feature 只保留引用，不把透明 Path 加入地图命中树。
     activateRenderer(rootLayer, renderers, renderers.interaction);
     const interactionLayer = createOverlayInteractionLayer(geometry, initialVisualMeasurement, renderers.interaction, options.leafletConfig.interaction);
@@ -470,7 +469,7 @@ export async function renderOverlay(options: OverlayRendererOptions): Promise<Ov
       visualLayers,
       cssLayers,
       interactionLayer,
-      (visible) => labelLayer.setFeatureGeometryVisible(feature.feature_type, feature.feature_id, visible),
+      (measurement) => labelLayer.setFeatureVisualMeasurement(feature.feature_type, feature.feature_id, measurement),
     );
 
     const nameText = getFeatureNameText(feature);
@@ -480,8 +479,9 @@ export async function renderOverlay(options: OverlayRendererOptions): Promise<Ov
       displayId: feature.display_id,
       ...(nameText === undefined ? {} : {nameText}),
       geometry,
-      ...(feature.feature_type === "node" ? {nodeBaseRadius: nodeVisualRadius} : {}),
     }));
+    // CSS 挂载前先登记 options 测量；首次 Label Canvas 挂载前，Interaction 会用最终 computed style 覆盖它。
+    labelLayer.setFeatureVisualMeasurement(feature.feature_type, feature.feature_id, initialVisualMeasurement);
 
     // Node group 由 zoom controller 持有，保证低 zoom 时视觉层与 hit geometry 一起卸载；其余类型直接入 root。
     if (feature.feature_type === "node") nodeZoomController.registerFeature(featureLayer, nodeVisualCircles);

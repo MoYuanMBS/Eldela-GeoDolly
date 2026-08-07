@@ -45,8 +45,6 @@ export interface OverlayLabelCandidate {
   displayId: string;
   nameText?: string;
   geometry: LeafletSpatialGeometry;
-  /** 仅 Node 使用，用于让标签偏移跟随实际外圈半径。 */
-  nodeBaseRadius?: number;
 }
 
 /** 一条视觉 Path 对命中层贡献的可见状态与最外屏幕尺寸。 */
@@ -55,9 +53,13 @@ export interface OverlayVisualMeasurement {
   visualSizePx: number;
 }
 
-/** CSS Path 的额外原始尺寸只用于超出视觉安全上限时给出 warning。 */
-export interface OverlayCssVisualMeasurement extends OverlayVisualMeasurement {
-  radiusPx: number;
+/**
+ * CSS 只提供 presentation 状态；Node radius 始终在每次同步时从 Leaflet CircleMarker 读取。
+ * 该结构可以在 SVG 暂时卸载时缓存，不会把上一个 zoom 的 geometry 半径一并冻结。
+ */
+export interface OverlayCssPresentationMeasurement {
+  fillVisible: boolean;
+  strokeVisible: boolean;
   strokeWidthPx: number;
 }
 
@@ -69,7 +71,7 @@ export interface OverlayInteractionRegistration {
   visualLayers: ReadonlyArray<Path>;
   cssLayers: ReadonlySet<Path>;
   interactionLayer: Path;
-  onGeometryVisibilityChange: (visible: boolean) => void;
+  onVisualMeasurementChange: (measurement: OverlayVisualMeasurement) => void;
 }
 
 export interface MeasuredOverlayInteraction {

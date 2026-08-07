@@ -11,7 +11,7 @@ import type {LeafletConfigType} from "../models/config-models.js";
 import type {
   LeafletSpatialGeometry,
   MeasuredOverlayInteraction,
-  OverlayCssVisualMeasurement,
+  OverlayCssPresentationMeasurement,
   OverlayInteractionRegistration,
   OverlayVisualMeasurement,
 } from "../models/leaflet-renderer-models.js";
@@ -70,11 +70,17 @@ function hasOptionFill(featureType: CanvasSpatialFeatureType, layer: Path): bool
   return Number.isFinite(opacity) && opacity > 0 && hasVisibleColor(layer.options.fillColor ?? layer.options.color);
 }
 
-/** 从 Canvas/Leaflet options 得到当前 Path 对 Feature 可见像素的贡献。 */
-function measureOptionPath(featureType: CanvasSpatialFeatureType, layer: Path): OverlayVisualMeasurement {
+function getOptionPresentation(featureType: CanvasSpatialFeatureType, layer: Path): OverlayCssPresentationMeasurement {
   const strokeWidthPx = getOptionStrokeWidth(layer);
-  const fillVisible = hasOptionFill(featureType, layer);
-  const strokeVisible = strokeWidthPx > 0;
+  return {fillVisible: hasOptionFill(featureType, layer), strokeVisible: strokeWidthPx > 0, strokeWidthPx};
+}
+
+/**
+ * presentation 只描述哪些绘制通道可见；Node extent 每次都结合当前 getRadius() 计算，确保
+ * NodeZoomController 是唯一 geometry 半径来源，固定屏幕宽度的 stroke 也不会被重复缩放。
+ */
+function measurePresentedPath(featureType: CanvasSpatialFeatureType, layer: Path, presentation: OverlayCssPresentationMeasurement): OverlayVisualMeasurement {
+  const {fillVisible, strokeVisible, strokeWidthPx} = presentation;
   if (featureType === "node") {
     const radiusPx = getOptionNodeRadius(layer);
     return {
@@ -85,6 +91,11 @@ function measureOptionPath(featureType: CanvasSpatialFeatureType, layer: Path): 
   if (featureType === "way") return {hasVisiblePaint: strokeVisible, visualSizePx: strokeWidthPx};
   // Area 的 fill 不需要宽度也能可见；visualSizePx 只记录边缘描边供诊断使用。
   return {hasVisiblePaint: fillVisible || strokeVisible, visualSizePx: strokeWidthPx};
+}
+
+/** 从 Canvas/Leaflet options 得到当前 Path 对 Feature 可见像素的贡献。 */
+function measureOptionPath(featureType: CanvasSpatialFeatureType, layer: Path): OverlayVisualMeasurement {
+  return measurePresentedPath(featureType, layer, getOptionPresentation(featureType, layer));
 }
 
 /**
@@ -157,36 +168,18 @@ function isComputedPathContainerVisible(style: CSSStyleDeclaration): boolean {
 }
 
 /**
- * 读取 SVG 最终 presentation。fill/stroke 分开判断，确保 fill:none、stroke:none 与各自 opacity=0
- * 都不会被 interaction 的最小尺寸重新托底；Node/Area 任一通道可见即可保留命中层。
+ * 只读取 SVG 最终 presentation，不读取 CSS `r`。fill/stroke 分开判断，确保 fill:none、
+ * stroke:none 与各自 opacity=0 都不会被 interaction 的最小尺寸重新托底。
  */
-function measureComputedPath(
+function measureComputedPresentation(
   featureType: CanvasSpatialFeatureType,
-  layer: Path,
   style: CSSStyleDeclaration,
-): OverlayCssVisualMeasurement {
-  if (!isComputedPathContainerVisible(style)) return {hasVisiblePaint: false, visualSizePx: 0, radiusPx: 0, strokeWidthPx: 0};
+): OverlayCssPresentationMeasurement {
+  if (!isComputedPathContainerVisible(style)) return {fillVisible: false, strokeVisible: false, strokeWidthPx: 0};
   const fillVisible = featureType !== "way" && hasVisibleColor(style.fill) && parseCssNumber(style.fillOpacity, 1) > 0;
   const parsedStrokeWidth = parseCssPixels(style.strokeWidth) ?? 0;
   const strokeVisible = hasVisibleColor(style.stroke) && parseCssNumber(style.strokeOpacity, 1) > 0 && parsedStrokeWidth > 0;
-  if (featureType === "node") {
-    const radiusPx = parseCssPixels(style.getPropertyValue("r")) ?? getOptionNodeRadius(layer);
-    return {
-      hasVisiblePaint: (fillVisible || strokeVisible) && radiusPx > 0,
-      visualSizePx: Math.max(fillVisible ? radiusPx : 0, strokeVisible ? radiusPx + parsedStrokeWidth / 2 : 0),
-      radiusPx,
-      strokeWidthPx: strokeVisible ? parsedStrokeWidth : 0,
-    };
-  }
-  if (featureType === "way") {
-    return {hasVisiblePaint: strokeVisible, visualSizePx: strokeVisible ? parsedStrokeWidth : 0, radiusPx: 0, strokeWidthPx: strokeVisible ? parsedStrokeWidth : 0};
-  }
-  return {
-    hasVisiblePaint: fillVisible || strokeVisible,
-    visualSizePx: strokeVisible ? parsedStrokeWidth : 0,
-    radiusPx: 0,
-    strokeWidthPx: strokeVisible ? parsedStrokeWidth : 0,
-  };
+  return {fillVisible, strokeVisible, strokeWidthPx: strokeVisible ? parsedStrokeWidth : 0};
 }
 
 /**
@@ -196,8 +189,7 @@ function measureComputedPath(
 export class OverlayInteractionMetricsController extends Layer {
   private readonly registrations: Array<OverlayInteractionRegistration> = [];
   private readonly warnedCssLayers = new WeakSet<Path>();
-  private readonly cachedCssMeasurements = new WeakMap<Path, OverlayCssVisualMeasurement>();
-  private readonly lastVisibility = new WeakMap<Path, boolean>();
+  private readonly cachedCssPresentations = new WeakMap<Path, OverlayCssPresentationMeasurement>();
   private frameId: number | null = null;
 
   constructor(private readonly config: Pick<LeafletConfigType, "interaction" | "visual_limits">) {
@@ -211,9 +203,9 @@ export class OverlayInteractionMetricsController extends Layer {
     visualLayers: ReadonlyArray<Path>,
     cssLayers: ReadonlyArray<Path>,
     interactionLayer: Path,
-    onGeometryVisibilityChange: (visible: boolean) => void,
+    onVisualMeasurementChange: (measurement: OverlayVisualMeasurement) => void,
   ): void {
-    this.registrations.push({featureId, featureType, featureLayer, visualLayers, cssLayers: new Set(cssLayers), interactionLayer, onGeometryVisibilityChange});
+    this.registrations.push({featureId, featureType, featureLayer, visualLayers, cssLayers: new Set(cssLayers), interactionLayer, onVisualMeasurementChange});
   }
 
   override onAdd(map: LeafletMap): this {
@@ -270,54 +262,48 @@ export class OverlayInteractionMetricsController extends Layer {
     return {hasVisiblePaint, visualSizePx};
   }
 
-  private measureCssLayer(registration: OverlayInteractionRegistration, layer: Path): OverlayCssVisualMeasurement {
+  private measureCssLayer(registration: OverlayInteractionRegistration, layer: Path): OverlayVisualMeasurement {
     const element = layer.getElement();
+    let presentation: OverlayCssPresentationMeasurement;
     if (element === undefined || element === null) {
-      // Node 在低 zoom 会连同 SVG group 暂时卸载；沿用最后一次计算值，避免退回 seed options 后误启用。
-      const cached = this.cachedCssMeasurements.get(layer);
-      if (cached !== undefined) return cached;
-      const fallback = measureOptionPath(registration.featureType, layer);
-      return {...fallback, radiusPx: registration.featureType === "node" ? getOptionNodeRadius(layer) : 0, strokeWidthPx: getOptionStrokeWidth(layer)};
+      // 低 zoom 会卸载整个 Node group。只复用 fill/stroke 状态，随后仍结合 setRadius(0) 后的当前 geometry，
+      // 不能复用上一个 zoom 的最终 visualSizePx，否则独立 Label Canvas 会留下孤立标签。
+      presentation = this.cachedCssPresentations.get(layer) ?? getOptionPresentation(registration.featureType, layer);
+    } else {
+      const view = element.ownerDocument.defaultView;
+      if (view === null) throw new Error("CSS Overlay layer is not attached to a browser window");
+      presentation = measureComputedPresentation(registration.featureType, view.getComputedStyle(element));
+      this.cachedCssPresentations.set(layer, presentation);
+      this.warnIfCssLimitExceeded(registration, layer, presentation);
     }
-    const view = element.ownerDocument.defaultView;
-    if (view === null) throw new Error("CSS Overlay layer is not attached to a browser window");
-    const measurement = measureComputedPath(registration.featureType, layer, view.getComputedStyle(element));
-    this.cachedCssMeasurements.set(layer, measurement);
-    this.warnIfCssLimitExceeded(registration, layer, measurement);
-    return measurement;
+    return measurePresentedPath(registration.featureType, layer, presentation);
   }
 
-  private warnIfCssLimitExceeded(registration: OverlayInteractionRegistration, layer: Path, measurement: OverlayCssVisualMeasurement): void {
+  private warnIfCssLimitExceeded(registration: OverlayInteractionRegistration, layer: Path, presentation: OverlayCssPresentationMeasurement): void {
     if (this.warnedCssLayers.has(layer)) return;
     const limits = this.config.visual_limits;
-    const exceedsRadius = registration.featureType === "node" && measurement.radiusPx > limits.max_canvas_node_radius_px;
-    const exceedsStroke = measurement.strokeWidthPx > limits.max_canvas_stroke_width_px;
-    if (!exceedsRadius && !exceedsStroke) return;
+    if (presentation.strokeWidthPx <= limits.max_canvas_stroke_width_px) return;
     this.warnedCssLayers.add(layer);
-    // CSS 是用户可扩展的 presentation 层，超限不阻断地图；interaction 自身仍按硬上限钳制。
+    // CSS 已不能设置 radius；仍允许超宽 presentation stroke，但 interaction 自身按硬上限钳制。
     console.warn("css_overlay_visual_limit_exceeded", {
       feature_type: registration.featureType,
       feature_id: registration.featureId,
-      radius_px: measurement.radiusPx,
-      stroke_width_px: measurement.strokeWidthPx,
-      max_node_radius_px: limits.max_canvas_node_radius_px,
+      stroke_width_px: presentation.strokeWidthPx,
       max_stroke_width_px: limits.max_canvas_stroke_width_px,
     });
   }
 
   private applyMeasurement({registration, measurement}: MeasuredOverlayInteraction): void {
-    const wasVisible = this.lastVisibility.get(registration.interactionLayer);
+    // Label 在可见性不变但 zoom radius/stroke 改变时也要更新偏移，因此每次都传完整测量；
+    // Label 自身比较旧值并合并 redraw，不在这里再保存一份 measurement 状态。
+    registration.onVisualMeasurementChange(measurement);
     if (!measurement.hasVisiblePaint) {
       // 不能只把尺寸设为 0：Leaflet click tolerance 与配置最小值仍可能让零尺寸 Path 被命中。
       if (registration.featureLayer.hasLayer(registration.interactionLayer)) registration.featureLayer.removeLayer(registration.interactionLayer);
-      if (wasVisible !== false) registration.onGeometryVisibilityChange(false);
-      this.lastVisibility.set(registration.interactionLayer, false);
       return;
     }
 
     if (!registration.featureLayer.hasLayer(registration.interactionLayer)) registration.featureLayer.addLayer(registration.interactionLayer);
-    if (wasVisible !== true) registration.onGeometryVisibilityChange(true);
-    this.lastVisibility.set(registration.interactionLayer, true);
 
     const interaction = this.config.interaction;
     if (registration.featureType === "node") {

@@ -50,8 +50,6 @@ export const LEAFLET_INTERNAL_RENDER_CONFIG = Object.freeze({
     nodeGapPx: 4,
     // 碰撞空间索引的网格边长；只影响查询成本，不改变最终碰撞语义。
     collisionCellSizePx: 64,
-    // 无法从 Node 视觉层得到半径时使用的标签偏移回退值。
-    nodeFallbackRadiusPx: 5,
     // 标签正文颜色。
     textColor: "#202020",
     // 标签描边光晕颜色，用于维持道路、Area 和未来 basemap 上的对比度。
