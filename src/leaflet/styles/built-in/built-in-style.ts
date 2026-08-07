@@ -64,15 +64,6 @@ export const BUILT_IN_RELATION_MEMBERSHIP_STYLE = {
   opacity: 0.4,
 } as const satisfies CanvasRelationMembershipStyle;
 
-/** 固定 Relation addon 的屏幕像素尺寸；不进入用户样式或 tag rule。 */
-export const BUILT_IN_RELATION_MEMBERSHIP_DIMENSIONS = {
-  nodeRadius: 8,
-  nodeStrokeWidth: 2.5,
-  wayWidth: 4,
-  /** Area 内侧带的总可见宽度；主色与 Relation 异色时各占一半。 */
-  areaBandTotalWidth: 12,
-} as const;
-
 /** 内置默认样式和当前 highway/landuse/building recipe；rule 文件只通过 ID 引用这里。 */
 export const BUILT_IN_CANVAS_STYLES = {
   // Node 默认样式由外圈白底黑边与中心黑点两次 operation 组成，并由 zoom controller 整体缩放。

@@ -1,5 +1,6 @@
 import {createRoot} from "react-dom/client";
 import "leaflet/dist/leaflet.css";
+import "../leaflet/styles/leaflet-font.css";
 import "../leaflet/styles/built-in/built-in-css.css";
 import "../../styles/web.css";
 import {initializeBuiltInStyle} from "../leaflet/styles/built-in-style-loader.js";

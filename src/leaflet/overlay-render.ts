@@ -11,6 +11,7 @@
 import {
   Canvas,
   CircleMarker,
+  Path,
   canvas,
   circleMarker,
   layerGroup,
@@ -19,62 +20,30 @@ import {
   svg,
   type LayerGroup,
   type Map as LeafletMap,
-  type Path,
   type Renderer,
 } from "leaflet";
 import type {IdentifiedOverlaySpatialFeatureWithDisplayIdType} from "../models/map-data-models.js";
-import type {LeafletSpatialGeometry, OverlayFeatureLayerEntry, OverlayFeatureLayerIndex, OverlayRendererOptions, OverlayRenderResult} from "../models/leaflet-renderer-models.js";
+import type {
+  LeafletSpatialGeometry,
+  MutableOverlayFeatureLayerIndex,
+  OverlayBasePaneName,
+  OverlayFeatureLayerEntry,
+  OverlayFeatureLayerIndex,
+  OverlayFeatureRenderers,
+  OverlayRendererCollection,
+  OverlayRendererOptions,
+  OverlayRenderResult,
+  OverlaySpecialPaneName,
+} from "../models/leaflet-renderer-models.js";
 import type {CanvasBaseStyleRecipe, CanvasDrawOperation, CanvasSpatialFeatureType} from "../models/style/base-canvas-style.js";
 import type {ResolvedBaseStyle, RuntimeStylePlan, RuntimeStyleRule} from "../models/style/runtime-style-models.js";
+import {LEAFLET_INTERNAL_RENDER_CONFIG} from "../utils/leaflet-internal-render-config.js";
 import {resolveFeatureStyle} from "./feature-style-resolver.js";
 import {prepareLeafletGeometry} from "./leaflet-geometry.js";
 import {NodeZoomController} from "./node-zoom-controller.js";
-import {createOverlayInteractionLayer} from "./overlay-interaction.js";
+import {createOverlayInteractionLayer, getInitialOverlayVisualMeasurement, OverlayInteractionMetricsController} from "./overlay-interaction.js";
 import {OverlayLabelLayer} from "./overlay-label-layer.js";
 import {buildRelationTranslucentContext} from "./relation-translucent-context.js";
-import {BUILT_IN_RELATION_MEMBERSHIP_DIMENSIONS} from "./styles/built-in/built-in-style.js";
-
-// Leaflet layer 创建仍在主线程执行；固定批次让大结果集定期归还事件循环，避免 iframe 长时间无响应。
-const RENDER_BATCH_SIZE = 200;
-
-// z-index 是跨 renderer 的稳定层级契约，不能依靠异步批次或 Layer 创建顺序决定覆盖关系。
-const OVERLAY_PANES = {
-  areaBase: 410,
-  areaSpecial: 420,
-  wayBase: 430,
-  waySpecial: 440,
-  nodeBase: 450,
-  nodeSpecial: 460,
-  relationMembership: 470,
-  labels: 480,
-  interaction: 490,
-} as const;
-
-type BasePaneName = "areaBase" | "wayBase" | "nodeBase";
-type SpecialPaneName = "areaSpecial" | "waySpecial" | "nodeSpecial";
-
-interface FeatureRenderers {
-  // Base 与 Special 分 pane；Canvas recipe 和 CSS rule 再分别使用 Canvas/SVG renderer。
-  baseCanvas: Renderer;
-  baseSvg: Renderer;
-  specialCanvas: Renderer;
-  specialSvg: Renderer;
-}
-
-interface RendererCollection {
-  node: FeatureRenderers;
-  way: FeatureRenderers;
-  area: FeatureRenderers;
-  relationMembership: RelationMembershipCanvas;
-  interaction: Renderer;
-  activated: Set<Renderer>;
-}
-
-interface MutableLayerIndex {
-  node: Record<string, OverlayFeatureLayerEntry>;
-  way: Record<string, OverlayFeatureLayerEntry>;
-  area: Record<string, OverlayFeatureLayerEntry>;
-}
 
 /**
  * Leaflet 先生成 Polygon 的完整 Canvas path；这里用 even-odd clip 将双倍描边裁掉外半侧，
@@ -89,7 +58,8 @@ class RelationMembershipCanvas extends Canvas {
   }
 
   _fillStroke(context: CanvasRenderingContext2D, layer: Path): void {
-    const {color = "#3388ff", fill = false, fillColor, fillOpacity = 0.2, fillRule = "evenodd", lineCap = "round", lineJoin = "round", opacity = 1, stroke = true, weight = 0} = layer.options;
+    const fallback = LEAFLET_INTERNAL_RENDER_CONFIG.canvasFallback;
+    const {color = fallback.color, fill = false, fillColor, fillOpacity = fallback.fillOpacity, fillRule = "evenodd", lineCap = fallback.lineCap, lineJoin = fallback.lineJoin, opacity = 1, stroke = true, weight = 0} = layer.options;
     if (this.innerBandLayers.has(layer)) {
       if (weight <= 0 || opacity <= 0) return;
       context.save();
@@ -97,8 +67,8 @@ class RelationMembershipCanvas extends Canvas {
       context.globalAlpha = opacity;
       context.strokeStyle = color;
       context.lineWidth = weight * 2;
-      context.lineCap = "round";
-      context.lineJoin = "round";
+      context.lineCap = fallback.lineCap;
+      context.lineJoin = fallback.lineJoin;
       context.stroke();
       context.restore();
       return;
@@ -113,15 +83,15 @@ class RelationMembershipCanvas extends Canvas {
       context.globalAlpha = opacity;
       context.lineWidth = weight;
       context.strokeStyle = color;
-      context.lineCap = lineCap === "inherit" ? "round" : lineCap;
-      context.lineJoin = lineJoin === "inherit" ? "round" : lineJoin;
+      context.lineCap = lineCap === "inherit" ? fallback.lineCap : lineCap;
+      context.lineJoin = lineJoin === "inherit" ? fallback.lineJoin : lineJoin;
       context.stroke();
     }
   }
 }
 
 function ensureOverlayPanes(map: LeafletMap): void {
-  for (const [paneName, zIndex] of Object.entries(OVERLAY_PANES)) {
+  for (const [paneName, zIndex] of Object.entries(LEAFLET_INTERNAL_RENDER_CONFIG.panes)) {
     const pane = map.getPane(paneName) ?? map.createPane(paneName);
     pane.style.zIndex = String(zIndex);
     // 所有视觉重复层都不接事件；后续唯一 hit target 只放入 interaction pane。
@@ -130,7 +100,7 @@ function ensureOverlayPanes(map: LeafletMap): void {
 }
 
 /** 一个 Feature 类型同时准备 Canvas/SVG 两条路径，但未命中的 renderer 不会挂载 DOM。 */
-function createFeatureRenderers(basePane: BasePaneName, specialPane: SpecialPaneName): FeatureRenderers {
+function createFeatureRenderers(basePane: OverlayBasePaneName, specialPane: OverlaySpecialPaneName): OverlayFeatureRenderers {
   return {
     baseCanvas: canvas({pane: basePane}),
     baseSvg: svg({pane: basePane}),
@@ -140,7 +110,7 @@ function createFeatureRenderers(basePane: BasePaneName, specialPane: SpecialPane
 }
 
 /** Renderer 实例先轻量创建，直到首条实际绘制命中才挂到 map 并分配 DOM/Canvas。 */
-function createRenderers(): RendererCollection {
+function createRenderers(): OverlayRendererCollection {
   const area = createFeatureRenderers("areaBase", "areaSpecial");
   const way = createFeatureRenderers("wayBase", "waySpecial");
   const node = createFeatureRenderers("nodeBase", "nodeSpecial");
@@ -150,7 +120,7 @@ function createRenderers(): RendererCollection {
 }
 
 /** 根组持有所有实际启用的 renderer，失败或卸载时不会遗留空 Canvas/SVG。 */
-function activateRenderer(rootLayer: LayerGroup, renderers: RendererCollection, renderer: Renderer): void {
+function activateRenderer(rootLayer: LayerGroup, renderers: OverlayRendererCollection, renderer: Renderer): void {
   if (renderers.activated.has(renderer)) return;
   renderers.activated.add(renderer);
   rootLayer.addLayer(renderer);
@@ -238,7 +208,8 @@ function getLargestOperation(recipe: CanvasBaseStyleRecipe): CanvasDrawOperation
 function createCssLayer(geometry: LeafletSpatialGeometry, defaultRecipe: CanvasBaseStyleRecipe, className: string, renderLayer: "border" | "base" | "translucent", renderer: Renderer): Path {
   const operation = getLargestOperation(defaultRecipe);
   const commonOptions = {...basePathOptions(renderer), className: `geomcp-user-overlay ${className}`};
-  const layerOpacity = renderLayer === "translucent" ? 0.35 : 1;
+  const seed = LEAFLET_INTERNAL_RENDER_CONFIG.cssGeometrySeed;
+  const layerOpacity = renderLayer === "translucent" ? seed.translucentOpacity : 1;
   if (geometry.featureType === "node" && operation.kind === "circle") {
     return circleMarker(geometry.center, {
       ...commonOptions,
@@ -249,7 +220,7 @@ function createCssLayer(geometry: LeafletSpatialGeometry, defaultRecipe: CanvasB
       weight: operation.strokeWidth,
       fill: renderLayer !== "border",
       fillColor: operation.fillColor,
-      fillOpacity: renderLayer === "translucent" ? operation.fillOpacity * 0.35 : operation.fillOpacity,
+      fillOpacity: renderLayer === "translucent" ? operation.fillOpacity * seed.translucentOpacity : operation.fillOpacity,
     });
   }
   if (geometry.featureType === "way" && operation.kind === "line") {
@@ -257,7 +228,7 @@ function createCssLayer(geometry: LeafletSpatialGeometry, defaultRecipe: CanvasB
       ...commonOptions,
       color: operation.color,
       opacity: layerOpacity,
-      weight: operation.width + (renderLayer === "border" ? 4 : 0),
+      weight: operation.width + (renderLayer === "border" ? seed.wayBorderExtraWidthPx : 0),
       lineCap: operation.lineCap,
       lineJoin: operation.lineJoin,
       ...(operation.dash === undefined ? {} : {dashArray: [...operation.dash]}),
@@ -269,10 +240,10 @@ function createCssLayer(geometry: LeafletSpatialGeometry, defaultRecipe: CanvasB
       stroke: true,
       color: operation.strokeColor,
       opacity: layerOpacity,
-      weight: operation.strokeWidth + (renderLayer === "border" ? 2 : 0),
+      weight: operation.strokeWidth + (renderLayer === "border" ? seed.areaBorderExtraWidthPx : 0),
       fill: renderLayer !== "border",
       fillColor: operation.fillColor,
-      fillOpacity: renderLayer === "translucent" ? operation.fillOpacity * 0.35 : operation.fillOpacity,
+      fillOpacity: renderLayer === "translucent" ? operation.fillOpacity * seed.translucentOpacity : operation.fillOpacity,
       fillRule: "evenodd",
     });
   }
@@ -293,10 +264,12 @@ function renderCanvasRule(group: LayerGroup, geometry: LeafletSpatialGeometry, r
  * Base 只绘制 resolver 选中的唯一结果。返回 Canvas recipe 是为了让 Area Relation 复用 mainColor；
  * CSS Base 不反读 computed style，因此返回 null，保持 CSS/Canvas 数据边界。
  */
-function renderBase(rootLayer: LayerGroup, group: LayerGroup, geometry: LeafletSpatialGeometry, base: ResolvedBaseStyle, defaultRecipe: CanvasBaseStyleRecipe, plan: RuntimeStylePlan, featureRenderers: FeatureRenderers, renderers: RendererCollection): CanvasBaseStyleRecipe | null {
+function renderBase(rootLayer: LayerGroup, group: LayerGroup, geometry: LeafletSpatialGeometry, base: ResolvedBaseStyle, defaultRecipe: CanvasBaseStyleRecipe, plan: RuntimeStylePlan, featureRenderers: OverlayFeatureRenderers, renderers: OverlayRendererCollection, cssLayers: Array<Path>): CanvasBaseStyleRecipe | null {
   if (base.kind === "css") {
     activateRenderer(rootLayer, renderers, featureRenderers.baseSvg);
-    group.addLayer(createCssLayer(geometry, defaultRecipe, base.className, "base", featureRenderers.baseSvg));
+    const cssLayer = createCssLayer(geometry, defaultRecipe, base.className, "base", featureRenderers.baseSvg);
+    cssLayers.push(cssLayer);
+    group.addLayer(cssLayer);
     return null;
   }
   const recipe = getCanvasRecipe(plan, base.styleId, geometry.featureType);
@@ -306,11 +279,13 @@ function renderBase(rootLayer: LayerGroup, group: LayerGroup, geometry: LeafletS
 }
 
 /** Border/Translucent 已在 resolver 中按 effectType 去重，这里只按 planOrder 顺序执行绘制。 */
-function renderAddonRules(rootLayer: LayerGroup, group: LayerGroup, geometry: LeafletSpatialGeometry, rules: ReadonlyArray<RuntimeStyleRule>, defaultRecipe: CanvasBaseStyleRecipe, plan: RuntimeStylePlan, canvasRenderer: Renderer, svgRenderer: Renderer, renderers: RendererCollection): void {
+function renderAddonRules(rootLayer: LayerGroup, group: LayerGroup, geometry: LeafletSpatialGeometry, rules: ReadonlyArray<RuntimeStyleRule>, defaultRecipe: CanvasBaseStyleRecipe, plan: RuntimeStylePlan, canvasRenderer: Renderer, svgRenderer: Renderer, renderers: OverlayRendererCollection, cssLayers: Array<Path>): void {
   for (const rule of rules) {
     if (rule.kind === "css") {
       activateRenderer(rootLayer, renderers, svgRenderer);
-      group.addLayer(createCssLayer(geometry, defaultRecipe, rule.className, rule.renderLayer, svgRenderer));
+      const cssLayer = createCssLayer(geometry, defaultRecipe, rule.className, rule.renderLayer, svgRenderer);
+      cssLayers.push(cssLayer);
+      group.addLayer(cssLayer);
     } else {
       activateRenderer(rootLayer, renderers, canvasRenderer);
       renderCanvasRule(group, geometry, rule, plan, canvasRenderer);
@@ -326,19 +301,19 @@ function sameColor(left: string, right: string): boolean {
  * Relation 自身没有 geometry；当前函数只复用成员 Feature geometry 追加固定 Canvas addon。
  * 多个 Relation 已在 context 中合并成一次“是否存在 membership”判断，不按 relation 数量重复绘制。
  */
-function renderRelationMembership(rootLayer: LayerGroup, group: LayerGroup, geometry: LeafletSpatialGeometry, mainAreaColor: string | undefined, options: OverlayRendererOptions, renderers: RendererCollection): void {
+function renderRelationMembership(rootLayer: LayerGroup, group: LayerGroup, geometry: LeafletSpatialGeometry, mainAreaColor: string | undefined, options: OverlayRendererOptions, renderers: OverlayRendererCollection): void {
   const style = options.stylePlan.relationMembershipStyle;
-  const dimensions = BUILT_IN_RELATION_MEMBERSHIP_DIMENSIONS;
+  const dimensions = options.leafletConfig.relation_membership;
   const renderer = renderers.relationMembership;
   activateRenderer(rootLayer, renderers, renderer);
   if (geometry.featureType === "node") {
     group.addLayer(circleMarker(geometry.center, {
       ...basePathOptions(renderer),
-      radius: dimensions.nodeRadius,
+      radius: dimensions.node_radius_px,
       stroke: true,
       color: style.defaultColor,
       opacity: style.opacity,
-      weight: dimensions.nodeStrokeWidth,
+      weight: dimensions.node_stroke_width_px,
       fill: false,
     }));
     return;
@@ -348,14 +323,14 @@ function renderRelationMembership(rootLayer: LayerGroup, group: LayerGroup, geom
       ...basePathOptions(renderer),
       color: style.defaultColor,
       opacity: style.opacity,
-      weight: dimensions.wayWidth,
+      weight: dimensions.way_width_px,
       lineCap: "round",
       lineJoin: "round",
     }));
     return;
   }
 
-  const totalWidth = dimensions.areaBandTotalWidth;
+  const totalWidth = dimensions.area_band_total_width_px;
   const hasMainColor = mainAreaColor !== undefined;
   const mergedColor = hasMainColor && sameColor(mainAreaColor, style.defaultColor);
   const relationBand = polygon(geometry.latLngs, {
@@ -394,7 +369,7 @@ function yieldToBrowser(): Promise<void> {
   return new Promise((resolve) => globalThis.setTimeout(resolve, 0));
 }
 
-function freezeLayerIndex(index: MutableLayerIndex): OverlayFeatureLayerIndex {
+function freezeLayerIndex(index: MutableOverlayFeatureLayerIndex): OverlayFeatureLayerIndex {
   // feature_type 是第一层命名空间，避免 node/way/area 的 canonical feature_id 相互碰撞。
   return Object.freeze({
     node: Object.freeze(index.node),
@@ -417,13 +392,22 @@ function getFeatureNameText(feature: IdentifiedOverlaySpatialFeatureWithDisplayI
   return names.length === 0 ? undefined : names.join(" / ");
 }
 
-/** 收集一个 Node 的全部可见/命中 CircleMarker，交给 zoom controller 使用相同比例缩放。 */
+/** interaction 创建前收集 Node 的全部可见 CircleMarker，交给 zoom controller 使用相同比例缩放。 */
 function getNodeCircleLayers(group: LayerGroup): Array<CircleMarker> {
   const circles: Array<CircleMarker> = [];
   group.eachLayer((layer) => {
     if (layer instanceof CircleMarker) circles.push(layer);
   });
   return circles;
+}
+
+/** interaction 创建前快照全部视觉 Path；透明 hit Path 自身绝不能再次参与可见尺寸计算。 */
+function getVisualPathLayers(group: LayerGroup): Array<Path> {
+  const paths: Array<Path> = [];
+  group.eachLayer((layer) => {
+    if (layer instanceof Path) paths.push(layer);
+  });
+  return paths;
 }
 
 /**
@@ -436,12 +420,15 @@ export async function renderOverlay(options: OverlayRendererOptions): Promise<Ov
   ensureOverlayPanes(options.map);
   const renderers = createRenderers();
   const rootLayer = layerGroup().addTo(options.map);
-  const nodeZoomController = new NodeZoomController();
-  const labelLayer = new OverlayLabelLayer();
+  const nodeZoomController = new NodeZoomController(options.leafletConfig.node_zoom);
+  const interactionMetricsController = new OverlayInteractionMetricsController(options.leafletConfig);
+  const labelLayer = new OverlayLabelLayer(options.leafletConfig.node_zoom);
+  // 注册顺序刻意保持 Node zoom 在前、CSS 尺寸同步在后；同一次 zoomend 先得到最终圆半径，再测量 hit layer。
   rootLayer.addLayer(nodeZoomController);
+  rootLayer.addLayer(interactionMetricsController);
   // Relation 反向索引只构建一次，renderFeature 内只按 type + feature_id 查询。
   const relationContext = buildRelationTranslucentContext(options.overlayOutput.relation, options.relationMemberFeaturesByRelation, options.stylePlan);
-  const mutableLayerIndex: MutableLayerIndex = {
+  const mutableLayerIndex: MutableOverlayFeatureLayerIndex = {
     node: Object.create(null) as Record<string, OverlayFeatureLayerEntry>,
     way: Object.create(null) as Record<string, OverlayFeatureLayerEntry>,
     area: Object.create(null) as Record<string, OverlayFeatureLayerEntry>,
@@ -456,23 +443,35 @@ export async function renderOverlay(options: OverlayRendererOptions): Promise<Ov
     const defaultRecipe = getCanvasRecipe(options.stylePlan, options.stylePlan.defaultBaseStyleIds[feature.feature_type], feature.feature_type);
     // 一个 FeatureGroup 聚合它跨 pane 的所有视觉和 hit Paths，便于 typed index 与卸载保持一对一。
     const featureLayer = layerGroup();
+    const cssLayers: Array<Path> = [];
 
     // Pane 决定跨层覆盖关系；同一阶段内仍保持 Border → Base → Translucent 的稳定创建顺序。
-    renderAddonRules(rootLayer, featureLayer, geometry, resolvedStyle.border, defaultRecipe, options.stylePlan, featureRenderers.baseCanvas, featureRenderers.baseSvg, renderers);
-    const selectedBaseRecipe = renderBase(rootLayer, featureLayer, geometry, resolvedStyle.base, defaultRecipe, options.stylePlan, featureRenderers, renderers);
-    renderAddonRules(rootLayer, featureLayer, geometry, resolvedStyle.translucent, defaultRecipe, options.stylePlan, featureRenderers.specialCanvas, featureRenderers.specialSvg, renderers);
+    renderAddonRules(rootLayer, featureLayer, geometry, resolvedStyle.border, defaultRecipe, options.stylePlan, featureRenderers.baseCanvas, featureRenderers.baseSvg, renderers, cssLayers);
+    const selectedBaseRecipe = renderBase(rootLayer, featureLayer, geometry, resolvedStyle.base, defaultRecipe, options.stylePlan, featureRenderers, renderers, cssLayers);
+    renderAddonRules(rootLayer, featureLayer, geometry, resolvedStyle.translucent, defaultRecipe, options.stylePlan, featureRenderers.specialCanvas, featureRenderers.specialSvg, renderers, cssLayers);
 
     const relationFeatureIds = relationContext.membershipByFeatureId[feature.feature_type][feature.feature_id];
     if (relationFeatureIds !== undefined && relationFeatureIds.length > 0) {
       renderRelationMembership(rootLayer, featureLayer, geometry, feature.feature_type === "area" ? selectedBaseRecipe?.mainColor : undefined, options, renderers);
     }
 
+    const visualLayers = getVisualPathLayers(featureLayer);
     const nodeVisualCircles = feature.feature_type === "node" ? getNodeCircleLayers(featureLayer) : [];
-    const nodeVisualRadius = nodeVisualCircles.reduce((largest, layer) => Math.max(largest, layer.getRadius()), 0);
-    // interactionLayer 是唯一 interactive Path；尺寸参考最终 Canvas Base，CSS Base 则回退到默认 recipe。
+    const initialVisualMeasurement = getInitialOverlayVisualMeasurement(geometry, visualLayers);
+    const nodeVisualRadius = feature.feature_type === "node" ? initialVisualMeasurement.visualSizePx : 0;
+    // interactionLayer 是唯一 interactive Path；不可见 Feature 只保留引用，不把透明 Path 加入地图命中树。
     activateRenderer(rootLayer, renderers, renderers.interaction);
-    const interactionLayer = createOverlayInteractionLayer(geometry, selectedBaseRecipe ?? defaultRecipe, renderers.interaction, nodeVisualRadius);
-    featureLayer.addLayer(interactionLayer);
+    const interactionLayer = createOverlayInteractionLayer(geometry, initialVisualMeasurement, renderers.interaction, options.leafletConfig.interaction);
+    if (initialVisualMeasurement.hasVisiblePaint) featureLayer.addLayer(interactionLayer);
+    interactionMetricsController.registerFeature(
+      feature.feature_id,
+      feature.feature_type,
+      featureLayer,
+      visualLayers,
+      cssLayers,
+      interactionLayer,
+      (visible) => labelLayer.setFeatureGeometryVisible(feature.feature_type, feature.feature_id, visible),
+    );
 
     const nameText = getFeatureNameText(feature);
     // Label layer 仅缓存已投影 geometry 与文字，不保存 tag rule 或绘制 layer 的副本。
@@ -484,8 +483,8 @@ export async function renderOverlay(options: OverlayRendererOptions): Promise<Ov
       ...(feature.feature_type === "node" ? {nodeBaseRadius: nodeVisualRadius} : {}),
     }));
 
-    // Node group 由 controller 持有，保证视觉、Relation、标签可见性与 hit geometry 同步；其余类型直接入 root。
-    if (feature.feature_type === "node") nodeZoomController.registerFeature(featureLayer, getNodeCircleLayers(featureLayer));
+    // Node group 由 zoom controller 持有，保证低 zoom 时视觉层与 hit geometry 一起卸载；其余类型直接入 root。
+    if (feature.feature_type === "node") nodeZoomController.registerFeature(featureLayer, nodeVisualCircles);
     else rootLayer.addLayer(featureLayer);
     typeIndex[feature.feature_id] = Object.freeze({featureId: feature.feature_id, displayId: feature.display_id, layer: featureLayer, interactionLayer});
   };
@@ -497,9 +496,12 @@ export async function renderOverlay(options: OverlayRendererOptions): Promise<Ov
       for (let index = 0; index < features.length; index += 1) {
         throwIfAborted(options.signal);
         renderFeature(features[index]);
-        if ((index + 1) % RENDER_BATCH_SIZE === 0 && index + 1 < features.length) await yieldToBrowser();
+        if ((index + 1) % options.leafletConfig.render_batch_size === 0 && index + 1 < features.length) await yieldToBrowser();
       }
     }
+    throwIfAborted(options.signal);
+    // CSS Path 全部挂载后批量读视觉宽度；字体也在首个 Label Canvas 创建前完成下载与解码。
+    await Promise.all([interactionMetricsController.synchronizeAfterMount(), labelLayer.prepareFont()]);
     throwIfAborted(options.signal);
     // 所有候选注册完成后再挂载 Label Canvas，避免批量导入期间每个 Feature 都触发重排。
     rootLayer.addLayer(labelLayer);

@@ -19,6 +19,8 @@ import {
 import {generateCaptureSize} from "../iframe-capture/capture-generator.js";
 import {generateCaptureCenter} from "../iframe-capture/center-generator.js";
 import {toLeafletBounds} from "../iframe-capture/leaflet-bounds.js";
+import {leafletConfigSchema} from "../models/config-models.js";
+import {config} from "../utils/config-loader.js";
 import {callBridge, exportToolsQueryForPython} from "../utils/python-bridge.js";
 import {getUserStyle} from "../utils/user-style-rule.js";
 
@@ -48,6 +50,8 @@ export function processToolReply(toolReply: PyToolReplyType) {
   const effectiveQueryMode = toolReply.result.effective_query_mode;
   const info = toolReply.result.info; // 单独保留，供后续追加到 AI Output YAML 末尾。
   const userStyle = getUserStyle();
+  // 浏览器不直接访问服务端配置文件；复制启动时已校验的 section，保证一次地图生成使用固定快照。
+  const leafletConfig = config.getAppSection("leaflet", leafletConfigSchema);
   let aiOutput = null;
   let overlayOutput = null;
   let relationMemberFeaturesByRelation = null;
@@ -76,6 +80,7 @@ export function processToolReply(toolReply: PyToolReplyType) {
     "screenshot_size": screenshotSize,
     "center": center,
     "leaflet_bbox": leafletBounds,
+    "leaflet": leafletConfig,
     "render_style": {
       "user_css": userStyle.css,
       "user_rules": userStyle.rules,

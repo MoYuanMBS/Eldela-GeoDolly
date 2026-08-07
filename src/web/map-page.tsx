@@ -1,6 +1,7 @@
 import {useEffect, useState, type CSSProperties} from "react";
 import {z} from "zod";
 import {initializeRuntimeStyle} from "../leaflet/styles/runtime-style-initializer.js";
+import {leafletConfigSchema} from "../models/config-models.js";
 import {identifiedOverlayGroupsWithDisplayIdSchema, relationMemberFeaturesByRelationSchema} from "../models/map-data-models.js";
 import type {RuntimeStylePlan} from "../models/style/runtime-style-models.js";
 import {renderStylePayloadSchema} from "../models/style/user-css-style-models.js";
@@ -18,6 +19,7 @@ const mapPayloadSchema = z.object({
   ]),
   overlay_output: identifiedOverlayGroupsWithDisplayIdSchema.nullable(),
   relation_member_features_by_relation: relationMemberFeaturesByRelationSchema.nullable(),
+  leaflet: leafletConfigSchema,
   render_style: renderStylePayloadSchema,
 }).superRefine((payload, context) => {
   if ((payload.overlay_output === null) !== (payload.relation_member_features_by_relation === null)) {
@@ -61,7 +63,7 @@ export function MapPage({mapDataUrl}: MapPageProps) {
         }
         const payload = mapPayloadSchema.parse(await response.json());
         // 样式注入、regex 编译和索引构建必须先完成，ready render 才会创建 Leaflet。
-        const stylePlan = initializeRuntimeStyle(payload.render_style);
+        const stylePlan = initializeRuntimeStyle(payload.render_style, payload.leaflet);
         setLoadState({status: "ready", payload, stylePlan});
       } catch (error) {
         if (abortController.signal.aborted) return;
@@ -94,6 +96,7 @@ export function MapPage({mapDataUrl}: MapPageProps) {
         overlayOutput={payload.overlay_output}
         relationMemberFeaturesByRelation={payload.relation_member_features_by_relation}
         stylePlan={stylePlan}
+        leafletConfig={payload.leaflet}
       />
       <footer className="map-toolbar" aria-label="Map toolbar">
         <span>GeoMCP</span>

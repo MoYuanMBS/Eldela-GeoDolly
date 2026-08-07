@@ -8,7 +8,7 @@ import { readFileSync, existsSync, readdirSync } from "node:fs";
 import path from "node:path";
 import type { ZodType } from "zod";
 import { parse } from "yaml";
-import {featureIdDisplayConfigSchema, iframeAdaptiveConfigSchema, toolPromptsConfigSchema} from "../models/config-models.js";
+import {featureIdDisplayConfigSchema, iframeAdaptiveConfigSchema, leafletConfigSchema, toolPromptsConfigSchema} from "../models/config-models.js";
 
 /**
  * 读取单个 YAML 文件；raw 数据只用于当次 schema 构建，不进入 loader 缓存。
@@ -30,6 +30,7 @@ export class ConfigLoader {
     this.getAppSection("prompts", toolPromptsConfigSchema);
     this.getAppSection("feature_id", featureIdDisplayConfigSchema);
     this.getAppSection("iframe_adaptive", iframeAdaptiveConfigSchema);
+    this.getAppSection("leaflet", leafletConfigSchema);
     this.getAvailableExpertNames();
   }
 

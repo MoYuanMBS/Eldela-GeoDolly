@@ -4,6 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="geomcp-map-data-url" content="./interactive-map.json" />
+    <!-- 与 @font-face 引用同一 Vite asset；HTML 解析时提前请求，Overlay 准备阶段只需等待下载/解码完成。 -->
+    <link rel="preload" href="../../assets/leaflet/fonts/SourceHanSansCN-VF.woff2" as="font" type="font/woff2" crossorigin />
     <title>GeoMCP Map</title>
   </head>
   <body>

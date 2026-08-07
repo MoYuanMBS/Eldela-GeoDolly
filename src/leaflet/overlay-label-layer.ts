@@ -6,17 +6,21 @@
  */
 
 import {DomUtil, Layer, point, type LatLngTuple, type Map as LeafletMap, type Point} from "leaflet";
+import type {LeafletConfigType} from "../models/config-models.js";
 import type {LeafletSpatialGeometry, OverlayLabelCandidate} from "../models/leaflet-renderer-models.js";
 import type {CanvasSpatialFeatureType} from "../models/style/base-canvas-style.js";
+import {LEAFLET_INTERNAL_RENDER_CONFIG} from "../utils/leaflet-internal-render-config.js";
 import {getNodeZoomScale} from "./node-zoom-controller.js";
 
-// 标签尺寸固定为屏幕像素，不随 Web Mercator 比例变化；Node 只调整相对图标的垂直偏移。
-const LABEL_FONT = "12px system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-const LABEL_ID_FONT = "600 12px system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-const LABEL_LINE_HEIGHT = 15;
-const LABEL_PADDING = 3;
-const NODE_LABEL_GAP = 4;
-const COLLISION_CELL_SIZE = 64;
+const LABEL_CONFIG = LEAFLET_INTERNAL_RENDER_CONFIG.label;
+// 字体尺寸仍是屏幕逻辑像素；Canvas bitmap 再按实际 DPR 扩大，二者不能混为同一个单位。
+const LABEL_FONT = `${LABEL_CONFIG.nameFontWeight} ${LABEL_CONFIG.fontSizePx}px ${LABEL_CONFIG.fontFamily}`;
+const LABEL_ID_FONT = `${LABEL_CONFIG.idFontWeight} ${LABEL_CONFIG.fontSizePx}px ${LABEL_CONFIG.fontFamily}`;
+
+function getFeatureVisibilityKey(featureType: CanvasSpatialFeatureType, featureId: string): string {
+  // canonical feature_id 只保证类型内唯一，因此 key 必须同时包含 feature_type。
+  return `${featureType}\u0000${featureId}`;
+}
 
 interface ScreenRect {
   left: number;
@@ -54,10 +58,10 @@ class LabelCollisionIndex {
 
   private getCellKeys(rect: ScreenRect): Array<string> {
     const keys: Array<string> = [];
-    const minX = Math.floor(rect.left / COLLISION_CELL_SIZE);
-    const maxX = Math.floor(rect.right / COLLISION_CELL_SIZE);
-    const minY = Math.floor(rect.top / COLLISION_CELL_SIZE);
-    const maxY = Math.floor(rect.bottom / COLLISION_CELL_SIZE);
+    const minX = Math.floor(rect.left / LABEL_CONFIG.collisionCellSizePx);
+    const maxX = Math.floor(rect.right / LABEL_CONFIG.collisionCellSizePx);
+    const minY = Math.floor(rect.top / LABEL_CONFIG.collisionCellSizePx);
+    const maxY = Math.floor(rect.bottom / LABEL_CONFIG.collisionCellSizePx);
     for (let x = minX; x <= maxX; x += 1) {
       for (let y = minY; y <= maxY; y += 1) keys.push(`${x}:${y}`);
     }
@@ -196,7 +200,7 @@ function getRingBoundsCenter(ring: ReadonlyArray<Point>): {center: Point; minY: 
 function getScanlineInteriorPoint(rings: ReadonlyArray<ReadonlyArray<Point>>, minY: number, maxY: number): Point | null {
   let bestPoint: Point | null = null;
   let bestWidth = 0;
-  for (const ratio of [0.5, 0.4, 0.6, 0.25, 0.75]) {
+  for (const ratio of LABEL_CONFIG.areaScanlineRatios) {
     const y = minY + (maxY - minY) * ratio;
     const intersections: Array<number> = [];
     for (const ring of rings) {
@@ -253,7 +257,7 @@ function getBlockSize(context: CanvasRenderingContext2D, lines: ReadonlyArray<st
     context.font = index === 0 ? LABEL_ID_FONT : LABEL_FONT;
     width = Math.max(width, context.measureText(lines[index]).width);
   }
-  return {width: width + LABEL_PADDING * 2, height: lines.length * LABEL_LINE_HEIGHT + LABEL_PADDING * 2};
+  return {width: width + LABEL_CONFIG.paddingPx * 2, height: lines.length * LABEL_CONFIG.lineHeightPx + LABEL_CONFIG.paddingPx * 2};
 }
 
 function getCenteredRect(center: Point, width: number, height: number): ScreenRect {
@@ -270,18 +274,18 @@ function drawText(context: CanvasRenderingContext2D, text: string, x: number, y:
   context.textBaseline = "middle";
   context.lineJoin = "round";
   // 先画浅色 halo 再画深色正文，避免文字在道路、Area fill 或未来 basemap 上失去对比度。
-  context.strokeStyle = "rgba(255, 255, 255, 0.95)";
-  context.lineWidth = 3;
+  context.strokeStyle = LABEL_CONFIG.haloColor;
+  context.lineWidth = LABEL_CONFIG.haloWidthPx;
   context.strokeText(text, x, y);
-  context.fillStyle = "#202020";
+  context.fillStyle = LABEL_CONFIG.textColor;
   context.fillText(text, x, y);
 }
 
 function drawBlockLabel(context: CanvasRenderingContext2D, candidate: OverlayLabelCandidate, center: Point): void {
   const lines = getLabelLines(candidate);
-  const firstY = center.y - (lines.length - 1) * LABEL_LINE_HEIGHT / 2;
+  const firstY = center.y - (lines.length - 1) * LABEL_CONFIG.lineHeightPx / 2;
   for (let index = 0; index < lines.length; index += 1) {
-    drawText(context, lines[index], center.x, firstY + index * LABEL_LINE_HEIGHT, index === 0 ? LABEL_ID_FONT : LABEL_FONT);
+    drawText(context, lines[index], center.x, firstY + index * LABEL_CONFIG.lineHeightPx, index === 0 ? LABEL_ID_FONT : LABEL_FONT);
   }
 }
 
@@ -291,15 +295,44 @@ function drawBlockLabel(context: CanvasRenderingContext2D, candidate: OverlayLab
  */
 export class OverlayLabelLayer extends Layer {
   private readonly candidates: Record<CanvasSpatialFeatureType, Array<OverlayLabelCandidate>> = {node: [], way: [], area: []};
+  private readonly hiddenGeometryFeatures = new Set<string>();
   private canvas: HTMLCanvasElement | null = null;
   private frameId: number | null = null;
+  private fontReady = false;
+
+  constructor(private readonly nodeZoomConfig: LeafletConfigType["node_zoom"]) {
+    super();
+  }
+
+  /**
+   * `document.fonts.load()` 会同时触发打包 WOFF2 的实际下载/解码。Renderer 在挂载本层前等待它，
+   * 这样第一次 measureText、碰撞框和最终截图都不会先使用 fallback 字体再发生二次位移。
+   */
+  async prepareFont(targetDocument: Document = document): Promise<void> {
+    const fontLoads = [LABEL_FONT, LABEL_ID_FONT].map((font) => targetDocument.fonts.load(font, LABEL_CONFIG.fontLoadSample));
+    const loadedFaces = await Promise.all(fontLoads);
+    if (loadedFaces.some((faces) => faces.length === 0)) throw new Error(`Leaflet label font "${LABEL_CONFIG.fontFaceFamily}" could not be loaded`);
+    this.fontReady = true;
+  }
 
   addCandidate(candidate: OverlayLabelCandidate): void {
     // 分类型保存同时固定碰撞优先级，不需要每次 redraw 重新排序整张候选表。
     this.candidates[candidate.geometry.featureType].push(candidate);
   }
 
+  /**
+   * interaction 同步器在 computed style 确定后回写几何可见性。完全没有 fill/stroke/Relation
+   * 可见像素的 Feature 不应留下孤立文字；状态可以先于 Canvas 挂载写入，首帧直接使用最终结果。
+   */
+  setFeatureGeometryVisible(featureType: CanvasSpatialFeatureType, featureId: string, visible: boolean): void {
+    const key = getFeatureVisibilityKey(featureType, featureId);
+    const changed = visible ? this.hiddenGeometryFeatures.delete(key) : !this.hiddenGeometryFeatures.has(key);
+    if (!visible) this.hiddenGeometryFeatures.add(key);
+    if (changed && this.canvas !== null) this.scheduleRedraw();
+  }
+
   override onAdd(map: LeafletMap): this {
+    if (!this.fontReady) throw new Error("Overlay label font must be prepared before the label layer is mounted");
     const pane = map.getPane("labels");
     if (pane === undefined) throw new Error('Leaflet pane "labels" was not created');
     const canvas = DomUtil.create("canvas", "geomcp-overlay-label-canvas") as HTMLCanvasElement;
@@ -338,8 +371,9 @@ export class OverlayLabelLayer extends Layer {
     if (canvas === null) return;
     const map = this._map;
     const size = map.getSize();
-    // DPR 上限避免高分屏截图把单张 Label Canvas 内存放大到不可控；CSS 尺寸仍与 MapSurface 一致。
-    const pixelRatio = Math.min(globalThis.devicePixelRatio || 1, 2);
+    // 使用浏览器实际 DPR；snapshot worker 负责在浏览器边界约束合法值，Renderer 不再静默钳制。
+    const pixelRatio = globalThis.devicePixelRatio;
+    if (!Number.isFinite(pixelRatio) || pixelRatio <= 0) throw new Error(`Invalid browser devicePixelRatio: ${String(pixelRatio)}`);
     canvas.width = Math.max(1, Math.round(size.x * pixelRatio));
     canvas.height = Math.max(1, Math.round(size.y * pixelRatio));
     canvas.style.width = `${size.x}px`;
@@ -351,21 +385,29 @@ export class OverlayLabelLayer extends Layer {
     context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
     const collisions = new LabelCollisionIndex();
 
-    // Node 最需要与可交互点保持对应，优先于 Way 和 Area 占用标签空间。
-    for (const candidate of this.candidates.node) this.drawNodeLabel(context, collisions, candidate, size.x, size.y, map);
-    for (const candidate of this.candidates.way) this.drawWayLabel(context, collisions, candidate, size.x, size.y, map);
-    for (const candidate of this.candidates.area) this.drawAreaLabel(context, collisions, candidate, size.x, size.y, map);
+    // 碰撞优先级集中在内部配置；改变视觉策略时不需要在绘制流程里寻找三段独立循环。
+    for (const featureType of LABEL_CONFIG.featurePriority) {
+      for (const candidate of this.candidates[featureType]) {
+        if (this.hiddenGeometryFeatures.has(getFeatureVisibilityKey(featureType, candidate.featureId))) continue;
+        if (featureType === "node") this.drawNodeLabel(context, collisions, candidate, size.x, size.y, map);
+        else if (featureType === "way") this.drawWayLabel(context, collisions, candidate, size.x, size.y, map);
+        else this.drawAreaLabel(context, collisions, candidate, size.x, size.y, map);
+      }
+    }
   }
 
   private drawNodeLabel(context: CanvasRenderingContext2D, collisions: LabelCollisionIndex, candidate: OverlayLabelCandidate, viewportWidth: number, viewportHeight: number, map: LeafletMap): void {
     if (candidate.geometry.featureType !== "node") return;
-    const scale = getNodeZoomScale(map.getZoom());
+    const scale = getNodeZoomScale(map.getZoom(), this.nodeZoomConfig);
     if (scale === 0) return;
     const anchor = map.latLngToContainerPoint(candidate.geometry.center);
     const lines = getLabelLines(candidate);
     const block = getBlockSize(context, lines);
     // 两行文字整体置于实际缩放后外圈上方，name 行比 display_id 更靠近 Node。
-    const center = point(anchor.x, anchor.y - (candidate.nodeBaseRadius ?? 5) * scale - NODE_LABEL_GAP - block.height / 2);
+    const center = point(
+      anchor.x,
+      anchor.y - (candidate.nodeBaseRadius ?? LABEL_CONFIG.nodeFallbackRadiusPx) * scale - LABEL_CONFIG.nodeGapPx - block.height / 2,
+    );
     const rect = getCenteredRect(center, block.width, block.height);
     if (!isVisibleRect(rect, viewportWidth, viewportHeight) || collisions.collides(rect)) return;
     collisions.insert(rect);
@@ -380,9 +422,9 @@ export class OverlayLabelLayer extends Layer {
     context.font = LABEL_ID_FONT;
     const textWidth = context.measureText(text).width;
     // 线在当前 zoom 下放不下完整文字时直接省略，避免标签明显越过 Feature 两端。
-    if (anchor.lineLength < textWidth + LABEL_PADDING * 4) return;
-    const width = textWidth + LABEL_PADDING * 2;
-    const height = LABEL_LINE_HEIGHT + LABEL_PADDING * 2;
+    if (anchor.lineLength < textWidth + LABEL_CONFIG.paddingPx * 4) return;
+    const width = textWidth + LABEL_CONFIG.paddingPx * 2;
+    const height = LABEL_CONFIG.lineHeightPx + LABEL_CONFIG.paddingPx * 2;
     // 碰撞索引使用旋转矩形的轴对齐包围盒，计算便宜且不会漏掉斜向 Way 标签重叠。
     const rotatedWidth = Math.abs(Math.cos(anchor.angle)) * width + Math.abs(Math.sin(anchor.angle)) * height;
     const rotatedHeight = Math.abs(Math.sin(anchor.angle)) * width + Math.abs(Math.cos(anchor.angle)) * height;

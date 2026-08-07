@@ -163,3 +163,64 @@ iframe_adaptive:
   # 最低 iframe 高度由 min_map_display_height + padding.bottom + 内置 Toolbar 最小高度得到。
   min_map_display_width: 600
   min_map_display_height: 300
+
+# Leaflet Overlay renderer 的可公开调节参数。
+# 这些值由 TypeScript 在进程启动时校验，并随每次地图 payload 传给浏览器；浏览器不直接读取 YAML。
+leaflet:
+  # 单个类型连续渲染多少个 Feature 后，主动把执行权归还一次浏览器事件循环。
+  # 值越小，批量加载期间 UI 越容易响应，但调度次数会增加；单位为 Feature 数量，必须为正整数。
+  render_batch_size: 200
+
+  # Node 圆点使用屏幕逻辑像素半径，不会像地理距离那样自动随地图缩放，因此在这里分级显隐/缩放。
+  # 三个 zoom 边界必须严格递增；两个 scale 必须大于 0、不得超过 1，且 compact_scale <= medium_scale。
+  node_zoom:
+    # zoom <= 此值时完全移除 Node Feature group；视觉圆、标签和透明命中层都会隐藏。
+    hidden_max_zoom: 13
+    # hidden_max_zoom < zoom <= 此值时使用 compact_scale。
+    compact_max_zoom: 15
+    # 低 zoom 紧凑档的半径倍率；例如 0.55 表示原样式半径的 55%。
+    compact_scale: 0.55
+    # compact_max_zoom < zoom <= 此值时使用 medium_scale；更高 zoom 恢复 1.0 原始半径。
+    medium_max_zoom: 17
+    # 中 zoom 档的半径倍率；只缩放可见 Node 圆，不缩放额外的指针容错像素。
+    medium_scale: 0.8
+
+  # Relation 仅追加固定半透明 Canvas membership，不接受用户 CSS/rule 覆盖。
+  # 以下尺寸均为屏幕逻辑像素，并受 visual_limits 的 Canvas 上限约束。
+  relation_membership:
+    # Relation Node 外圈的中心线半径，不包含描边向外扩展的半宽。
+    node_radius_px: 8
+    # Relation Node 外圈的描边宽度。
+    node_stroke_width_px: 2.5
+    # Relation Way 半透明覆盖线的完整宽度。
+    way_width_px: 4
+    # Relation Area 沿 Polygon 边界向内裁切后的总带宽；Area 主色需要分带时会占其中一半。
+    area_band_total_width_px: 12
+
+  # 透明命中层只为至少存在一种可见 fill/stroke/Relation 绘制的 Feature 创建命中区域。
+  # Node/Way 先按全部实际可见绘制的最外尺寸计算，再增加容错并钳制到对应 min/max。
+  interaction:
+    # Node 命中半径在视觉最外半径之外额外增加的逻辑像素。
+    node_extra_radius_px: 2
+    # Way 命中线宽在视觉最宽线条之外额外增加的逻辑像素。
+    way_extra_width_px: 4
+    # Area 透明命中 Polygon 的边缘线宽；Area 内部仍按完整 even-odd 填充区域命中。
+    area_edge_width_px: 8
+    # 可见 Node 的最小命中半径；不会让完全不可见的 Node 恢复交互。
+    min_node_radius_px: 8
+    # Node 命中半径硬上限，用于限制超大 CSS/Canvas 图形造成的邻近误选。
+    max_node_radius_px: 24
+    # 可见 Way 的最小命中线宽；不会让 stroke:none 或透明 Way 恢复交互。
+    min_way_width_px: 10
+    # Way 命中线宽硬上限，用于限制宽线对周边对象的遮挡。
+    max_way_width_px: 32
+    # Area 边缘命中线宽硬上限；area_edge_width_px 不得超过此值。
+    max_area_edge_width_px: 20
+
+  # 地图视觉尺寸的安全边界。Canvas recipe/Relation 超出上限会在初始化或配置校验时失败；
+  # 用户 CSS 超出上限只记录 warning，视觉保持用户值，但透明命中层仍受 interaction 的 max 值钳制。
+  visual_limits:
+    # 单个 Canvas Node operation 或 Relation Node 允许的最大中心线半径，单位为逻辑像素。
+    max_canvas_node_radius_px: 20
+    # Canvas/Relation 任意 stroke 允许的最大线宽，单位为逻辑像素。
+    max_canvas_stroke_width_px: 24

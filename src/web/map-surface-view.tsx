@@ -1,7 +1,8 @@
 import {useEffect, useRef} from "react";
 import type {LatLngBoundsLiteral, LatLngTuple} from "leaflet";
 import {createMapSurface} from "../leaflet/map-surface.js";
-import {renderOverlay} from "../leaflet/overlay-renderer.js";
+import {renderOverlay} from "../leaflet/overlay-render.js";
+import type {LeafletConfigType} from "../models/config-models.js";
 import type {IdentifiedOverlayGroupsWithDisplayIdType, RelationMemberFeaturesByRelationType} from "../models/map-data-models.js";
 import type {RuntimeStylePlan} from "../models/style/runtime-style-models.js";
 
@@ -12,12 +13,13 @@ interface MapSurfaceViewProps {
   overlayOutput: IdentifiedOverlayGroupsWithDisplayIdType | null;
   relationMemberFeaturesByRelation: RelationMemberFeaturesByRelationType | null;
   stylePlan: RuntimeStylePlan;
+  leafletConfig: LeafletConfigType;
 }
 
 /**
  * React 只负责提供真实 DOM 容器和 Leaflet 生命周期；初始视口计算仍由 MapSurface 完成。
  */
-export function MapSurfaceView({screenshotSize, center, leafletBounds, overlayOutput, relationMemberFeaturesByRelation, stylePlan}: MapSurfaceViewProps) {
+export function MapSurfaceView({screenshotSize, center, leafletBounds, overlayOutput, relationMemberFeaturesByRelation, stylePlan, leafletConfig}: MapSurfaceViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -37,6 +39,7 @@ export function MapSurfaceView({screenshotSize, center, leafletBounds, overlayOu
         overlayOutput,
         relationMemberFeaturesByRelation,
         stylePlan,
+        leafletConfig,
         centerLongitude: center[1],
         signal: abortController.signal,
       }).catch((error: unknown) => {
@@ -47,7 +50,7 @@ export function MapSurfaceView({screenshotSize, center, leafletBounds, overlayOu
       abortController.abort();
       leafletMap.remove();
     };
-  }, [screenshotSize, center, leafletBounds, overlayOutput, relationMemberFeaturesByRelation, stylePlan]);
+  }, [screenshotSize, center, leafletBounds, overlayOutput, relationMemberFeaturesByRelation, stylePlan, leafletConfig]);
 
   return <div ref={containerRef} className="map-surface" aria-label="Interactive map" />;
 }

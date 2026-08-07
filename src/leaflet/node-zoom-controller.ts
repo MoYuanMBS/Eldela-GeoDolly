@@ -1,14 +1,15 @@
 /**
- * Node 视觉与命中区域共用的 zoom 生命周期控制器。
+ * Node 视觉 geometry 的 zoom 生命周期控制器。
  *
- * Overlay renderer 把同一 Node 的 Base、addon 和透明 hit Path 放进一个 FeatureGroup，再注册到这里；
- * Label layer 不持有这些 Path，但读取同一个 getNodeZoomScale，因此三条路径使用一致的显隐阈值。
+ * 这里只缩放 Base/addon/Relation 等可见圆，不直接缩放透明 interaction 圆。命中半径需要在
+ * 可见圆完成缩放后按“实际外圈 + 固定容错”重算，由 OverlayInteractionMetricsController 负责。
  */
 
 import {LayerGroup, type CircleMarker, type Map as LeafletMap} from "leaflet";
+import type {LeafletConfigType} from "../models/config-models.js";
 
 interface NodeCircleRegistration {
-  // baseRadius 永远保存 style recipe 的原始屏幕像素值，避免连续 zoom 在上次结果上累乘误差。
+  // 原始半径始终来自 style recipe，避免连续 zoom 在上次缩放结果上累乘误差。
   layer: CircleMarker;
   baseRadius: number;
 }
@@ -18,27 +19,28 @@ interface NodeFeatureRegistration {
   circles: ReadonlyArray<NodeCircleRegistration>;
 }
 
-/**
- * Node 使用屏幕像素半径，因此不能依靠 Leaflet projection 自动缩放。
- * 低 zoom 完全隐藏，较高 zoom 分级恢复尺寸，避免概览视口被大量圆点覆盖。
- */
-export function getNodeZoomScale(zoom: number): number {
-  if (zoom <= 13) return 0;
-  if (zoom <= 15) return 0.55;
-  if (zoom <= 17) return 0.8;
+/** Node 使用屏幕像素半径；按已校验配置分级隐藏和恢复，避免低 zoom 被大量圆点覆盖。 */
+export function getNodeZoomScale(zoom: number, config: LeafletConfigType["node_zoom"]): number {
+  if (zoom <= config.hidden_max_zoom) return 0;
+  if (zoom <= config.compact_max_zoom) return config.compact_scale;
+  if (zoom <= config.medium_max_zoom) return config.medium_scale;
   return 1;
 }
 
 /**
- * 该 LayerGroup 持有全部 Node feature groups。跨越显隐阈值时直接移除整个 group，
- * 保证不可见 Node 的透明 interaction geometry 也不会继续命中。
+ * 该 LayerGroup 持有全部 Node Feature groups。跨越显隐阈值时移除整个 group，保证隐藏 Node
+ * 的 label 对应物和透明 interaction geometry 都不会继续留在地图上响应指针。
  */
 export class NodeZoomController extends LayerGroup {
   private readonly registrations: Array<NodeFeatureRegistration> = [];
 
+  constructor(private readonly config: LeafletConfigType["node_zoom"]) {
+    super();
+  }
+
   override onAdd(map: LeafletMap): this {
     super.onAdd(map);
-    // 只在 zoomend 批量更新；缩放动画期间 Leaflet 自身负责 pane 变换，避免逐帧遍历全部 Node。
+    // 动画中由 Leaflet 变换 pane；只在 zoomend 批量设置最终屏幕像素半径。
     map.on("zoomend", this.updateZoom, this);
     this.updateZoom();
     return this;
@@ -50,24 +52,24 @@ export class NodeZoomController extends LayerGroup {
     return this;
   }
 
-  registerFeature(group: LayerGroup, circles: ReadonlyArray<CircleMarker>): void {
-    // 注册发生在单次 Overlay 遍历中；这里不再读取 Feature tags 或重新计算 style。
+  registerFeature(group: LayerGroup, visualCircles: ReadonlyArray<CircleMarker>): void {
+    // interaction CircleMarker 不可传入；它必须保留固定的额外像素容错，而不是随视觉比例一起收缩。
     const registration = {
       group,
-      circles: circles.map((layer) => ({layer, baseRadius: layer.getRadius()})),
+      circles: visualCircles.map((layer) => ({layer, baseRadius: layer.getRadius()})),
     } satisfies NodeFeatureRegistration;
     this.registrations.push(registration);
-    this.applyScale(registration, getNodeZoomScale(this._map.getZoom()));
+    this.applyScale(registration, getNodeZoomScale(this._map.getZoom(), this.config));
   }
 
   private readonly updateZoom = (): void => {
-    const scale = getNodeZoomScale(this._map.getZoom());
+    const scale = getNodeZoomScale(this._map.getZoom(), this.config);
     for (const registration of this.registrations) this.applyScale(registration, scale);
   };
 
   private applyScale(registration: NodeFeatureRegistration, scale: number): void {
     for (const {layer, baseRadius} of registration.circles) layer.setRadius(baseRadius * scale);
-    // 半径设为 0 仍可能被 Leaflet 的 click tolerance 命中，因此隐藏时必须把整个 group 移出地图。
+    // 半径 0 仍可能被 Leaflet click tolerance 命中，因此隐藏时必须移除包含 hit Path 的整个 group。
     if (scale === 0) {
       if (this.hasLayer(registration.group)) super.removeLayer(registration.group);
     } else if (!this.hasLayer(registration.group)) {
