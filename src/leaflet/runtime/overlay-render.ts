@@ -3,9 +3,9 @@
  *
  * 上游必须已经完成 RuntimeStylePlan、display_id、连续世界参考中心和 Relation 成员字典准备。
  * 本模块按 Area → Way → Node 单次遍历：转换 geometry、解析样式、创建视觉层、追加 Relation、
- * 注册透明 interaction geometry 与标签候选，最后返回可整体卸载的 rootLayer 和 typed index。
+ * 注册视觉测量与标签候选，并在首次可靠测量完成后返回纯 Visual result。
  *
- * Canvas 与 SVG/CSS 只在实际绘制处分流；tag 匹配、标签布局和交互命中分别委托给独立模块。
+ * Canvas 与 SVG/CSS 只在实际绘制处分流；透明 hit geometry 由 Interactive flow 后续独立附加。
  */
 
 import {
@@ -22,10 +22,11 @@ import {
   type Map as LeafletMap,
   type Renderer,
 } from "leaflet";
-import type {IdentifiedOverlaySpatialFeatureWithDisplayIdType} from "../models/map-data-models.js";
+import type {IdentifiedOverlaySpatialFeatureWithDisplayIdType} from "../../models/map-data-models.js";
 import type {
   LeafletSpatialGeometry,
   MutableOverlayFeatureLayerIndex,
+  MutableOrderedOverlayFeatureLayers,
   OverlayBasePaneName,
   OverlayFeatureLayerEntry,
   OverlayFeatureLayerIndex,
@@ -34,15 +35,16 @@ import type {
   OverlayRendererOptions,
   OverlayRenderResult,
   OverlaySpecialPaneName,
-} from "../models/leaflet-renderer-models.js";
-import type {CanvasBaseStyleRecipe, CanvasDrawOperation, CanvasSpatialFeatureType} from "../models/style/base-canvas-style.js";
-import type {ResolvedBaseStyle, RuntimeStylePlan, RuntimeStyleRule} from "../models/style/runtime-style-models.js";
-import {LEAFLET_INTERNAL_RENDER_CONFIG} from "../utils/leaflet-internal-render-config.js";
+  OrderedOverlayFeatureLayers,
+} from "../../models/leaflet-renderer-models.js";
+import type {CanvasBaseStyleRecipe, CanvasDrawOperation, CanvasSpatialFeatureType} from "../../models/style/base-canvas-style.js";
+import type {ResolvedBaseStyle, RuntimeStylePlan, RuntimeStyleRule} from "../../models/style/runtime-style-models.js";
+import {LEAFLET_INTERNAL_RENDER_CONFIG} from "../../utils/leaflet-internal-render-config.js";
 import {resolveFeatureStyle} from "./feature-style-resolver.js";
 import {prepareLeafletGeometry} from "./leaflet-geometry.js";
 import {NodeZoomController} from "./node-zoom-controller.js";
-import {createOverlayInteractionLayer, getInitialOverlayVisualMeasurement, OverlayInteractionMetricsController} from "./overlay-interaction.js";
 import {OverlayLabelLayer} from "./overlay-label-layer.js";
+import {OverlayVisualMeasurementController} from "./overlay-visual-measurement.js";
 import {buildRelationTranslucentContext} from "./relation-translucent-context.js";
 
 /**
@@ -115,8 +117,7 @@ function createRenderers(): OverlayRendererCollection {
   const way = createFeatureRenderers("wayBase", "waySpecial");
   const node = createFeatureRenderers("nodeBase", "nodeSpecial");
   const relationMembership = new RelationMembershipCanvas({pane: "relationMembership"});
-  const interaction = canvas({pane: "interaction", tolerance: 0});
-  return {node, way, area, relationMembership, interaction, activated: new Set<Renderer>()};
+  return {node, way, area, relationMembership, activated: new Set<Renderer>()};
 }
 
 /** 根组持有所有实际启用的 renderer，失败或卸载时不会遗留空 Canvas/SVG。 */
@@ -378,6 +379,53 @@ function freezeLayerIndex(index: MutableOverlayFeatureLayerIndex): OverlayFeatur
   });
 }
 
+function freezeOrderedLayers(layers: MutableOrderedOverlayFeatureLayers): OrderedOverlayFeatureLayers {
+  // 拷贝后冻结，避免 Renderer 内部可写数组在返回后改变 Interaction 的命中顺序。
+  return Object.freeze({
+    node: Object.freeze([...layers.node]),
+    way: Object.freeze([...layers.way]),
+    area: Object.freeze([...layers.area]),
+  });
+}
+
+function hasFeatureEntry(index: MutableOverlayFeatureLayerIndex, featureType: CanvasSpatialFeatureType, featureId: string): boolean {
+  if (featureType === "node") return index.node[featureId] !== undefined;
+  if (featureType === "way") return index.way[featureId] !== undefined;
+  return index.area[featureId] !== undefined;
+}
+
+/**
+ * Feature 与 geometry 在运行时再次按同一个 discriminator 对齐，之后同时写入 typed index 与
+ * 显式有序数组。Interaction 只消费后者，不让普通对象枚举顺序影响点击优先级。
+ */
+function registerFeatureEntry(
+  index: MutableOverlayFeatureLayerIndex,
+  orderedLayers: MutableOrderedOverlayFeatureLayers,
+  feature: IdentifiedOverlaySpatialFeatureWithDisplayIdType,
+  geometry: LeafletSpatialGeometry,
+  layer: LayerGroup,
+): void {
+  if (feature.feature_type === "node" && geometry.featureType === "node") {
+    const entry = Object.freeze({featureId: feature.feature_id, displayId: feature.display_id, featureType: "node", geometry, layer}) satisfies OverlayFeatureLayerEntry;
+    index.node[feature.feature_id] = entry;
+    orderedLayers.node.push(entry);
+    return;
+  }
+  if (feature.feature_type === "way" && geometry.featureType === "way") {
+    const entry = Object.freeze({featureId: feature.feature_id, displayId: feature.display_id, featureType: "way", geometry, layer}) satisfies OverlayFeatureLayerEntry;
+    index.way[feature.feature_id] = entry;
+    orderedLayers.way.push(entry);
+    return;
+  }
+  if (feature.feature_type === "area" && geometry.featureType === "area") {
+    const entry = Object.freeze({featureId: feature.feature_id, displayId: feature.display_id, featureType: "area", geometry, layer}) satisfies OverlayFeatureLayerEntry;
+    index.area[feature.feature_id] = entry;
+    orderedLayers.area.push(entry);
+    return;
+  }
+  throw new Error(`Overlay ${feature.feature_type} feature_id "${feature.feature_id}" produced mismatched ${geometry.featureType} geometry`);
+}
+
 /** properties 已是 Overlay 聚合结果；这里只做稳定去重，不从 AI Output 恢复 name。 */
 function getFeatureNameText(feature: IdentifiedOverlaySpatialFeatureWithDisplayIdType): string | undefined {
   const values = feature.properties.name ?? [];
@@ -392,7 +440,7 @@ function getFeatureNameText(feature: IdentifiedOverlaySpatialFeatureWithDisplayI
   return names.length === 0 ? undefined : names.join(" / ");
 }
 
-/** interaction 创建前收集 Node 的全部可见 CircleMarker，交给 zoom controller 使用相同比例缩放。 */
+/** 收集 Node 的全部可见 CircleMarker，交给 zoom controller 使用相同比例缩放。 */
 function getNodeCircleLayers(group: LayerGroup): Array<CircleMarker> {
   const circles: Array<CircleMarker> = [];
   group.eachLayer((layer) => {
@@ -401,7 +449,7 @@ function getNodeCircleLayers(group: LayerGroup): Array<CircleMarker> {
   return circles;
 }
 
-/** interaction 创建前快照全部视觉 Path；透明 hit Path 自身绝不能再次参与可见尺寸计算。 */
+/** 快照全部视觉 Path；后续独立创建的透明 hit Path 不会进入这份测量输入。 */
 function getVisualPathLayers(group: LayerGroup): Array<Path> {
   const paths: Array<Path> = [];
   group.eachLayer((layer) => {
@@ -412,7 +460,7 @@ function getVisualPathLayers(group: LayerGroup): Array<Path> {
 
 /**
  * 按 Area → Way → Node 顺序分批渲染；每个 Feature 当场完成 projection、rule resolve、
- * Base/addon/membership、透明 hit geometry、Label candidate 和 typed layer index 注册，
+ * Base/addon/membership、Visual measurement、Label candidate 和 typed layer index 注册，
  * 不保存全量样式匹配中间结果，也不额外遍历 Overlay。
  */
 export async function renderOverlay(options: OverlayRendererOptions): Promise<OverlayRenderResult> {
@@ -421,27 +469,27 @@ export async function renderOverlay(options: OverlayRendererOptions): Promise<Ov
   const renderers = createRenderers();
   const rootLayer = layerGroup().addTo(options.map);
   const nodeZoomController = new NodeZoomController(options.leafletConfig.node_zoom);
-  const interactionMetricsController = new OverlayInteractionMetricsController(options.leafletConfig);
+  const measurementController = new OverlayVisualMeasurementController(options.leafletConfig);
   const labelLayer = new OverlayLabelLayer();
-  // 注册顺序刻意保持 Node zoom 在前、CSS 尺寸同步在后；同一次 zoomend 先得到最终圆半径，再测量 hit layer。
+  // 注册顺序刻意保持 Node zoom 在前、视觉测量在后；同一次 zoomend 先得到最终圆半径，再读取尺寸。
   rootLayer.addLayer(nodeZoomController);
-  rootLayer.addLayer(interactionMetricsController);
+  rootLayer.addLayer(measurementController);
   // Relation 反向索引只构建一次，renderFeature 内只按 type + feature_id 查询。
   const relationContext = buildRelationTranslucentContext(options.overlayOutput.relation, options.relationMemberFeaturesByRelation, options.stylePlan);
   const mutableLayerIndex: MutableOverlayFeatureLayerIndex = {
-    node: Object.create(null) as Record<string, OverlayFeatureLayerEntry>,
-    way: Object.create(null) as Record<string, OverlayFeatureLayerEntry>,
-    area: Object.create(null) as Record<string, OverlayFeatureLayerEntry>,
+    node: Object.create(null) as MutableOverlayFeatureLayerIndex["node"],
+    way: Object.create(null) as MutableOverlayFeatureLayerIndex["way"],
+    area: Object.create(null) as MutableOverlayFeatureLayerIndex["area"],
   };
+  const mutableOrderedLayers: MutableOrderedOverlayFeatureLayers = {node: [], way: [], area: []};
 
   const renderFeature = (feature: IdentifiedOverlaySpatialFeatureWithDisplayIdType): void => {
-    const typeIndex = mutableLayerIndex[feature.feature_type];
-    if (typeIndex[feature.feature_id] !== undefined) throw new Error(`Duplicate ${feature.feature_type} feature_id "${feature.feature_id}" in Overlay renderer`);
+    if (hasFeatureEntry(mutableLayerIndex, feature.feature_type, feature.feature_id)) throw new Error(`Duplicate ${feature.feature_type} feature_id "${feature.feature_id}" in Overlay renderer`);
     const geometry = prepareLeafletGeometry(feature, options.centerLongitude);
     const resolvedStyle = resolveFeatureStyle(feature, options.stylePlan);
     const featureRenderers = renderers[feature.feature_type];
     const defaultRecipe = getCanvasRecipe(options.stylePlan, options.stylePlan.defaultBaseStyleIds[feature.feature_type], feature.feature_type);
-    // 一个 FeatureGroup 聚合它跨 pane 的所有视觉和 hit Paths，便于 typed index 与卸载保持一对一。
+    // 一个 FeatureGroup 只聚合跨 pane 的视觉 Paths；透明 hit Path 由 Interactive result 独立持有。
     const featureLayer = layerGroup();
     const cssLayers: Array<Path> = [];
 
@@ -457,19 +505,11 @@ export async function renderOverlay(options: OverlayRendererOptions): Promise<Ov
 
     const visualLayers = getVisualPathLayers(featureLayer);
     const nodeVisualCircles = feature.feature_type === "node" ? getNodeCircleLayers(featureLayer) : [];
-    const initialVisualMeasurement = getInitialOverlayVisualMeasurement(geometry, visualLayers);
-    // interactionLayer 是唯一 interactive Path；不可见 Feature 只保留引用，不把透明 Path 加入地图命中树。
-    activateRenderer(rootLayer, renderers, renderers.interaction);
-    const interactionLayer = createOverlayInteractionLayer(geometry, initialVisualMeasurement, renderers.interaction, options.leafletConfig.interaction);
-    if (initialVisualMeasurement.hasVisiblePaint) featureLayer.addLayer(interactionLayer);
-    interactionMetricsController.registerFeature(
+    measurementController.registerFeature(
       feature.feature_id,
       feature.feature_type,
-      featureLayer,
       visualLayers,
       cssLayers,
-      interactionLayer,
-      (measurement) => labelLayer.setFeatureVisualMeasurement(feature.feature_type, feature.feature_id, measurement),
     );
 
     const nameText = getFeatureNameText(feature);
@@ -480,13 +520,15 @@ export async function renderOverlay(options: OverlayRendererOptions): Promise<Ov
       ...(nameText === undefined ? {} : {nameText}),
       geometry,
     }));
-    // CSS 挂载前先登记 options 测量；首次 Label Canvas 挂载前，Interaction 会用最终 computed style 覆盖它。
-    labelLayer.setFeatureVisualMeasurement(feature.feature_type, feature.feature_id, initialVisualMeasurement);
+    // Label 只订阅统一 measurement source；不在自身或 Visual entry 中保存另一套推导逻辑。
+    measurementController.subscribe(feature.feature_type, feature.feature_id, (measurement) => {
+      labelLayer.setFeatureVisualMeasurement(feature.feature_type, feature.feature_id, measurement);
+    });
 
-    // Node group 由 zoom controller 持有，保证低 zoom 时视觉层与 hit geometry 一起卸载；其余类型直接入 root。
+    // Node group 由 zoom controller 持有，低 zoom 时只卸载视觉层；Interaction 会根据零尺寸测量移除 hit Path。
     if (feature.feature_type === "node") nodeZoomController.registerFeature(featureLayer, nodeVisualCircles);
     else rootLayer.addLayer(featureLayer);
-    typeIndex[feature.feature_id] = Object.freeze({featureId: feature.feature_id, displayId: feature.display_id, layer: featureLayer, interactionLayer});
+    registerFeatureEntry(mutableLayerIndex, mutableOrderedLayers, feature, geometry, featureLayer);
   };
 
   try {
@@ -500,14 +542,30 @@ export async function renderOverlay(options: OverlayRendererOptions): Promise<Ov
       }
     }
     throwIfAborted(options.signal);
-    // CSS Path 全部挂载后批量读视觉宽度；字体也在首个 Label Canvas 创建前完成下载与解码。
-    await Promise.all([interactionMetricsController.synchronizeAfterMount(), labelLayer.prepareFont()]);
+    // CSS Path 全部挂载后批量读视觉宽度；返回前每个 Feature 必须已有可靠 measurement。
+    // 字体同时在首个 Label Canvas 创建前完成下载与解码，不额外串行增加首帧等待。
+    await Promise.all([measurementController.synchronizeAfterMount(), labelLayer.prepareFont()]);
     throwIfAborted(options.signal);
     // 所有候选注册完成后再挂载 Label Canvas，避免批量导入期间每个 Feature 都触发重排。
     rootLayer.addLayer(labelLayer);
-    return Object.freeze({rootLayer, layerIndex: freezeLayerIndex(mutableLayerIndex), relationContext});
+    let disposed = false;
+    const dispose = (): void => {
+      if (disposed) return;
+      disposed = true;
+      measurementController.dispose();
+      rootLayer.remove();
+    };
+    return Object.freeze({
+      rootLayer,
+      layerIndex: freezeLayerIndex(mutableLayerIndex),
+      orderedLayers: freezeOrderedLayers(mutableOrderedLayers),
+      relationContext,
+      measurementController,
+      dispose,
+    });
   } catch (error) {
     // 包括 AbortSignal、样式契约错误和 Canvas 初始化错误；失败不保留半张地图。
+    measurementController.dispose();
     rootLayer.remove();
     throw error;
   }

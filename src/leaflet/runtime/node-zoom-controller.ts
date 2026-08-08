@@ -1,12 +1,12 @@
 /**
  * Node 视觉 geometry 的 zoom 生命周期控制器。
  *
- * 这里只缩放 Base/addon/Relation 等可见圆，不直接缩放透明 interaction 圆。命中半径需要在
- * 可见圆完成缩放后按“实际外圈 + 固定容错”重算，由 OverlayInteractionMetricsController 负责。
+ * 这里只缩放 Base/addon/Relation 等可见圆，不接触透明 interaction 圆。可见圆更新后，
+ * OverlayVisualMeasurementController 在下一帧发布实际外圈；Interactive 再据此更新命中半径。
  */
 
 import {LayerGroup, type CircleMarker, type Map as LeafletMap} from "leaflet";
-import type {LeafletConfigType} from "../models/config-models.js";
+import type {LeafletConfigType} from "../../models/config-models.js";
 
 interface NodeCircleRegistration {
   // 原始半径始终来自 style recipe，避免连续 zoom 在上次缩放结果上累乘误差。
@@ -28,8 +28,8 @@ export function getNodeZoomScale(zoom: number, config: LeafletConfigType["node_z
 }
 
 /**
- * 该 LayerGroup 持有全部 Node Feature groups。跨越显隐阈值时移除整个 group，保证隐藏 Node
- * 的 label 对应物和透明 interaction geometry 都不会继续留在地图上响应指针。
+ * 该 LayerGroup 只持有全部 Node Visual groups。跨越显隐阈值时移除视觉 group；随后统一
+ * measurement 会发布不可见状态，Label 与独立 Interaction 生命周期各自隐藏对应对象。
  */
 export class NodeZoomController extends LayerGroup {
   private readonly registrations: Array<NodeFeatureRegistration> = [];
@@ -53,7 +53,7 @@ export class NodeZoomController extends LayerGroup {
   }
 
   registerFeature(group: LayerGroup, visualCircles: ReadonlyArray<CircleMarker>): void {
-    // interaction CircleMarker 不可传入；它必须保留固定的额外像素容错，而不是随视觉比例一起收缩。
+    // interaction CircleMarker 不属于 Visual group，也不能传入这里随视觉比例一起收缩。
     const registration = {
       group,
       circles: visualCircles.map((layer) => ({layer, baseRadius: layer.getRadius()})),
@@ -69,7 +69,7 @@ export class NodeZoomController extends LayerGroup {
 
   private applyScale(registration: NodeFeatureRegistration, scale: number): void {
     for (const {layer, baseRadius} of registration.circles) layer.setRadius(baseRadius * scale);
-    // 半径 0 仍可能被 Leaflet click tolerance 命中，因此隐藏时必须移除包含 hit Path 的整个 group。
+    // 半径 0 的 Visual group 直接卸载；透明 hit Path 由 measurement 订阅者在自己的 root 中移除。
     if (scale === 0) {
       if (this.hasLayer(registration.group)) super.removeLayer(registration.group);
     } else if (!this.hasLayer(registration.group)) {

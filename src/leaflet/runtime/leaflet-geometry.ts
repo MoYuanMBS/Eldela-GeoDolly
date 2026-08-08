@@ -6,9 +6,9 @@
  */
 
 import type {LatLngTuple} from "leaflet";
-import {getContinuousAreaGeometry, getContinuousLineGeometry, getContinuousPointGeometry} from "../iframe-capture/projection.js";
-import type {IdentifiedOverlaySpatialFeatureType} from "../models/map-data-models.js";
-import type {LeafletSpatialGeometry} from "../models/leaflet-renderer-models.js";
+import {getContinuousAreaGeometry, getContinuousLineGeometry, getContinuousPointGeometry} from "../../iframe-capture/projection.js";
+import type {IdentifiedOverlaySpatialFeatureType} from "../../models/map-data-models.js";
+import type {LeafletSpatialGeometry} from "../../models/leaflet-renderer-models.js";
 
 function toLatLng(position: readonly [number, number]): LatLngTuple {
   // GeoJSON 与 Leaflet 的坐标顺序相反，只在进入 Leaflet 的边界处交换一次。

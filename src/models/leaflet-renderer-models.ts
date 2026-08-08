@@ -30,7 +30,6 @@ export interface OverlayRendererCollection {
   way: OverlayFeatureRenderers;
   area: OverlayFeatureRenderers;
   relationMembership: OverlayRelationMembershipRenderer;
-  interaction: Renderer;
   activated: Set<Renderer>;
 }
 
@@ -63,20 +62,16 @@ export interface OverlayCssPresentationMeasurement {
   strokeWidthPx: number;
 }
 
-/** 一个空间 Feature 的视觉层与唯一透明命中层之间的运行时关联。 */
-export interface OverlayInteractionRegistration {
-  featureId: string;
-  featureType: CanvasSpatialFeatureType;
-  featureLayer: LayerGroup;
-  visualLayers: ReadonlyArray<Path>;
-  cssLayers: ReadonlySet<Path>;
-  interactionLayer: Path;
-  onVisualMeasurementChange: (measurement: OverlayVisualMeasurement) => void;
-}
+export type OverlayVisualMeasurementListener = (measurement: OverlayVisualMeasurement) => void;
 
-export interface MeasuredOverlayInteraction {
-  registration: OverlayInteractionRegistration;
-  measurement: OverlayVisualMeasurement;
+/**
+ * Label 与 Interactive 命中层只通过这个只读接口消费当前视觉测量。
+ * 实际状态只保存在 measurement controller 中，不复制到 Visual entry。
+ */
+export interface OverlayVisualMeasurementSource {
+  getMeasurement(featureType: CanvasSpatialFeatureType, featureId: string): OverlayVisualMeasurement;
+  subscribe(featureType: CanvasSpatialFeatureType, featureId: string, listener: OverlayVisualMeasurementListener): () => void;
+  subscribeBatchComplete(listener: () => void): () => void;
 }
 
 /** 固定 Relation 样式和按空间 Feature 反查 relation IDs 的一次性上下文。 */
@@ -86,29 +81,71 @@ export interface RelationTranslucentContext {
   membershipByFeatureId: Readonly<Record<CanvasSpatialFeatureType, ReadonlyRelationFeatureIdsByFeatureId>>;
 }
 
-/** 一个 canonical Feature 对应一个 LayerGroup；组内可以跨多个 pane 保存重复绘制。 */
-export interface OverlayFeatureLayerEntry {
-  featureId: string;
-  displayId: string;
-  layer: LayerGroup;
-  /** 后续 hover/click 只绑定这一层；Feature 无可见像素时引用保留，但 Path 会从 layer 暂时移除。 */
-  interactionLayer: Path;
-}
+/**
+ * Visual entry 只保存渲染完成后稳定不变的信息。实时视觉尺寸与显隐状态统一由
+ * OverlayVisualMeasurementSource 管理，透明命中 Path 则只存在于 Interactive result。
+ */
+export type OverlayFeatureLayerEntry = {
+  [FeatureType in CanvasSpatialFeatureType]: Readonly<{
+    featureId: string;
+    displayId: string;
+    featureType: FeatureType;
+    geometry: Extract<LeafletSpatialGeometry, {featureType: FeatureType}>;
+    /** 一个 canonical Feature 对应一个 LayerGroup；组内可以跨多个 pane 保存重复绘制。 */
+    layer: LayerGroup;
+  }>
+}[CanvasSpatialFeatureType];
 
-export type OverlayFeatureLayerIndex = Readonly<Record<CanvasSpatialFeatureType, Readonly<Record<string, OverlayFeatureLayerEntry>>>>;
+export type OverlayFeatureLayerEntryFor<FeatureType extends CanvasSpatialFeatureType> = Extract<OverlayFeatureLayerEntry, {featureType: FeatureType}>;
+
+export type OverlayFeatureLayerIndex = Readonly<{
+  [FeatureType in CanvasSpatialFeatureType]: Readonly<Record<string, OverlayFeatureLayerEntryFor<FeatureType>>>;
+}>;
+
+/** Interaction 必须遍历显式有序数组，不能依赖普通对象的枚举顺序决定点击优先级。 */
+export type OrderedOverlayFeatureLayers = Readonly<{
+  [FeatureType in CanvasSpatialFeatureType]: ReadonlyArray<OverlayFeatureLayerEntryFor<FeatureType>>;
+}>;
 
 /** Renderer 构建过程中的可写索引；返回给调用方前会逐层冻结。 */
 export interface MutableOverlayFeatureLayerIndex {
-  node: Record<string, OverlayFeatureLayerEntry>;
-  way: Record<string, OverlayFeatureLayerEntry>;
-  area: Record<string, OverlayFeatureLayerEntry>;
+  node: Record<string, OverlayFeatureLayerEntryFor<"node">>;
+  way: Record<string, OverlayFeatureLayerEntryFor<"way">>;
+  area: Record<string, OverlayFeatureLayerEntryFor<"area">>;
+}
+
+export interface MutableOrderedOverlayFeatureLayers {
+  node: Array<OverlayFeatureLayerEntryFor<"node">>;
+  way: Array<OverlayFeatureLayerEntryFor<"way">>;
+  area: Array<OverlayFeatureLayerEntryFor<"area">>;
 }
 
 export interface OverlayRenderResult {
-  /** 清理整批 Overlay 时只需移除这个根组。 */
+  /** 只持有视觉 Leaflet layers；Interactive 命中层拥有独立生命周期。 */
   rootLayer: LayerGroup;
   layerIndex: OverlayFeatureLayerIndex;
+  orderedLayers: OrderedOverlayFeatureLayers;
   relationContext: RelationTranslucentContext;
+  measurementController: OverlayVisualMeasurementSource;
+  /** 幂等清理 Visual 监听器、控制器与全部视觉 layers。 */
+  dispose(): void;
+}
+
+/** Interaction index 只保存 UI 事件桥接需要的稳定 Visual 引用与唯一 hit Path。 */
+export interface OverlayInteractionLayerEntry {
+  featureId: string;
+  featureType: CanvasSpatialFeatureType;
+  visualEntry: OverlayFeatureLayerEntry;
+  interactionLayer: Path;
+}
+
+export type OverlayInteractionLayerIndex = Readonly<Record<CanvasSpatialFeatureType, Readonly<Record<string, OverlayInteractionLayerEntry>>>>;
+
+export interface OverlayInteractionResult {
+  rootLayer: LayerGroup;
+  layerIndex: OverlayInteractionLayerIndex;
+  /** 幂等清理 measurement 订阅、未来 UI listener 与全部透明 hit Paths。 */
+  dispose(): void;
 }
 
 export interface OverlayRendererOptions {

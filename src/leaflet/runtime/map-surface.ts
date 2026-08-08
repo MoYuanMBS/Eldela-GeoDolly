@@ -13,7 +13,7 @@ import {
   type LatLngTuple,
   type Map as LeafletMap,
 } from "leaflet";
-import type {IframePaddingConfigType} from "../models/config-models.js";
+import type {IframePaddingConfigType} from "../../models/config-models.js";
 
 export interface MapSurfaceOptions {
   /** Leaflet 将接管的空 DOM 容器。 */

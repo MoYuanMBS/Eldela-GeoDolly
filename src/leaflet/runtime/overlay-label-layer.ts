@@ -6,9 +6,9 @@
  */
 
 import {DomUtil, Layer, point, type LatLngTuple, type Map as LeafletMap, type Point} from "leaflet";
-import type {LeafletSpatialGeometry, OverlayLabelCandidate, OverlayVisualMeasurement} from "../models/leaflet-renderer-models.js";
-import type {CanvasSpatialFeatureType} from "../models/style/base-canvas-style.js";
-import {LEAFLET_INTERNAL_RENDER_CONFIG} from "../utils/leaflet-internal-render-config.js";
+import type {LeafletSpatialGeometry, OverlayLabelCandidate, OverlayVisualMeasurement} from "../../models/leaflet-renderer-models.js";
+import type {CanvasSpatialFeatureType} from "../../models/style/base-canvas-style.js";
+import {LEAFLET_INTERNAL_RENDER_CONFIG} from "../../utils/leaflet-internal-render-config.js";
 
 const LABEL_CONFIG = LEAFLET_INTERNAL_RENDER_CONFIG.label;
 // 字体尺寸仍是屏幕逻辑像素；Canvas bitmap 再按实际 DPR 扩大，二者不能混为同一个单位。
@@ -315,7 +315,7 @@ export class OverlayLabelLayer extends Layer {
   }
 
   /**
-   * Interaction 同步器回写与命中层相同的最终测量。Node 标签直接消费 visualSizePx，不能再用
+   * 统一 Visual measurement controller 通知最终测量。Node 标签直接消费 visualSizePx，不能再用
    * 初始半径和 zoom scale 重复推导；状态可先于 Canvas 挂载写入，首帧直接使用最终结果。
    */
   setFeatureVisualMeasurement(featureType: CanvasSpatialFeatureType, featureId: string, measurement: OverlayVisualMeasurement): void {

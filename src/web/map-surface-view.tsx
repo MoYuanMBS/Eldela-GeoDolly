@@ -1,7 +1,6 @@
 import {useEffect, useRef} from "react";
 import type {LatLngBoundsLiteral, LatLngTuple} from "leaflet";
-import {createMapSurface} from "../leaflet/map-surface.js";
-import {renderOverlay} from "../leaflet/overlay-render.js";
+import {createInteractiveMapFlow, type InteractiveMapFlowResult} from "../leaflet/interactive-map-flow.js";
 import type {LeafletConfigType} from "../models/config-models.js";
 import type {IdentifiedOverlayGroupsWithDisplayIdType, RelationMemberFeaturesByRelationType} from "../models/map-data-models.js";
 import type {RuntimeStylePlan} from "../models/style/runtime-style-models.js";
@@ -25,30 +24,40 @@ export function MapSurfaceView({screenshotSize, center, leafletBounds, overlayOu
   useEffect(() => {
     const container = containerRef.current;
     if (container === null) return;
-    const leafletMap = createMapSurface({
-      container,
-      screenshotSize,
-      center,
-      leafletBounds,
-      padding: __GEOMCP_MAP_PADDING__,
-    });
     const abortController = new AbortController();
-    if (overlayOutput !== null && relationMemberFeaturesByRelation !== null) {
-      void renderOverlay({
-        map: leafletMap,
-        overlayOutput,
-        relationMemberFeaturesByRelation,
-        stylePlan,
-        leafletConfig,
-        centerLongitude: center[1],
-        signal: abortController.signal,
-      }).catch((error: unknown) => {
-        if (!abortController.signal.aborted) console.error("overlay_render_failed", error);
-      });
-    }
+    let flowResult: InteractiveMapFlowResult | null = null;
+    const overlay = overlayOutput !== null && relationMemberFeaturesByRelation !== null
+      ? {
+          overlayOutput,
+          relationMemberFeaturesByRelation,
+          stylePlan,
+          leafletConfig,
+          centerLongitude: center[1],
+          signal: abortController.signal,
+        }
+      : null;
+    void createInteractiveMapFlow({
+      mapSurface: {
+        container,
+        screenshotSize,
+        center,
+        leafletBounds,
+        padding: __GEOMCP_MAP_PADDING__,
+      },
+      overlay,
+      interactionConfig: leafletConfig.interaction,
+    }).then((result) => {
+      if (abortController.signal.aborted) {
+        result.dispose();
+        return;
+      }
+      flowResult = result;
+    }).catch((error: unknown) => {
+      if (!abortController.signal.aborted) console.error("interactive_map_flow_failed", error);
+    });
     return () => {
       abortController.abort();
-      leafletMap.remove();
+      flowResult?.dispose();
     };
   }, [screenshotSize, center, leafletBounds, overlayOutput, relationMemberFeaturesByRelation, stylePlan, leafletConfig]);
 

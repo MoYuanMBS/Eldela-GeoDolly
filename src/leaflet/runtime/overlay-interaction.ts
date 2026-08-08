@@ -1,0 +1,210 @@
+/**
+ * Interactive flow 的透明 Canvas 命中层。
+ *
+ * 本模块不重新解析 tag/style/relation，也不重新投影 geometry；它只消费 Visual result 中已经
+ * 展开的 geometry 与 measurement controller 的可靠测量。Snapshot 不导入或调用本模块。
+ */
+
+import {CircleMarker, canvas, circleMarker, layerGroup, polygon, polyline, type Map as LeafletMap, type Path, type Renderer} from "leaflet";
+import type {LeafletConfigType} from "../../models/config-models.js";
+import type {
+  LeafletSpatialGeometry,
+  OverlayFeatureLayerEntry,
+  OverlayInteractionLayerEntry,
+  OverlayInteractionLayerIndex,
+  OverlayInteractionResult,
+  OverlayRenderResult,
+  OverlayVisualMeasurement,
+} from "../../models/leaflet-renderer-models.js";
+import type {CanvasSpatialFeatureType} from "../../models/style/base-canvas-style.js";
+
+export interface AttachOverlayInteractionOptions {
+  map: LeafletMap;
+  visualResult: OverlayRenderResult;
+  config: LeafletConfigType["interaction"];
+}
+
+interface MutableOverlayInteractionLayerIndex {
+  node: Record<string, OverlayInteractionLayerEntry>;
+  way: Record<string, OverlayInteractionLayerEntry>;
+  area: Record<string, OverlayInteractionLayerEntry>;
+}
+
+interface OverlayInteractionRegistration {
+  visualEntry: OverlayFeatureLayerEntry;
+  interactionLayer: Path;
+}
+
+function clamp(value: number, minimum: number, maximum: number): number {
+  return Math.min(maximum, Math.max(minimum, value));
+}
+
+/**
+ * opacity=0 只隐藏实际像素，不会绕过 Leaflet Canvas 的 containsPoint 检查，因此完全不可见的
+ * Feature 必须由外层不挂载/移除 Path；这里仅负责创建对应 geometry 的稳定命中形状。
+ */
+export function createOverlayInteractionLayer(
+  geometry: LeafletSpatialGeometry,
+  measurement: OverlayVisualMeasurement,
+  renderer: Renderer,
+  config: LeafletConfigType["interaction"],
+): Path {
+  const commonOptions = {renderer, interactive: true, bubblingMouseEvents: false} as const;
+  if (geometry.featureType === "node") {
+    return circleMarker(geometry.center, {
+      ...commonOptions,
+      radius: clamp(measurement.visualSizePx + config.node_extra_radius_px, config.min_node_radius_px, config.max_node_radius_px),
+      stroke: false,
+      fill: true,
+      fillColor: "#000000",
+      fillOpacity: 0,
+    });
+  }
+  if (geometry.featureType === "way") {
+    // MultiLine 始终使用连续透明粗线，视觉 dash 不在 hit geometry 上制造无法点击的空洞。
+    return polyline(geometry.latLngs, {
+      ...commonOptions,
+      color: "#000000",
+      opacity: 0,
+      weight: clamp(measurement.visualSizePx + config.way_extra_width_px, config.min_way_width_px, config.max_way_width_px),
+      lineCap: "round",
+      lineJoin: "round",
+    });
+  }
+  // Area 可见时整个 even-odd 填充区域都可命中；边缘容错不随视觉描边继续膨胀。
+  return polygon(geometry.latLngs, {
+    ...commonOptions,
+    stroke: true,
+    color: "#000000",
+    opacity: 0,
+    weight: Math.min(config.area_edge_width_px, config.max_area_edge_width_px),
+    fill: true,
+    fillColor: "#000000",
+    fillOpacity: 0,
+    fillRule: "evenodd",
+  });
+}
+
+function freezeInteractionLayerIndex(index: MutableOverlayInteractionLayerIndex): OverlayInteractionLayerIndex {
+  return Object.freeze({
+    node: Object.freeze(index.node),
+    way: Object.freeze(index.way),
+    area: Object.freeze(index.area),
+  });
+}
+
+/**
+ * 根据最新视觉范围更新透明命中尺寸。配置中的 min 值只在 hasVisiblePaint=true 后使用，
+ * 因而 fill:none / stroke:none / opacity:0 不会被最小命中尺寸重新变成“看不见但能点”。
+ */
+function synchronizeInteractionLayer(
+  rootLayer: ReturnType<typeof layerGroup>,
+  registration: OverlayInteractionRegistration,
+  measurement: OverlayVisualMeasurement,
+  config: LeafletConfigType["interaction"],
+): void {
+  const {featureType} = registration.visualEntry;
+  const hitLayer = registration.interactionLayer;
+  if (!measurement.hasVisiblePaint) {
+    if (rootLayer.hasLayer(hitLayer)) rootLayer.removeLayer(hitLayer);
+    return;
+  }
+
+  if (!rootLayer.hasLayer(hitLayer)) rootLayer.addLayer(hitLayer);
+  if (featureType === "node") {
+    if (!(hitLayer instanceof CircleMarker)) throw new Error("Node interaction layer must be a CircleMarker");
+    hitLayer.setRadius(clamp(
+      measurement.visualSizePx + config.node_extra_radius_px,
+      config.min_node_radius_px,
+      config.max_node_radius_px,
+    ));
+  } else if (featureType === "way") {
+    hitLayer.setStyle({weight: clamp(
+      measurement.visualSizePx + config.way_extra_width_px,
+      config.min_way_width_px,
+      config.max_way_width_px,
+    )});
+  }
+  // Area 命中 geometry 不依赖视觉描边宽度；只需要同步上面的显隐状态。
+}
+
+/**
+ * 在同一个 Canvas renderer 中，Path 被移除后重新加入会排到最上层。每个测量批次结束后按
+ * Area → Way → Node、并保持各类型原 Overlay 顺序统一 bringToFront，确保 Node 始终拥有最高
+ * 点击优先级，而且显隐切换不会悄悄改变重叠 Feature 的事件目标。
+ */
+function normalizeInteractionOrder(
+  rootLayer: ReturnType<typeof layerGroup>,
+  registrations: Readonly<Record<CanvasSpatialFeatureType, ReadonlyArray<OverlayInteractionRegistration>>>,
+): void {
+  for (const featureType of ["area", "way", "node"] as const) {
+    for (const registration of registrations[featureType]) {
+      if (rootLayer.hasLayer(registration.interactionLayer)) registration.interactionLayer.bringToFront();
+    }
+  }
+}
+
+/**
+ * 在 Visual 首次测量完成后附加 Interactive 命中层。
+ *
+ * 创建过程只遍历 Visual result 的显式有序数组；measurement 更新也只调整现有 hit geometry。
+ * 返回结果拥有独立幂等 dispose，调用方必须按 interaction → visual → mapSurface 顺序清理。
+ */
+export function attachOverlayInteraction(options: AttachOverlayInteractionOptions): OverlayInteractionResult {
+  const {map, visualResult, config} = options;
+  const pane = map.getPane("interaction");
+  if (pane === undefined) throw new Error('Leaflet pane "interaction" was not created');
+  const renderer = canvas({pane: "interaction", tolerance: 0});
+  const rootLayer = layerGroup().addTo(map);
+  rootLayer.addLayer(renderer);
+  const mutableLayerIndex: MutableOverlayInteractionLayerIndex = {
+    node: Object.create(null) as Record<string, OverlayInteractionLayerEntry>,
+    way: Object.create(null) as Record<string, OverlayInteractionLayerEntry>,
+    area: Object.create(null) as Record<string, OverlayInteractionLayerEntry>,
+  };
+  const registrations: Record<CanvasSpatialFeatureType, Array<OverlayInteractionRegistration>> = {node: [], way: [], area: []};
+  const unsubscribeCallbacks: Array<() => void> = [];
+  let disposed = false;
+
+  try {
+    // 三段显式循环保留 Area → Way → Node 优先级；不能改为遍历 layerIndex 普通对象。
+    for (const featureType of ["area", "way", "node"] as const) {
+      for (const visualEntry of visualResult.orderedLayers[featureType]) {
+        const measurement = visualResult.measurementController.getMeasurement(featureType, visualEntry.featureId);
+        const interactionLayer = createOverlayInteractionLayer(visualEntry.geometry, measurement, renderer, config);
+        const registration = {visualEntry, interactionLayer} satisfies OverlayInteractionRegistration;
+        registrations[featureType].push(registration);
+        synchronizeInteractionLayer(rootLayer, registration, measurement, config);
+        unsubscribeCallbacks.push(visualResult.measurementController.subscribe(featureType, visualEntry.featureId, (nextMeasurement) => {
+          if (!disposed) synchronizeInteractionLayer(rootLayer, registration, nextMeasurement, config);
+        }));
+        mutableLayerIndex[featureType][visualEntry.featureId] = Object.freeze({
+          featureId: visualEntry.featureId,
+          featureType,
+          visualEntry,
+          interactionLayer,
+        });
+      }
+    }
+
+    normalizeInteractionOrder(rootLayer, registrations);
+    // Feature listener 完成全部增删/改尺寸后，再做一次批量顺序归一化，避免每条更新都 O(N)。
+    unsubscribeCallbacks.push(visualResult.measurementController.subscribeBatchComplete(() => {
+      if (!disposed) normalizeInteractionOrder(rootLayer, registrations);
+    }));
+
+    const dispose = (): void => {
+      if (disposed) return;
+      disposed = true;
+      for (const unsubscribe of unsubscribeCallbacks.splice(0)) unsubscribe();
+      // 未来 UI hover/click listener 也应由此生命周期解绑；当前尚未在本层注册业务 listener。
+      rootLayer.remove();
+    };
+    return Object.freeze({rootLayer, layerIndex: freezeInteractionLayerIndex(mutableLayerIndex), dispose});
+  } catch (error) {
+    disposed = true;
+    for (const unsubscribe of unsubscribeCallbacks.splice(0)) unsubscribe();
+    rootLayer.remove();
+    throw error;
+  }
+}
