@@ -17,10 +17,15 @@ import type {
   OverlayVisualMeasurement,
 } from "../../models/leaflet-renderer-models.js";
 import type {CanvasSpatialFeatureType} from "../../models/style/base-canvas-style.js";
+import {LEAFLET_INTERNAL_RENDER_CONFIG} from "../../utils/leaflet-internal-render-config.js";
 
+/** Interaction attach 只接收已有 Visual 结果和自己的命中容错配置。 */
 export interface AttachOverlayInteractionOptions {
+  /** 与 Visual 共用、且仍处于活动生命周期的 Leaflet map。 */
   map: LeafletMap;
+  /** 已完成首次 measurement 的 Visual；本层不会重新解析 Feature。 */
   visualResult: OverlayRenderResult;
+  /** 仅影响透明命中半径/宽度，不参与可见绘制。 */
   config: LeafletConfigType["interaction"];
 }
 
@@ -37,6 +42,15 @@ interface OverlayInteractionRegistration {
 
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(maximum, Math.max(minimum, value));
+}
+
+/** Interaction pane 只在 Interactive attach 时创建；Snapshot 不承担它的 DOM 与事件边界。 */
+function ensureInteractionPane(map: LeafletMap): "interaction" {
+  const {name, zIndex} = LEAFLET_INTERNAL_RENDER_CONFIG.panes.interaction;
+  const pane = map.getPane(name) ?? map.createPane(name);
+  pane.style.zIndex = String(zIndex);
+  pane.style.pointerEvents = "auto";
+  return name;
 }
 
 /**
@@ -152,9 +166,8 @@ function normalizeInteractionOrder(
  */
 export function attachOverlayInteraction(options: AttachOverlayInteractionOptions): OverlayInteractionResult {
   const {map, visualResult, config} = options;
-  const pane = map.getPane("interaction");
-  if (pane === undefined) throw new Error('Leaflet pane "interaction" was not created');
-  const renderer = canvas({pane: "interaction", tolerance: 0});
+  const interactionPane = ensureInteractionPane(map);
+  const renderer = canvas({pane: interactionPane, tolerance: 0});
   const rootLayer = layerGroup().addTo(map);
   rootLayer.addLayer(renderer);
   const mutableLayerIndex: MutableOverlayInteractionLayerIndex = {
@@ -202,6 +215,7 @@ export function attachOverlayInteraction(options: AttachOverlayInteractionOption
     };
     return Object.freeze({rootLayer, layerIndex: freezeInteractionLayerIndex(mutableLayerIndex), dispose});
   } catch (error) {
+    // attach 中途失败时撤销已经建立的订阅，不能把半成品 Interaction 留给 Visual 生命周期。
     disposed = true;
     for (const unsubscribe of unsubscribeCallbacks.splice(0)) unsubscribe();
     rootLayer.remove();

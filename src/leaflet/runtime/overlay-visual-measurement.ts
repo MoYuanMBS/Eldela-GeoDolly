@@ -149,6 +149,10 @@ export class OverlayVisualMeasurementController extends Layer implements Overlay
     super();
   }
 
+  /**
+   * 注册一个 canonical Feature 的全部视觉 Path；这里只保存稳定引用，不提前读取 DOM。
+   * 同一 type + feature_id 重复注册表示 Visual 索引已经失去唯一性，因此直接失败。
+   */
   registerFeature(
     featureId: string,
     featureType: CanvasSpatialFeatureType,
@@ -162,12 +166,14 @@ export class OverlayVisualMeasurementController extends Layer implements Overlay
     this.registrations.push({featureId, featureType, visualLayers, cssLayers: new Set(cssLayers)});
   }
 
+  /** 返回最近一次完整批次的测量；调用方必须等待 synchronizeAfterMount() 完成。 */
   getMeasurement(featureType: CanvasSpatialFeatureType, featureId: string): OverlayVisualMeasurement {
     const measurement = this.measurements.get(getFeatureKey(featureType, featureId));
     if (measurement === undefined) throw new Error(`Visual measurement for ${featureType} feature_id "${featureId}" is not ready`);
     return measurement;
   }
 
+  /** 订阅单个 Feature 的测量变化；相同结果不会重复通知，取消订阅函数保持幂等。 */
   subscribe(featureType: CanvasSpatialFeatureType, featureId: string, listener: OverlayVisualMeasurementListener): () => void {
     if (this.disposed) throw new Error("Overlay visual measurement controller has been disposed");
     const key = getFeatureKey(featureType, featureId);
@@ -185,6 +191,7 @@ export class OverlayVisualMeasurementController extends Layer implements Overlay
     };
   }
 
+  /** 订阅整批发布完成事件，供需要跨 Feature 保序的消费者只执行一次收尾操作。 */
   subscribeBatchComplete(listener: () => void): () => void {
     if (this.disposed) throw new Error("Overlay visual measurement controller has been disposed");
     this.batchCompleteListeners.add(listener);
@@ -197,11 +204,13 @@ export class OverlayVisualMeasurementController extends Layer implements Overlay
   }
 
   override onAdd(map: LeafletMap): this {
+    // 首次同步由 renderOverlay 显式等待；这里只接管后续视口变化，避免 onAdd 返回不可等待的状态。
     map.on("zoomend resize", this.scheduleSynchronize, this);
     return this;
   }
 
   override onRemove(map: LeafletMap): this {
+    // 移除时同步取消排队帧，防止已销毁 Visual 在下一帧继续读取 DOM。
     map.off("zoomend resize", this.scheduleSynchronize, this);
     if (this.frameId !== null) globalThis.cancelAnimationFrame(this.frameId);
     this.frameId = null;

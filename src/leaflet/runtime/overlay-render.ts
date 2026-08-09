@@ -92,12 +92,16 @@ class RelationMembershipCanvas extends Canvas {
   }
 }
 
-function ensureOverlayPanes(map: LeafletMap): void {
-  for (const [paneName, zIndex] of Object.entries(LEAFLET_INTERNAL_RENDER_CONFIG.panes)) {
+/**
+ * 只建立 Snapshot 与 Interactive 共用的视觉 panes。
+ * Interaction pane 必须延迟到 attach 阶段创建，否则截图流程会无意引入命中层的 DOM 边界。
+ */
+function ensureVisualPanes(map: LeafletMap): void {
+  for (const [paneName, zIndex] of Object.entries(LEAFLET_INTERNAL_RENDER_CONFIG.panes.visual)) {
     const pane = map.getPane(paneName) ?? map.createPane(paneName);
     pane.style.zIndex = String(zIndex);
-    // 所有视觉重复层都不接事件；后续唯一 hit target 只放入 interaction pane。
-    pane.style.pointerEvents = paneName === "interaction" ? "auto" : "none";
+    // Snapshot 与 Interactive 共用的视觉层一律不接事件；interaction pane 由 attach 阶段另建。
+    pane.style.pointerEvents = "none";
   }
 }
 
@@ -304,7 +308,7 @@ function sameColor(left: string, right: string): boolean {
  */
 function renderRelationMembership(rootLayer: LayerGroup, group: LayerGroup, geometry: LeafletSpatialGeometry, mainAreaColor: string | undefined, options: OverlayRendererOptions, renderers: OverlayRendererCollection): void {
   const style = options.stylePlan.relationMembershipStyle;
-  const dimensions = options.leafletConfig.relation_membership;
+  const dimensions = options.visualConfig.relation_membership;
   const renderer = renderers.relationMembership;
   activateRenderer(rootLayer, renderers, renderer);
   if (geometry.featureType === "node") {
@@ -465,11 +469,11 @@ function getVisualPathLayers(group: LayerGroup): Array<Path> {
  */
 export async function renderOverlay(options: OverlayRendererOptions): Promise<OverlayRenderResult> {
   // 先固定 pane 和共享生命周期根节点；后续任一步失败都只需移除 rootLayer。
-  ensureOverlayPanes(options.map);
+  ensureVisualPanes(options.map);
   const renderers = createRenderers();
   const rootLayer = layerGroup().addTo(options.map);
-  const nodeZoomController = new NodeZoomController(options.leafletConfig.node_zoom);
-  const measurementController = new OverlayVisualMeasurementController(options.leafletConfig);
+  const nodeZoomController = new NodeZoomController(options.visualConfig.node_zoom);
+  const measurementController = new OverlayVisualMeasurementController(options.visualConfig);
   const labelLayer = new OverlayLabelLayer();
   // 注册顺序刻意保持 Node zoom 在前、视觉测量在后；同一次 zoomend 先得到最终圆半径，再读取尺寸。
   rootLayer.addLayer(nodeZoomController);
@@ -538,7 +542,7 @@ export async function renderOverlay(options: OverlayRendererOptions): Promise<Ov
       for (let index = 0; index < features.length; index += 1) {
         throwIfAborted(options.signal);
         renderFeature(features[index]);
-        if ((index + 1) % options.leafletConfig.render_batch_size === 0 && index + 1 < features.length) await yieldToBrowser();
+        if ((index + 1) % options.visualConfig.render_batch_size === 0 && index + 1 < features.length) await yieldToBrowser();
       }
     }
     throwIfAborted(options.signal);

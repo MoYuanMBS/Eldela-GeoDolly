@@ -7,28 +7,33 @@
  */
 export const LEAFLET_INTERNAL_RENDER_CONFIG = Object.freeze({
   /**
-   * Leaflet pane 的固定 z-index。数值只表达从 Area Base 到透明命中层的相对覆盖关系；
-   * 视觉 pane 全部 pointer-events:none，只有最上方 interaction pane 接收指针事件。
+   * Leaflet pane 按生命周期拆分。Snapshot 只读取 visual；Interactive attach 时才读取
+   * interaction，避免共享 Visual 初始化隐式创建透明命中层所需的 pane。
    */
   panes: Object.freeze({
-    // 面积填充最先铺底，避免覆盖道路和点。
-    areaBase: 410,
-    // Area translucent/addon 位于自身 Base 上方、Way 下方。
-    areaSpecial: 420,
-    // 道路主体与 casing 的基础绘制层。
-    wayBase: 430,
-    // Way bridge/tunnel/translucent 等附加绘制层。
-    waySpecial: 440,
-    // Node 主体高于线和面。
-    nodeBase: 450,
-    // Node 附加绘制仍保持在所有基础几何之上。
-    nodeSpecial: 460,
-    // 固定 relation membership 覆盖三类基础几何，但不参与交互。
-    relationMembership: 470,
-    // 单 Canvas 标签层位于全部空间视觉层上方。
-    labels: 480,
-    // 唯一透明命中层必须最后绘制，确保 pointer hit 不受视觉层 DOM 顺序干扰。
-    interaction: 490,
+    visual: Object.freeze({
+      // 面积填充最先铺底，避免覆盖道路和点。
+      areaBase: 410,
+      // Area translucent/addon 位于自身 Base 上方、Way 下方。
+      areaSpecial: 420,
+      // 道路主体与 casing 的基础绘制层。
+      wayBase: 430,
+      // Way bridge/tunnel/translucent 等附加绘制层。
+      waySpecial: 440,
+      // Node 主体高于线和面。
+      nodeBase: 450,
+      // Node 附加绘制仍保持在所有基础几何之上。
+      nodeSpecial: 460,
+      // 固定 relation membership 覆盖三类基础几何，但不参与交互。
+      relationMembership: 470,
+      // 单 Canvas 标签层位于全部空间视觉层上方。
+      labels: 480,
+    }),
+    interaction: Object.freeze({
+      name: "interaction" as const,
+      // 唯一透明命中层必须最后绘制，确保 pointer hit 不受视觉层 DOM 顺序干扰。
+      zIndex: 490,
+    }),
   }),
   /** Label Canvas 的排版与视觉常量，全部尺寸均为 CSS 逻辑像素，不乘设备 DPR。 */
   label: Object.freeze({

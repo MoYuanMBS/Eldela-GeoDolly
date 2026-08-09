@@ -5,40 +5,53 @@
  * overlay 设为 null；未来 Basemap handle 仍由更外层 flow 与这里返回的同一个 map 对接。
  */
 
-import type {Map as LeafletMap} from "leaflet";
-import type {OverlayRendererOptions, OverlayRenderResult} from "../../models/leaflet-renderer-models.js";
+import type {MapSurfaceHandle, OverlayRendererOptions, OverlayRenderResult} from "../../models/leaflet-renderer-models.js";
 import {createMapSurface, type MapSurfaceOptions} from "./map-surface.js";
 import {renderOverlay} from "./overlay-render.js";
 
+/** 共享 Visual runtime 的稳定输入；Interactive 专属配置不进入本层。 */
 export interface LeafletVisualRuntimeOptions {
+  /** 固定尺寸与初始视口输入。 */
   mapSurface: MapSurfaceOptions;
   /** null 表示当前地图明确跳过 Overlay，而不是渲染失败。 */
   overlay: Omit<OverlayRendererOptions, "map"> | null;
 }
 
+/** MapSurface 与可选 Visual 的共同所有权句柄。 */
 export interface LeafletVisualRuntimeResult {
-  map: LeafletMap;
+  /** 所有后续 basemap、Visual 和可选 Interaction 共用的 Leaflet map。 */
+  mapSurface: MapSurfaceHandle;
+  /** 已完成首次 measurement 的 Visual；Basemap-only 时为 null。 */
   visualResult: OverlayRenderResult | null;
   /** 幂等执行 Visual → MapSurface 清理；Interactive 必须先清理自己的命中层。 */
   dispose(): void;
 }
 
+/**
+ * 创建 MapSurface，并在提供 Overlay 时等待 Visual 完成首次同步测量后返回。
+ *
+ * 本函数不会创建 Interaction pane 或命中层。任何 Visual 初始化异常都会先回收已创建资源，
+ * 避免异步调用方只收到 rejected Promise、却遗留仍监听 Leaflet 事件的 layer。
+ */
 export async function createLeafletVisualRuntime(options: LeafletVisualRuntimeOptions): Promise<LeafletVisualRuntimeResult> {
-  const map = createMapSurface(options.mapSurface);
+  // 视口必须先稳定，Visual 的首次投影与像素测量才有可信的 zoom 和容器尺寸。
+  const mapSurface = createMapSurface(options.mapSurface);
   let visualResult: OverlayRenderResult | null = null;
   let disposed = false;
   try {
-    if (options.overlay !== null) visualResult = await renderOverlay({...options.overlay, map});
+    // null 是显式的 Basemap-only 分支；不要构造空 renderer 来伪装 Overlay。
+    if (options.overlay !== null) visualResult = await renderOverlay({...options.overlay, map: mapSurface.map});
     const dispose = (): void => {
       if (disposed) return;
       disposed = true;
       visualResult?.dispose();
-      map.remove();
+      mapSurface.dispose();
     };
-    return Object.freeze({map, visualResult, dispose});
+    return Object.freeze({mapSurface, visualResult, dispose});
   } catch (error) {
+    // renderOverlay 负责内部半成品；这里负责 runtime 已取得所有权的顶层资源。
     visualResult?.dispose();
-    map.remove();
+    mapSurface.dispose();
     throw error;
   }
 }
