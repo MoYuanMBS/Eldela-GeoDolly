@@ -102,7 +102,8 @@ export const AitoolInputReqSchema = z
   .object({
     session_id: z.string(),
     selected_indices: z.array(z.number().int()).min(1),
-    basemap: basemapTypeSchema.nullable().optional(),
+    // 不设置隐式默认底图；每次 Tool 调用必须显式选择一个已登记的 basemap profile。
+    basemap: basemapTypeSchema,
     attention_experts: z.array(z.string()).nullable().optional(),
     include_overlay_geojson: z.boolean().optional(),
   })
