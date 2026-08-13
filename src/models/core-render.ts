@@ -52,11 +52,13 @@ export type CoreGeoJsonPrimitiveGeometryType =
   | CoreMultiPolygonGeometryType;
 
 export type CoreGeoJsonGeometryType = CoreGeoJsonPrimitiveGeometryType | CoreGeometryCollectionType;
+export type CorePointGeometryGroupType = CorePointGeometryType | CoreMultiPointGeometryType;
 export type CoreLineGeometryType = CoreLineStringGeometryType | CoreMultiLineStringGeometryType;
 export type CoreAreaGeometryType = CorePolygonGeometryType | CoreMultiPolygonGeometryType;
 
 export interface CoreRenderableGeometryGroups {
-  points: Array<CorePointGeometryType>;
+  /** Point 保留单点，MultiPoint 保留同一 geometry 内的全部独立点。 */
+  points: Array<CorePointGeometryGroupType>;
   lines: Array<CoreLineGeometryType>;
   areas: Array<CoreAreaGeometryType>;
 }

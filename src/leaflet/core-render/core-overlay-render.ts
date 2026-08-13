@@ -134,11 +134,15 @@ export async function renderCoreOverlay(options: CoreOverlayRendererOptions): Pr
       rootLayer.addLayer(nodeZoomController);
       for (const sourceGeometry of parsed.geometries.points) {
         const geometry = prepareLeafletGeoJsonGeometry(sourceGeometry, options.centerLongitude);
-        if (geometry.featureType !== "node") throw new Error("Core point produced non-point Leaflet geometry");
+        if (geometry.featureType !== "node" && geometry.featureType !== "multiPoint") {
+          throw new Error("Core point geometry produced a non-point Leaflet geometry");
+        }
+        // MultiPoint 是一组独立的 CircleMarker，不连线；同一组只注册一次 zoom 生命周期。
+        const centers = geometry.featureType === "node" ? [geometry.center] : geometry.centers;
         const pointGroup: LayerGroup = layerGroup();
-        const circle = createPointLayer(geometry.center, CORE_RENDER_STYLE.pointOperation, renderer);
-        pointGroup.addLayer(circle);
-        nodeZoomController.registerFeature(pointGroup, [circle]);
+        const circles = centers.map((center) => createPointLayer(center, CORE_RENDER_STYLE.pointOperation, renderer));
+        for (const circle of circles) pointGroup.addLayer(circle);
+        nodeZoomController.registerFeature(pointGroup, circles);
       }
     }
 
