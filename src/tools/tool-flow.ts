@@ -24,7 +24,6 @@ import {generateCaptureCenter} from "../iframe-capture/center-generator.js";
 import {toLeafletBounds} from "../iframe-capture/leaflet-bounds.js";
 import {leafletConfigSchema} from "../models/config-models.js";
 import {
-  coreVisualPayloadSchema,
   mapSurfacePayloadSchema,
   type CommonVisualMapPayloadType,
   type MapRenderModeType,
@@ -140,19 +139,14 @@ export function runMapModeFlow(input: MapModeSwitchInput): CommonVisualMapPayloa
         overlay_output: processed.overlay_output,
         relation_member_features_by_relation: processed.relation_member_features_by_relation,
       });
-    case "core": {
-      // Core 只使用地点确认 geometry；缺失/不支持时由独立 Core schema 报告边界错误，不回退到 bbox。
-      const coreVisual = coreVisualPayloadSchema.parse({
-        source_osm_type: selectedCandidate.osm_type,
-        geometry: selectedCandidate.geojson,
-      });
+    case "core":
+      // Node 不解释原始 GeoJSON；null 静默跳过、非 null 校验与 warning 由 Browser Core renderer 负责。
       return buildCoreMapPayload({
         ...commonMapFields,
         overlay_output: processed.overlay_output,
         relation_member_features_by_relation: processed.relation_member_features_by_relation,
-        core_visual: coreVisual,
+        core_visual: selectedCandidate.geojson ?? null,
       });
-    }
   }
 }
 

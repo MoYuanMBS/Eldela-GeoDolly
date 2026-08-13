@@ -56,7 +56,7 @@ export interface MapModeSwitchInput {
   commonMapFields: CommonMapPayloadFields;
 }
 
-/** Core builder 接受公共 nullable 数据形态，并由最终 Core schema 收口必需字段。 */
+/** Core builder 保留普通 Overlay 必需字段，并携带地点确认阶段的可空原始 GeoJSON。 */
 export type CoreFlowInput = Omit<
   CoreMapPayloadType,
   "render_mode" | "overlay_output" | "relation_member_features_by_relation"

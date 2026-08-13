@@ -11,11 +11,10 @@
  */
 
 import {z} from "zod";
-import {basemapTypeSchema, osmTypeSchema} from "./bridge-models.js";
+import {basemapTypeSchema, jsonDictSchema} from "./bridge-models.js";
 import {leafletConfigSchema} from "./config-models.js";
 import {
   identifiedOverlayGroupsWithDisplayIdSchema,
-  overlayGeoJsonGeometrySchema,
   relationMemberFeaturesByRelationSchema,
 } from "./map-data-models.js";
 
@@ -44,17 +43,12 @@ export const mapSurfacePayloadSchema = z.object({
 }).strict();
 
 /**
- * Core renderer 消费的地点确认 geometry。
+ * Core renderer 消费的地点确认阶段原始 GeoJSON。
  *
- * source_osm_type 保留地点来源身份；实际采用 Node/Way/Area 哪种视觉 geometry 仍由 GeoJSON 类型决定。
- * 这里只接受现有 Leaflet geometry adapter 已支持的五种 geometry，不把任意 JSON 推迟到浏览器热路径校验。
+ * Node 只保持 JSON object/null 传输边界，不读取 geometry type，也不根据 Python geometry pipeline
+ * 的 warning 或 fallback 改写该值。具体 GeoJSON 校验、warning 与跳过语义属于 Browser Core renderer。
  */
-export const coreVisualPayloadSchema = z.object({
-  /** 地点确认记录的原始 OSM primitive 类型，用于区分 Relation 等来源身份。 */
-  source_osm_type: osmTypeSchema,
-  /** Core renderer 使用的只读 geometry；不得合并回普通 overlay_output。 */
-  geometry: overlayGeoJsonGeometrySchema,
-}).strict();
+export const coreVisualPayloadSchema = jsonDictSchema.nullable();
 
 const commonMapPayloadFields = {
   // Node 已选择的底图 profile ID。只有 Basemap runtime、Attribution 与 ready 消费该字段；
@@ -100,7 +94,7 @@ export const coreMapPayloadSchema = z.object({
   ...overlayMapPayloadFields,
   /** Browser 在普通 Overlay 之外追加独立 Core visual。 */
   render_mode: z.literal("core"),
-  /** Core 模式必须提供可渲染的地点确认 geometry，不能以 null 静默降级。 */
+  /** null 只让 Browser 静默跳过 Core renderer，不改变 Core 模式或普通 Overlay。 */
   core_visual: coreVisualPayloadSchema,
 }).strict();
 
