@@ -7,15 +7,14 @@
 
 import { z } from "zod";
 
+import {basemapProfileIdSchema} from "./basemap-models.js";
 import { pyToolResultSchema } from "./map-data-models.js";
 
 export const toolTypeSchema = z.enum(["tool_a", "tool_b"]);
-export const basemapTypeSchema = z.enum(["osm", "satellite"]);
 export const searchStatusSchema = z.enum(["needs_confirmation", "no_match"]);
 export const osmTypeSchema = z.enum(["node", "way", "relation"]);
 
 export type ToolType = z.infer<typeof toolTypeSchema>;
-export type BasemapType = z.infer<typeof basemapTypeSchema>;
 export type SearchStatus = z.infer<typeof searchStatusSchema>;
 export type OsmType = z.infer<typeof osmTypeSchema>;
 
@@ -103,7 +102,7 @@ export const AitoolInputReqSchema = z
     session_id: z.string(),
     selected_indices: z.array(z.number().int()).min(1),
     // 不设置隐式默认底图；每次 Tool 调用必须显式选择一个已登记的 basemap profile。
-    basemap: basemapTypeSchema,
+    basemap: basemapProfileIdSchema,
     attention_experts: z.array(z.string()).nullable().optional(),
     include_overlay_geojson: z.boolean().optional(),
   })

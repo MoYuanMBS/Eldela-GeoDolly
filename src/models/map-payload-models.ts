@@ -11,7 +11,8 @@
  */
 
 import {z} from "zod";
-import {basemapTypeSchema, jsonDictSchema} from "./bridge-models.js";
+import {basemapProfileIdSchema} from "./basemap-models.js";
+import {jsonDictSchema} from "./bridge-models.js";
 import {leafletConfigSchema} from "./config-models.js";
 import {
   identifiedOverlayGroupsWithDisplayIdSchema,
@@ -53,7 +54,7 @@ export const coreVisualPayloadSchema = jsonDictSchema.nullable();
 const commonMapPayloadFields = {
   // Node 已选择的底图 profile ID。只有 Basemap runtime、Attribution 与 ready 消费该字段；
   // MapSurface 和 Overlay/Core renderer 都不得依据底图改写视口、geometry 或 Feature 样式。
-  basemap: basemapTypeSchema,
+  basemap: basemapProfileIdSchema,
   // 三个 MapSurface 字段复用同一 schema，避免 Browser 与 Snapshot 对坐标/尺寸边界产生分叉。
   screenshot_size: mapSurfacePayloadSchema.shape.screenshot_size,
   center: mapSurfacePayloadSchema.shape.center,

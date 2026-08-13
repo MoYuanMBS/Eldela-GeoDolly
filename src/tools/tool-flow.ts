@@ -7,12 +7,12 @@
 
 import {
   type AiToolInputReqType,
-  type BasemapType,
   type LocSearchReplyRawType,
   type PyToolReqType,
   type PyToolReplyType,
   type ToolType,
 } from "../models/bridge-models.js";
+import type {BasemapProfileIdType} from "../models/basemap-models.js";
 import {addFeatureIdsToAiOutput} from "../map-data/ai-output.js";
 import {addDisplayIds} from "../map-data/display-id.js";
 import {
@@ -170,7 +170,7 @@ function buildRenderStylePayload(): RenderStylePayload {
 /** 把公共视口结果收窄为共享地图 schema 的固定 tuple，并附加调用方明确选择的底图。 */
 function buildCommonMapPayloadFields(
   processed: ProcessedToolReplyType,
-  basemap: BasemapType,
+  basemap: BasemapProfileIdType,
 ): CommonMapPayloadFields {
   // Leaflet 的 LatLngBoundsLiteral 静态类型允许多种形态；跨进程 payload 只接受固定双角 tuple。
   const mapSurfacePayload = mapSurfacePayloadSchema.parse({

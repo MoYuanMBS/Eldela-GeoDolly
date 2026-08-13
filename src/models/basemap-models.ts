@@ -2,7 +2,10 @@
 
 import {z} from "zod";
 
-const basemapProfileIdSchema = z.string().min(1).refine((profileId) => profileId.trim() === profileId, {
+/** Tool Input 使用的动态 basemap profile ID。 */
+export const basemapProfileIdSchema = z.string().trim().min(1);
+
+const basemapRegistryProfileIdSchema = z.string().min(1).refine((profileId) => profileId.trim() === profileId, {
   message: "basemap profile ID must not contain leading or trailing whitespace",
 });
 
@@ -40,10 +43,11 @@ export const basemapProfileConfigSchema = z.object({
   full_attribution: z.string().trim().min(1).nullish().transform((attribution) => attribution ?? null),
 }).strict();
 
-export const basemapProfileRegistrySchema = z.record(basemapProfileIdSchema, basemapProfileConfigSchema).refine(
+export const basemapProfileRegistrySchema = z.record(basemapRegistryProfileIdSchema, basemapProfileConfigSchema).refine(
   (registry) => Object.keys(registry).length > 0,
   {message: "tiles.yaml must contain at least one basemap profile"},
 );
 
+export type BasemapProfileIdType = z.infer<typeof basemapProfileIdSchema>;
 export type BasemapProfileConfigType = z.infer<typeof basemapProfileConfigSchema>;
 export type BasemapProfileRegistryType = z.infer<typeof basemapProfileRegistrySchema>;

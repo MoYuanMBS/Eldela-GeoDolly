@@ -30,6 +30,15 @@ function buildChoiceFieldHint(options: ChoiceFieldHintOptions): string {
   ].join("\n");
 }
 
+/** 为必填 basemap 字段列出当前部署已经缓存的 profile ID 与展示名称。 */
+function buildBasemapProfileHint(): string {
+  const profiles = Object.entries(config.getBasemapProfiles());
+  return [
+    'Set "basemap" to exactly one configured profile ID:',
+    ...profiles.map(([profileId, profile]) => `- ${profileId}: ${profile.name}`),
+  ].join("\n");
+}
+
 /**
  * 把一个或多个动态提示片段追加到原始 tool description 后。
  */
@@ -45,10 +54,11 @@ function appendDescriptionHints(description: string, hints: Array<string>): stri
  * - location_search 只负责候选地点搜索，不接收 attention_experts / basemap 动态提示。
  * - tool_a 暂不提示 attention_experts；即使 schema 允许该字段，业务上也不鼓励 AI 填写。
  * - tool_b 使用 attention_experts 选择专家分类，因此只给 tool_b 追加 expert hint。
- * - basemap 后续若改成动态配置，应在本函数中按 tool_a / tool_b 分别追加，而不是改 index.ts。
+ * - tool_a / tool_b 都要求显式选择 basemap，因此共享当前 profile registry 提示。
  */
 export function getToolPromptsConfigWithHints(): ToolPromptsConfigType {
   const toolPromptsConfig = config.getAppSection("prompts", toolPromptsConfigSchema);
+  const basemapProfileHint = buildBasemapProfileHint();
   const toolBExpertHint = buildChoiceFieldHint({
     fieldName: "attention_experts",
     values: config.getAvailableExpertNames(),
@@ -59,15 +69,13 @@ export function getToolPromptsConfigWithHints(): ToolPromptsConfigType {
     ...toolPromptsConfig,
     tool_a: {
       ...toolPromptsConfig.tool_a,
-      description: appendDescriptionHints(toolPromptsConfig.tool_a.description, [
-        // Reserved for future dynamic basemap hints.
-      ]),
+      description: appendDescriptionHints(toolPromptsConfig.tool_a.description, [basemapProfileHint]),
     },
     tool_b: {
       ...toolPromptsConfig.tool_b,
       description: appendDescriptionHints(toolPromptsConfig.tool_b.description, [
         toolBExpertHint,
-        // Reserved for future dynamic basemap hints.
+        basemapProfileHint,
       ]),
     },
   };
