@@ -3,43 +3,32 @@
 import type {CanvasCircleOperation, CanvasLineOperation} from "../../models/style/base-canvas-style.js";
 
 interface CoreRenderStyle {
-  pointOperations: readonly [CanvasCircleOperation, CanvasCircleOperation];
-  lineOperations: readonly [CanvasLineOperation, CanvasLineOperation];
+  pointOperation: CanvasCircleOperation;
+  lineOperation: CanvasLineOperation;
+  areaOutline: Readonly<{color: string; opacity: number; width: number}>;
   areaBand: Readonly<{color: string; opacity: number; width: number}>;
 }
 
+const CORE_COLOR = "#d81b60";
+
 export const CORE_RENDER_STYLE = Object.freeze({
-  pointOperations: Object.freeze([{
+  pointOperation: Object.freeze({
     kind: "circle",
-    radius: 5,
-    fillColor: "#ffffff",
-    fillOpacity: 1,
-    strokeColor: "#d81b60",
-    strokeOpacity: 1,
-    strokeWidth: 1.5,
-  }, {
-    kind: "circle",
-    radius: 1.5,
-    fillColor: "#d81b60",
-    fillOpacity: 1,
-    strokeColor: "#d81b60",
+    radius: 6,
+    fillColor: CORE_COLOR,
+    fillOpacity: 0.3,
+    strokeColor: CORE_COLOR,
     strokeOpacity: 0,
     strokeWidth: 0,
-  }] as const),
-  lineOperations: Object.freeze([{
+  }),
+  lineOperation: Object.freeze({
     kind: "line",
-    color: "#7a1238",
-    opacity: 1,
+    color: CORE_COLOR,
+    opacity: 0.3,
     width: 7,
     lineCap: "round",
     lineJoin: "round",
-  }, {
-    kind: "line",
-    color: "#d81b60",
-    opacity: 1,
-    width: 4,
-    lineCap: "round",
-    lineJoin: "round",
-  }] as const),
-  areaBand: Object.freeze({color: "#d81b60", opacity: 1, width: 12}),
+  }),
+  areaOutline: Object.freeze({color: CORE_COLOR, opacity: 0.5, width: 1.5}),
+  areaBand: Object.freeze({color: "#f06292", opacity: 0.3, width: 12}),
 }) satisfies CoreRenderStyle;

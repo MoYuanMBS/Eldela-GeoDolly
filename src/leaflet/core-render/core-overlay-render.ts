@@ -100,7 +100,17 @@ export async function renderCoreOverlay(options: CoreOverlayRendererOptions): Pr
     for (const sourceGeometry of parsed.geometries.areas) {
       const geometry = prepareLeafletGeoJsonGeometry(sourceGeometry, options.centerLongitude);
       if (geometry.featureType !== "area") throw new Error("Core area produced non-polygon Leaflet geometry");
-      const layer = polygon(geometry.latLngs, {
+      const outlineLayer = polygon(geometry.latLngs, {
+        ...basePathOptions(renderer),
+        stroke: true,
+        color: CORE_RENDER_STYLE.areaOutline.color,
+        opacity: CORE_RENDER_STYLE.areaOutline.opacity,
+        weight: CORE_RENDER_STYLE.areaOutline.width,
+        fill: false,
+        fillRule: "evenodd",
+      });
+      rootLayer.addLayer(outlineLayer);
+      const bandLayer = polygon(geometry.latLngs, {
         ...basePathOptions(renderer),
         stroke: true,
         color: CORE_RENDER_STYLE.areaBand.color,
@@ -109,14 +119,14 @@ export async function renderCoreOverlay(options: CoreOverlayRendererOptions): Pr
         fill: false,
         fillRule: "evenodd",
       });
-      renderer.registerInnerBand(layer);
-      rootLayer.addLayer(layer);
+      renderer.registerInnerBand(bandLayer);
+      rootLayer.addLayer(bandLayer);
     }
 
     for (const sourceGeometry of parsed.geometries.lines) {
       const geometry = prepareLeafletGeoJsonGeometry(sourceGeometry, options.centerLongitude);
       if (geometry.featureType !== "way") throw new Error("Core line produced non-line Leaflet geometry");
-      for (const operation of CORE_RENDER_STYLE.lineOperations) rootLayer.addLayer(createLineLayer(geometry.latLngs, operation, renderer));
+      rootLayer.addLayer(createLineLayer(geometry.latLngs, CORE_RENDER_STYLE.lineOperation, renderer));
     }
 
     if (parsed.geometries.points.length > 0) {
@@ -126,9 +136,9 @@ export async function renderCoreOverlay(options: CoreOverlayRendererOptions): Pr
         const geometry = prepareLeafletGeoJsonGeometry(sourceGeometry, options.centerLongitude);
         if (geometry.featureType !== "node") throw new Error("Core point produced non-point Leaflet geometry");
         const pointGroup: LayerGroup = layerGroup();
-        const circles = CORE_RENDER_STYLE.pointOperations.map((operation) => createPointLayer(geometry.center, operation, renderer));
-        for (const circle of circles) pointGroup.addLayer(circle);
-        nodeZoomController.registerFeature(pointGroup, circles);
+        const circle = createPointLayer(geometry.center, CORE_RENDER_STYLE.pointOperation, renderer);
+        pointGroup.addLayer(circle);
+        nodeZoomController.registerFeature(pointGroup, [circle]);
       }
     }
 
