@@ -3,6 +3,7 @@ import type {LatLngBoundsLiteral, LatLngTuple} from "leaflet";
 import {createInteractiveMapFlow, type InteractiveMapFlowResult} from "../leaflet/interactive-map-flow.js";
 import type {LeafletConfigType} from "../models/config-models.js";
 import type {IdentifiedOverlayGroupsWithDisplayIdType, RelationMemberFeaturesByRelationType} from "../models/map-data-models.js";
+import type {CoreVisualPayloadType} from "../models/map-payload-models.js";
 import type {RuntimeStylePlan} from "../models/style/runtime-style-models.js";
 
 /** Web 入口收到的仍是完整 Leaflet payload；组件只在边界处分配 Visual/Interaction 配置。 */
@@ -15,8 +16,10 @@ interface MapSurfaceViewProps {
   /** 两者任一缺席都表示显式 Basemap-only，不能创建不完整 Overlay。 */
   overlayOutput: IdentifiedOverlayGroupsWithDisplayIdType | null;
   relationMemberFeaturesByRelation: RelationMemberFeaturesByRelationType | null;
+  /** Core 模式的原始 GeoJSON；null 时不调用 Core renderer。 */
+  coreVisual: CoreVisualPayloadType;
   /** 浏览器初始化阶段已经准备好的统一运行时样式计划。 */
-  stylePlan: RuntimeStylePlan;
+  stylePlan: RuntimeStylePlan | null;
   leafletConfig: LeafletConfigType;
 }
 
@@ -24,7 +27,7 @@ interface MapSurfaceViewProps {
  * React 只负责提供真实 DOM 容器和 Interactive Flow 生命周期；初始视口仍由 MapSurface 完成。
  * 异步 Flow 的完成时间可能晚于组件卸载，因此 abort 与晚到结果的 dispose 必须共同守住清理边界。
  */
-export function MapSurfaceView({screenshotSize, center, leafletBounds, overlayOutput, relationMemberFeaturesByRelation, stylePlan, leafletConfig}: MapSurfaceViewProps) {
+export function MapSurfaceView({screenshotSize, center, leafletBounds, overlayOutput, relationMemberFeaturesByRelation, coreVisual, stylePlan, leafletConfig}: MapSurfaceViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -33,7 +36,7 @@ export function MapSurfaceView({screenshotSize, center, leafletBounds, overlayOu
     // signal 中断分批 Visual 渲染；flowResult 则负责清理由 Leaflet 持有的同步资源。
     const abortController = new AbortController();
     let flowResult: InteractiveMapFlowResult | null = null;
-    const overlay = overlayOutput !== null && relationMemberFeaturesByRelation !== null
+    const overlay = overlayOutput !== null && relationMemberFeaturesByRelation !== null && stylePlan !== null
       ? {
           overlayOutput,
           relationMemberFeaturesByRelation,
@@ -48,6 +51,14 @@ export function MapSurfaceView({screenshotSize, center, leafletBounds, overlayOu
           signal: abortController.signal,
         }
       : null;
+    const coreOverlay = coreVisual === null
+      ? null
+      : {
+          coreVisual,
+          nodeZoomConfig: leafletConfig.node_zoom,
+          centerLongitude: center[1],
+          signal: abortController.signal,
+        };
     void createInteractiveMapFlow({
       mapSurface: {
         container,
@@ -57,6 +68,7 @@ export function MapSurfaceView({screenshotSize, center, leafletBounds, overlayOu
         padding: __GEOMCP_MAP_PADDING__,
       },
       overlay,
+      coreOverlay,
       interactionConfig: leafletConfig.interaction,
     }).then((result) => {
       // Promise 可能在 React cleanup 之后才完成，此时结果从未交给组件，必须立即自行释放。
@@ -74,7 +86,7 @@ export function MapSurfaceView({screenshotSize, center, leafletBounds, overlayOu
       abortController.abort();
       flowResult?.dispose();
     };
-  }, [screenshotSize, center, leafletBounds, overlayOutput, relationMemberFeaturesByRelation, stylePlan, leafletConfig]);
+  }, [screenshotSize, center, leafletBounds, overlayOutput, relationMemberFeaturesByRelation, coreVisual, stylePlan, leafletConfig]);
 
   return <div ref={containerRef} className="map-surface" aria-label="Interactive map" />;
 }

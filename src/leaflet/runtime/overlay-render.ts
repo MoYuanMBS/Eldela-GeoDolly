@@ -9,7 +9,6 @@
  */
 
 import {
-  Canvas,
   CircleMarker,
   Path,
   canvas,
@@ -41,6 +40,7 @@ import type {CanvasBaseStyleRecipe, CanvasDrawOperation, CanvasSpatialFeatureTyp
 import type {ResolvedBaseStyle, RuntimeStylePlan, RuntimeStyleRule} from "../../models/style/runtime-style-models.js";
 import {LEAFLET_INTERNAL_RENDER_CONFIG} from "../../utils/leaflet-internal-render-config.js";
 import {resolveFeatureStyle} from "./feature-style-resolver.js";
+import {InnerBandCanvas} from "./inner-band-canvas.js";
 import {prepareLeafletGeometry} from "./leaflet-geometry.js";
 import {NodeZoomController} from "./node-zoom-controller.js";
 import {OverlayLabelLayer} from "./overlay-label-layer.js";
@@ -48,56 +48,13 @@ import {OverlayVisualMeasurementController} from "./overlay-visual-measurement.j
 import {buildRelationTranslucentContext} from "./relation-translucent-context.js";
 
 /**
- * Leaflet 先生成 Polygon 的完整 Canvas path；这里用 even-odd clip 将双倍描边裁掉外半侧，
- * 因而 options.weight 表示最终只位于 Polygon 内部的可见带宽，holes 也不会被覆盖。
- */
-class RelationMembershipCanvas extends Canvas {
-  private readonly innerBandLayers = new WeakSet<Path>();
-
-  registerInnerBand(layer: Path): void {
-    // WeakSet 只标记需要特殊裁切的 Area path，不延长 Feature layer 的生命周期。
-    this.innerBandLayers.add(layer);
-  }
-
-  _fillStroke(context: CanvasRenderingContext2D, layer: Path): void {
-    const fallback = LEAFLET_INTERNAL_RENDER_CONFIG.canvasFallback;
-    const {color = fallback.color, fill = false, fillColor, fillOpacity = fallback.fillOpacity, fillRule = "evenodd", lineCap = fallback.lineCap, lineJoin = fallback.lineJoin, opacity = 1, stroke = true, weight = 0} = layer.options;
-    if (this.innerBandLayers.has(layer)) {
-      if (weight <= 0 || opacity <= 0) return;
-      context.save();
-      context.clip("evenodd");
-      context.globalAlpha = opacity;
-      context.strokeStyle = color;
-      context.lineWidth = weight * 2;
-      context.lineCap = fallback.lineCap;
-      context.lineJoin = fallback.lineJoin;
-      context.stroke();
-      context.restore();
-      return;
-    }
-    // Node/Way membership 复用同一 renderer，但仍保持 Leaflet Canvas 的标准 fill/stroke 语义。
-    if (fill) {
-      context.globalAlpha = fillOpacity;
-      context.fillStyle = fillColor ?? color;
-      context.fill(fillRule === "inherit" ? "evenodd" : fillRule);
-    }
-    if (stroke && weight > 0) {
-      context.globalAlpha = opacity;
-      context.lineWidth = weight;
-      context.strokeStyle = color;
-      context.lineCap = lineCap === "inherit" ? fallback.lineCap : lineCap;
-      context.lineJoin = lineJoin === "inherit" ? fallback.lineJoin : lineJoin;
-      context.stroke();
-    }
-  }
-}
-
-/**
  * 只建立 Snapshot 与 Interactive 共用的视觉 panes。
  * Interaction pane 必须延迟到 attach 阶段创建，否则截图流程会无意引入命中层的 DOM 边界。
  */
 function ensureVisualPanes(map: LeafletMap): void {
   for (const [paneName, zIndex] of Object.entries(LEAFLET_INTERNAL_RENDER_CONFIG.panes.visual)) {
+    // Core renderer 独立创建自己的 pane；Non-core 不能因普通 Overlay 初始化而出现空 Core pane。
+    if (paneName === "coreOverlay") continue;
     const pane = map.getPane(paneName) ?? map.createPane(paneName);
     pane.style.zIndex = String(zIndex);
     // Snapshot 与 Interactive 共用的视觉层一律不接事件；interaction pane 由 attach 阶段另建。
@@ -120,7 +77,7 @@ function createRenderers(): OverlayRendererCollection {
   const area = createFeatureRenderers("areaBase", "areaSpecial");
   const way = createFeatureRenderers("wayBase", "waySpecial");
   const node = createFeatureRenderers("nodeBase", "nodeSpecial");
-  const relationMembership = new RelationMembershipCanvas({pane: "relationMembership"});
+  const relationMembership = new InnerBandCanvas({pane: "relationMembership"});
   return {node, way, area, relationMembership, activated: new Set<Renderer>()};
 }
 

@@ -50,6 +50,7 @@ export async function createInteractiveMapFlow(options: InteractiveMapFlowOption
     return Object.freeze({
       mapSurface: visualRuntime.mapSurface,
       visualResult: visualRuntime.visualResult,
+      coreResult: visualRuntime.coreResult,
       interactionResult,
       dispose,
     });

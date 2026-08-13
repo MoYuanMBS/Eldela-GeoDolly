@@ -72,6 +72,10 @@ export type LeafletSpatialGeometry =
   | Readonly<{featureType: "way"; latLngs: Array<LatLngTuple> | Array<Array<LatLngTuple>>}>
   | Readonly<{featureType: "area"; latLngs: Array<Array<LatLngTuple>> | Array<Array<Array<LatLngTuple>>>}>;
 
+/** MultiPoint 保持多个独立点，不把它们错误折叠成一条 Node geometry。 */
+export type LeafletMultiPointGeometry = Readonly<{featureType: "multiPoint"; centers: Array<LatLngTuple>}>;
+export type LeafletGeoJsonGeometry = LeafletSpatialGeometry | LeafletMultiPointGeometry;
+
 /** 单 Canvas Label layer 使用的轻量候选；geometry 已经展开到连续世界。 */
 export interface OverlayLabelCandidate {
   featureId: string;

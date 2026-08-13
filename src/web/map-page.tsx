@@ -1,37 +1,20 @@
 import {useEffect, useState, type CSSProperties} from "react";
 import {z} from "zod";
 import {initializeRuntimeStyle} from "../leaflet/styles/runtime-style-initializer.js";
-import {leafletConfigSchema} from "../models/config-models.js";
-import {identifiedOverlayGroupsWithDisplayIdSchema, relationMemberFeaturesByRelationSchema} from "../models/map-data-models.js";
+import {commonVisualMapPayloadSchema, type CommonVisualMapPayloadType} from "../models/map-payload-models.js";
 import type {RuntimeStylePlan} from "../models/style/runtime-style-models.js";
 import {renderStylePayloadSchema} from "../models/style/user-css-style-models.js";
 import {UI_BUILT_IN_CONFIG} from "./built-in-config.js";
 import {MapSurfaceView} from "./map-surface-view.js";
 
-const finiteNumberSchema = z.number().finite();
-const positiveIntegerSchema = z.number().int().positive();
-const mapPayloadSchema = z.object({
-  screenshot_size: z.tuple([positiveIntegerSchema, positiveIntegerSchema]),
-  center: z.tuple([finiteNumberSchema, finiteNumberSchema]),
-  leaflet_bbox: z.tuple([
-    z.tuple([finiteNumberSchema, finiteNumberSchema]),
-    z.tuple([finiteNumberSchema, finiteNumberSchema]),
-  ]),
-  overlay_output: identifiedOverlayGroupsWithDisplayIdSchema.nullable(),
-  relation_member_features_by_relation: relationMemberFeaturesByRelationSchema.nullable(),
-  leaflet: leafletConfigSchema,
-  render_style: renderStylePayloadSchema,
-}).superRefine((payload, context) => {
-  if ((payload.overlay_output === null) !== (payload.relation_member_features_by_relation === null)) {
-    context.addIssue({code: "custom", message: "overlay_output and relation_member_features_by_relation must both be null or both contain data"});
-  }
-});
-
-type MapPayload = z.infer<typeof mapPayloadSchema>;
+const publishedMapPayloadSchema = z.object({
+  map_payload: commonVisualMapPayloadSchema,
+  style_payload: renderStylePayloadSchema,
+}).strict();
 
 type MapLoadState =
   | {status: "loading"}
-  | {status: "ready"; payload: MapPayload; stylePlan: RuntimeStylePlan}
+  | {status: "ready"; payload: CommonVisualMapPayloadType; stylePlan: RuntimeStylePlan | null}
   | {status: "error"; message: string};
 
 interface MapPageProps {
@@ -61,9 +44,12 @@ export function MapPage({mapDataUrl}: MapPageProps) {
         if (!response.ok) {
           throw new Error(`Map data request failed with HTTP ${response.status}`);
         }
-        const payload = mapPayloadSchema.parse(await response.json());
-        // 样式注入、regex 编译和索引构建必须先完成，ready render 才会创建 Leaflet。
-        const stylePlan = initializeRuntimeStyle(payload.render_style, payload.leaflet);
+        const publishedPayload = publishedMapPayloadSchema.parse(await response.json());
+        const payload = publishedPayload.map_payload;
+        // Basemap-only 不初始化 RuntimeStylePlan；其他模式必须在创建 Leaflet 前完成样式准备。
+        const stylePlan = payload.render_mode === "basemap_only"
+          ? null
+          : initializeRuntimeStyle(publishedPayload.style_payload, payload.leaflet);
         setLoadState({status: "ready", payload, stylePlan});
       } catch (error) {
         if (abortController.signal.aborted) return;
@@ -95,6 +81,7 @@ export function MapPage({mapDataUrl}: MapPageProps) {
         leafletBounds={payload.leaflet_bbox}
         overlayOutput={payload.overlay_output}
         relationMemberFeaturesByRelation={payload.relation_member_features_by_relation}
+        coreVisual={payload.core_visual}
         stylePlan={stylePlan}
         leafletConfig={payload.leaflet}
       />

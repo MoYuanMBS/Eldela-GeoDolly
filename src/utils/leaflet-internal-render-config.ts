@@ -26,6 +26,8 @@ export const LEAFLET_INTERNAL_RENDER_CONFIG = Object.freeze({
       nodeSpecial: 460,
       // 固定 relation membership 覆盖三类基础几何，但不参与交互。
       relationMembership: 470,
+      // 独立 Core 视觉高于普通 Relation membership，但仍位于 Label 下方。
+      coreOverlay: 475,
       // 单 Canvas 标签层位于全部空间视觉层上方。
       labels: 480,
     }),
