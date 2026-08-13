@@ -4,11 +4,38 @@ import {Canvas, Path} from "leaflet";
 import {LEAFLET_INTERNAL_RENDER_CONFIG} from "../../utils/leaflet-internal-render-config.js";
 
 /**
+ * Leaflet 没有在公开类型中暴露 Canvas renderer 的重绘状态，但自定义 renderer 必须在
+ * `_redraw()` 边界识别已经销毁的容器。这里只描述生命周期保护所需的最小内部字段。
+ */
+interface CanvasRedrawInternals {
+  _map?: unknown;
+  _ctx?: CanvasRenderingContext2D | null;
+  _container?: HTMLCanvasElement | null;
+  _redrawRequest?: number | null;
+}
+
+const LEAFLET_CANVAS_REDRAW = (Canvas.prototype as unknown as {_redraw(this: Canvas): void})._redraw;
+
+/**
  * Leaflet 先生成包含 exterior 与 holes 的完整 Canvas path。注册为 inner band 的 Polygon 使用
  * even-odd clip 裁掉双倍描边的外半侧，使 options.weight 等于最终位于 Area 内部的可见宽度。
  */
 export class InnerBandCanvas extends Canvas {
   private readonly innerBandLayers = new WeakSet<Path>();
+
+  /**
+   * Leaflet 的同步 `_updatePaths()` 可能把 `_redrawRequest` 置空，却留下更早排队的 RAF。
+   * 如果地图随后在同一帧销毁，基类会删除 `_ctx`，旧 RAF 再调用 `_clear()` 就会访问
+   * 不存在的 Canvas context。过期回调在此安全结束；仍挂载的 renderer 完全沿用基类绘制。
+   */
+  _redraw(): void {
+    const internals = this as unknown as CanvasRedrawInternals;
+    if (internals._map == null || internals._ctx == null || internals._container == null) {
+      internals._redrawRequest = null;
+      return;
+    }
+    LEAFLET_CANVAS_REDRAW.call(this);
+  }
 
   registerInnerBand(layer: Path): void {
     // WeakSet 只标记需要特殊裁切的 Path，不延长 Feature layer 的生命周期。
