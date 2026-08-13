@@ -65,6 +65,7 @@ export function MapSurfaceView({screenshotSize, center, leafletBounds, overlayOu
         screenshotSize,
         center,
         requestedLeafletBounds: leafletBounds,
+        maxZoom: leafletConfig.viewport.max_zoom,
         padding: __GEOMCP_MAP_PADDING__,
       },
       overlay,

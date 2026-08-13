@@ -218,6 +218,9 @@ export const iframeAdaptiveConfigSchema = z.object({
 //#########################leaflet renderer###############################
 
 export const leafletConfigSchema = z.object({
+  viewport: z.object({
+    max_zoom: positiveIntegerSchema,
+  }).strict(),
   render_batch_size: positiveIntegerSchema,
   node_zoom: z.object({
     hidden_max_zoom: positiveIntegerSchema,

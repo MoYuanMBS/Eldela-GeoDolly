@@ -26,6 +26,8 @@ export interface MapSurfaceOptions {
   center: LatLngTuple;
   /** [[south, west], [north, east]]；跨日期变更线时 east 已展开。 */
   requestedLeafletBounds: LatLngBoundsLiteral;
+  /** 已由 leafletConfigSchema 校验的地图视觉 zoom 上限。 */
+  maxZoom: number;
   /** 已由 iframeAdaptiveConfigSchema 校验的对称安全距离。 */
   padding: IframePaddingConfigType;
 }
@@ -42,6 +44,7 @@ export function createMapSurface(options: MapSurfaceOptions): MapSurfaceHandle {
     screenshotSize: [width, height],
     center,
     requestedLeafletBounds,
+    maxZoom,
     padding,
   } = options;
 
@@ -58,9 +61,13 @@ export function createMapSurface(options: MapSurfaceOptions): MapSurfaceHandle {
   const requestedBounds = latLngBounds(requestedLeafletBounds);
   // getBoundsZoom 接收的是横纵总 padding，而不是单边 padding。
   const totalPadding = point(padding.left + padding.right, padding.top + padding.bottom);
+  // 先取得未受 Map maxZoom 影响的 bbox zoom，再显式应用部署期视觉上限。
+  const rawMapZoom = leafletMap.getBoundsZoom(requestedBounds, false, totalPadding);
+  const mapZoom = Math.min(rawMapZoom, maxZoom);
+  // Map 本身使用同一上限，确保后续交互缩放也不能越过 viewport.max_zoom。
+  leafletMap.setMaxZoom(maxZoom);
   // bbox 只负责决定 zoom；跨日期变更线已经由上游展开，最终视口中心仍使用后端给出的 center。
-  const requestedZoom = leafletMap.getBoundsZoom(requestedBounds, false, totalPadding);
-  leafletMap.setView(center, requestedZoom, {animate: false});
+  leafletMap.setView(center, mapZoom, {animate: false});
   // 捕获 setView 后 Leaflet 实际采用的状态；后续 map 拖动缩放不得反向修改这些初始快照。
   const initialCenterValue = leafletMap.getCenter();
   const initialCenter = latLng(initialCenterValue.lat, initialCenterValue.lng, initialCenterValue.alt);
