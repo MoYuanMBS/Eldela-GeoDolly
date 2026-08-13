@@ -10,6 +10,7 @@
 
 import type {IdentifiedOverlayFeatureType, IdentifiedOverlaySpatialFeatureType} from "../../models/map-data-models.js";
 import type {ResolvedFeatureStyle, RuntimeStylePlan, RuntimeStyleRule, RuntimeStyleRuleIndex} from "../../models/style/runtime-style-models.js";
+import {AppError} from "../../utils/app-error.js";
 
 type RuntimeAddonStyleRule = Extract<RuntimeStyleRule, {renderLayer: "border" | "translucent"}>;
 
@@ -88,7 +89,7 @@ function resolveAddonRules(feature: IdentifiedOverlaySpatialFeatureType, renderL
 /** 为一个 Overlay Feature 生成拍平的最终样式；未命中的空间 Base 使用类型默认 recipe。 */
 export function resolveFeatureStyle(feature: IdentifiedOverlayFeatureType, plan: RuntimeStylePlan): ResolvedFeatureStyle {
   // 保留旧的宽 Feature 入参边界，但 relation 不再拥有规则索引，也不能进入空间样式解析。
-  if (feature.feature_type === "relation") throw new Error("Relation does not support tag-based feature styles");
+  if (feature.feature_type === "relation") throw new AppError("invalid_overlay_style", "Relation does not support tag-based feature styles");
   const featureIndexes = plan.rulesByFeatureType[feature.feature_type];
   // Base 不做字段级混合：命中最高规则就完整使用其 CSS class 或 Canvas recipe。
   const baseRule = selectHighestPriorityRule(feature, "base", null, collectMatchingRules(featureIndexes.base, feature.properties));

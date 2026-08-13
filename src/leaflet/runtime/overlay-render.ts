@@ -38,6 +38,7 @@ import type {
 } from "../../models/leaflet-renderer-models.js";
 import type {CanvasBaseStyleRecipe, CanvasDrawOperation, CanvasSpatialFeatureType} from "../../models/style/base-canvas-style.js";
 import type {ResolvedBaseStyle, RuntimeStylePlan, RuntimeStyleRule} from "../../models/style/runtime-style-models.js";
+import {AppError} from "../../utils/app-error.js";
 import {LEAFLET_INTERNAL_RENDER_CONFIG} from "../../utils/leaflet-internal-render-config.js";
 import {resolveFeatureStyle} from "./feature-style-resolver.js";
 import {InnerBandCanvas} from "./inner-band-canvas.js";
@@ -91,8 +92,8 @@ function activateRenderer(rootLayer: LayerGroup, renderers: OverlayRendererColle
 function getCanvasRecipe(plan: RuntimeStylePlan, styleId: string, featureType: CanvasSpatialFeatureType): CanvasBaseStyleRecipe {
   // RuntimeStylePlan 理论上已校验默认 ID；这里继续守住 rule styleId 与 Feature 类型的运行时边界。
   const recipe = plan.canvasStyles[styleId];
-  if (recipe === undefined) throw new Error(`Canvas style "${styleId}" was not loaded`);
-  if (recipe.featureType !== featureType) throw new Error(`Canvas style "${styleId}" targets ${recipe.featureType}, not ${featureType}`);
+  if (recipe === undefined) throw new AppError("missing_render_style", `Canvas style "${styleId}" was not loaded`);
+  if (recipe.featureType !== featureType) throw new AppError("invalid_render_style", `Canvas style "${styleId}" targets ${recipe.featureType}, not ${featureType}`);
   return recipe;
 }
 
@@ -104,7 +105,7 @@ function basePathOptions(renderer: Renderer) {
 /** 把一条抽象 Canvas operation 转为对应的 Leaflet Path；不处理 rule 优先级。 */
 function createCanvasOperationLayer(geometry: LeafletSpatialGeometry, operation: CanvasDrawOperation, renderer: Renderer): Path {
   if (geometry.featureType === "node") {
-    if (operation.kind !== "circle") throw new Error(`Node Canvas recipe cannot contain ${operation.kind} operation`);
+    if (operation.kind !== "circle") throw new AppError("invalid_render_style", `Node Canvas recipe cannot contain ${operation.kind} operation`);
     return circleMarker(geometry.center, {
       ...basePathOptions(renderer),
       radius: operation.radius,
@@ -118,7 +119,7 @@ function createCanvasOperationLayer(geometry: LeafletSpatialGeometry, operation:
     });
   }
   if (geometry.featureType === "way") {
-    if (operation.kind !== "line") throw new Error(`Way Canvas recipe cannot contain ${operation.kind} operation`);
+    if (operation.kind !== "line") throw new AppError("invalid_render_style", `Way Canvas recipe cannot contain ${operation.kind} operation`);
     return polyline(geometry.latLngs, {
       ...basePathOptions(renderer),
       color: operation.color,
@@ -129,7 +130,7 @@ function createCanvasOperationLayer(geometry: LeafletSpatialGeometry, operation:
       ...(operation.dash === undefined ? {} : {dashArray: [...operation.dash]}),
     });
   }
-  if (operation.kind !== "area") throw new Error(`Area Canvas recipe cannot contain ${operation.kind} operation`);
+  if (operation.kind !== "area") throw new AppError("invalid_render_style", `Area Canvas recipe cannot contain ${operation.kind} operation`);
   return polygon(geometry.latLngs, {
     ...basePathOptions(renderer),
     stroke: operation.strokeWidth > 0,
@@ -144,14 +145,14 @@ function createCanvasOperationLayer(geometry: LeafletSpatialGeometry, operation:
 }
 
 function createCanvasRecipeLayers(geometry: LeafletSpatialGeometry, recipe: CanvasBaseStyleRecipe, renderer: Renderer): ReadonlyArray<Path> {
-  if (recipe.featureType !== geometry.featureType) throw new Error(`Canvas recipe targets ${recipe.featureType}, not ${geometry.featureType}`);
+  if (recipe.featureType !== geometry.featureType) throw new AppError("invalid_render_style", `Canvas recipe targets ${recipe.featureType}, not ${geometry.featureType}`);
   // 数组顺序即同一 Base 内的绘制顺序，例如道路 casing 必须先于内部主线。
   return recipe.operations.map((operation) => createCanvasOperationLayer(geometry, operation, renderer));
 }
 
 /** CSS rule 没有几何尺寸，选择默认 recipe 的最大 operation 作为 SVG Path 的稳定 geometry 种子。 */
 function getLargestOperation(recipe: CanvasBaseStyleRecipe): CanvasDrawOperation {
-  if (recipe.operations.length === 0) throw new Error(`Default ${recipe.featureType} Canvas recipe has no operations`);
+  if (recipe.operations.length === 0) throw new AppError("invalid_render_style", `Default ${recipe.featureType} Canvas recipe has no operations`);
   if (recipe.featureType === "node") {
     return recipe.operations.reduce((largest, operation) => operation.kind === "circle" && (largest.kind !== "circle" || operation.radius > largest.radius) ? operation : largest);
   }
@@ -159,7 +160,7 @@ function getLargestOperation(recipe: CanvasBaseStyleRecipe): CanvasDrawOperation
     return recipe.operations.reduce((largest, operation) => operation.kind === "line" && (largest.kind !== "line" || operation.width > largest.width) ? operation : largest);
   }
   const areaOperation = recipe.operations.find((operation) => operation.kind === "area");
-  if (areaOperation === undefined) throw new Error("Default area Canvas recipe has no area operation");
+  if (areaOperation === undefined) throw new AppError("invalid_render_style", "Default area Canvas recipe has no area operation");
   return areaOperation;
 }
 
@@ -209,7 +210,7 @@ function createCssLayer(geometry: LeafletSpatialGeometry, defaultRecipe: CanvasB
       fillRule: "evenodd",
     });
   }
-  throw new Error(`Default ${defaultRecipe.featureType} Canvas recipe cannot seed a CSS ${geometry.featureType} layer`);
+  throw new AppError("invalid_render_style", `Default ${defaultRecipe.featureType} Canvas recipe cannot seed a CSS ${geometry.featureType} layer`);
 }
 
 function addLayers(group: LayerGroup, layers: ReadonlyArray<Path>): void {
@@ -323,7 +324,10 @@ function renderRelationMembership(rootLayer: LayerGroup, group: LayerGroup, geom
 }
 
 function throwIfAborted(signal: AbortSignal | undefined): void {
-  if (signal?.aborted) throw signal.reason instanceof Error ? signal.reason : new Error("Overlay rendering was aborted");
+  if (!signal?.aborted) return;
+  if (signal.reason instanceof AppError) throw signal.reason;
+  const message = signal.reason instanceof Error ? signal.reason.message : signal.reason === undefined ? "Overlay rendering was aborted" : String(signal.reason);
+  throw new AppError("overlay_render_aborted", message, null, signal.reason instanceof Error ? {cause: signal.reason} : undefined);
 }
 
 /** setTimeout(0) 建立新的 task，让浏览器有机会处理绘制、输入和 React 生命周期。 */
@@ -384,7 +388,7 @@ function registerFeatureEntry(
     orderedLayers.area.push(entry);
     return;
   }
-  throw new Error(`Overlay ${feature.feature_type} feature_id "${feature.feature_id}" produced mismatched ${geometry.featureType} geometry`);
+  throw new AppError("invalid_overlay_geometry", `Overlay ${feature.feature_type} feature_id "${feature.feature_id}" produced mismatched ${geometry.featureType} geometry`);
 }
 
 /** properties 已是 Overlay 聚合结果；这里只做稳定去重，不从 AI Output 恢复 name。 */
@@ -445,7 +449,7 @@ export async function renderOverlay(options: OverlayRendererOptions): Promise<Ov
   const mutableOrderedLayers: MutableOrderedOverlayFeatureLayers = {node: [], way: [], area: []};
 
   const renderFeature = (feature: IdentifiedOverlaySpatialFeatureWithDisplayIdType): void => {
-    if (hasFeatureEntry(mutableLayerIndex, feature.feature_type, feature.feature_id)) throw new Error(`Duplicate ${feature.feature_type} feature_id "${feature.feature_id}" in Overlay renderer`);
+    if (hasFeatureEntry(mutableLayerIndex, feature.feature_type, feature.feature_id)) throw new AppError("duplicate_overlay_feature", `Duplicate ${feature.feature_type} feature_id "${feature.feature_id}" in Overlay renderer`);
     const geometry = prepareLeafletGeometry(feature, options.centerLongitude);
     const resolvedStyle = resolveFeatureStyle(feature, options.stylePlan);
     const featureRenderers = renderers[feature.feature_type];
@@ -528,6 +532,6 @@ export async function renderOverlay(options: OverlayRendererOptions): Promise<Ov
     // 包括 AbortSignal、样式契约错误和 Canvas 初始化错误；失败不保留半张地图。
     measurementController.dispose();
     rootLayer.remove();
-    throw error;
+    throw AppError.fromUnknown(error, "overlay_render", "Overlay rendering failed");
   }
 }

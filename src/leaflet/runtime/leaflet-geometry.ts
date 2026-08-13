@@ -10,6 +10,7 @@ import {getContinuousAreaGeometry, getContinuousLineGeometry, getContinuousPoint
 import type {CoreGeoJsonPrimitiveGeometryType} from "../../models/core-render.js";
 import type {IdentifiedOverlaySpatialFeatureType} from "../../models/map-data-models.js";
 import type {LeafletGeoJsonGeometry, LeafletSpatialGeometry} from "../../models/leaflet-renderer-models.js";
+import {AppError} from "../../utils/app-error.js";
 
 function toLatLng(position: readonly [number, number]): LatLngTuple {
   // GeoJSON 与 Leaflet 的坐标顺序相反，只在进入 Leaflet 的边界处交换一次。
@@ -56,15 +57,15 @@ export function prepareLeafletGeoJsonGeometry(geometry: CoreGeoJsonPrimitiveGeom
 export function prepareLeafletGeometry(feature: IdentifiedOverlaySpatialFeatureType, centerLongitude: number): LeafletSpatialGeometry {
   if (feature.feature_type === "node") {
     const geometry = prepareLeafletGeoJsonGeometry(feature.geometry, centerLongitude);
-    if (geometry.featureType !== "node") throw new Error("Node Overlay produced non-point Leaflet geometry");
+    if (geometry.featureType !== "node") throw new AppError("invalid_overlay_geometry", "Node Overlay produced non-point Leaflet geometry");
     return geometry;
   }
   if (feature.feature_type === "way") {
     const geometry = prepareLeafletGeoJsonGeometry(feature.geometry, centerLongitude);
-    if (geometry.featureType !== "way") throw new Error("Way Overlay produced non-line Leaflet geometry");
+    if (geometry.featureType !== "way") throw new AppError("invalid_overlay_geometry", "Way Overlay produced non-line Leaflet geometry");
     return geometry;
   }
   const geometry = prepareLeafletGeoJsonGeometry(feature.geometry, centerLongitude);
-  if (geometry.featureType !== "area") throw new Error("Area Overlay produced non-polygon Leaflet geometry");
+  if (geometry.featureType !== "area") throw new AppError("invalid_overlay_geometry", "Area Overlay produced non-polygon Leaflet geometry");
   return geometry;
 }

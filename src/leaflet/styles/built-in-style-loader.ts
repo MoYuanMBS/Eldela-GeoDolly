@@ -10,6 +10,7 @@
 import {USER_STYLE_PRIORITY_OFFSET, type BuiltInStyleRule, type CanvasTagMatcher} from "../../models/built-in-style-models.js";
 import type {CanvasBaseStyleRecipe, CanvasDrawOperation} from "../../models/style/base-canvas-style.js";
 import type {CompiledStyleBundle, CompiledStyleRule} from "../../models/style/runtime-style-models.js";
+import {AppError} from "../../utils/app-error.js";
 import {BUILT_IN_STYLE_RULES, DEFAULT_CANVAS_BASE_STYLE_IDS} from "./built-in/built-in-style-rules.js";
 import {BUILT_IN_CANVAS_STYLES, BUILT_IN_RELATION_MEMBERSHIP_STYLE} from "./built-in/built-in-style.js";
 
@@ -45,7 +46,7 @@ function freezeCanvasStyles(): Readonly<Record<BuiltInStyleId, CanvasBaseStyleRe
 function freezeRule(rule: BuiltInStyleRule<BuiltInStyleId>): CompiledStyleRule<BuiltInStyleId> {
   // priority 分区是合并后不再区分来源的前提，内置配置错误直接终止浏览器初始化。
   if (!Number.isInteger(rule.priority) || rule.priority < 0 || rule.priority >= USER_STYLE_PRIORITY_OFFSET) {
-    throw new Error(`Built-in style rule "${rule.id}" priority must be an integer from 0 to ${USER_STYLE_PRIORITY_OFFSET - 1}`);
+    throw new AppError("invalid_builtin_style", `Built-in style rule "${rule.id}" priority must be an integer from 0 to ${USER_STYLE_PRIORITY_OFFSET - 1}`);
   }
   const frozenRule = {
     ...rule,
@@ -63,7 +64,7 @@ function freezeRule(rule: BuiltInStyleRule<BuiltInStyleId>): CompiledStyleRule<B
 function freezeRules(): ReadonlyArray<CompiledStyleRule<BuiltInStyleId>> {
   const seenRuleIds = new Set<string>();
   return Object.freeze(BUILT_IN_STYLE_RULES.map((rule) => {
-    if (seenRuleIds.has(rule.id)) throw new Error(`Duplicate built-in style rule ID "${rule.id}"`);
+    if (seenRuleIds.has(rule.id)) throw new AppError("invalid_builtin_style", `Duplicate built-in style rule ID "${rule.id}"`);
     seenRuleIds.add(rule.id);
     return freezeRule(rule);
   }));

@@ -22,6 +22,7 @@ import {
   AitoolInputReqSchema,
 } from "./models/bridge-models.js";
 import {runToolFlow} from "./tools/tool-flow.js";
+import {AppError} from "./utils/app-error.js";
 import { getToolPromptsConfigWithHints } from "./utils/prompt-hints.js";
 import {
   callBridge,
@@ -50,15 +51,15 @@ function createTextToolResult(text: string, isError = false) {
  * 这样 tool handler 不会把异常直接抛到 transport 层。
  */
 function createErrorToolResult(error: unknown) {
-  const message = error instanceof Error ? error.message : String(error);
-  return createTextToolResult(message, true);
+  const appError = AppError.fromUnknown(error, "internal_error", "Unexpected TypeScript processing error");
+  return createTextToolResult(JSON.stringify(appError.toJSON(), null, 2), true);
 }
 
 function getCachedSearchResponse(sessionId: string): LocSearchReplyRawType {
   const cachedResponse = searchResultCache.get(sessionId);
 
   if (!cachedResponse) {
-    throw new Error(`search session not found for session_id: ${sessionId}`);
+    throw new AppError("missing_search_session", `search session not found for session_id: ${sessionId}`);
   }
 
   return cachedResponse;

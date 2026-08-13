@@ -15,6 +15,7 @@ import type {
   OverlayVisualMeasurementSource,
 } from "../../models/leaflet-renderer-models.js";
 import type {CanvasSpatialFeatureType} from "../../models/style/base-canvas-style.js";
+import {AppError} from "../../utils/app-error.js";
 
 interface OverlayVisualMeasurementRegistration {
   featureId: string;
@@ -159,9 +160,9 @@ export class OverlayVisualMeasurementController extends Layer implements Overlay
     visualLayers: ReadonlyArray<Path>,
     cssLayers: ReadonlyArray<Path>,
   ): void {
-    if (this.disposed) throw new Error("Overlay visual measurement controller has been disposed");
+    if (this.disposed) throw new AppError("disposed_overlay_measurement", "Overlay visual measurement controller has been disposed");
     const key = getFeatureKey(featureType, featureId);
-    if (this.registrationKeys.has(key)) throw new Error(`Duplicate ${featureType} feature_id "${featureId}" in Overlay visual measurement`);
+    if (this.registrationKeys.has(key)) throw new AppError("duplicate_overlay_feature", `Duplicate ${featureType} feature_id "${featureId}" in Overlay visual measurement`);
     this.registrationKeys.add(key);
     this.registrations.push({featureId, featureType, visualLayers, cssLayers: new Set(cssLayers)});
   }
@@ -169,15 +170,15 @@ export class OverlayVisualMeasurementController extends Layer implements Overlay
   /** 返回最近一次完整批次的测量；调用方必须等待 synchronizeAfterMount() 完成。 */
   getMeasurement(featureType: CanvasSpatialFeatureType, featureId: string): OverlayVisualMeasurement {
     const measurement = this.measurements.get(getFeatureKey(featureType, featureId));
-    if (measurement === undefined) throw new Error(`Visual measurement for ${featureType} feature_id "${featureId}" is not ready`);
+    if (measurement === undefined) throw new AppError("missing_overlay_measurement", `Visual measurement for ${featureType} feature_id "${featureId}" is not ready`);
     return measurement;
   }
 
   /** 订阅单个 Feature 的测量变化；相同结果不会重复通知，取消订阅函数保持幂等。 */
   subscribe(featureType: CanvasSpatialFeatureType, featureId: string, listener: OverlayVisualMeasurementListener): () => void {
-    if (this.disposed) throw new Error("Overlay visual measurement controller has been disposed");
+    if (this.disposed) throw new AppError("disposed_overlay_measurement", "Overlay visual measurement controller has been disposed");
     const key = getFeatureKey(featureType, featureId);
-    if (!this.registrationKeys.has(key)) throw new Error(`Cannot subscribe to unregistered ${featureType} feature_id "${featureId}"`);
+    if (!this.registrationKeys.has(key)) throw new AppError("missing_overlay_feature", `Cannot subscribe to unregistered ${featureType} feature_id "${featureId}"`);
     const featureListeners = this.listeners.get(key);
     if (featureListeners === undefined) this.listeners.set(key, new Set([listener]));
     else featureListeners.add(listener);
@@ -193,7 +194,7 @@ export class OverlayVisualMeasurementController extends Layer implements Overlay
 
   /** 订阅整批发布完成事件，供需要跨 Feature 保序的消费者只执行一次收尾操作。 */
   subscribeBatchComplete(listener: () => void): () => void {
-    if (this.disposed) throw new Error("Overlay visual measurement controller has been disposed");
+    if (this.disposed) throw new AppError("disposed_overlay_measurement", "Overlay visual measurement controller has been disposed");
     this.batchCompleteListeners.add(listener);
     let subscribed = true;
     return () => {
@@ -219,12 +220,12 @@ export class OverlayVisualMeasurementController extends Layer implements Overlay
 
   /** Visual layers 全部挂载后等待一帧，并在返回前建立每个 Feature 的第一份可靠测量。 */
   async synchronizeAfterMount(): Promise<void> {
-    if (this.disposed) throw new Error("Overlay visual measurement controller has been disposed");
+    if (this.disposed) throw new AppError("disposed_overlay_measurement", "Overlay visual measurement controller has been disposed");
     await new Promise<void>((resolve) => {
       globalThis.requestAnimationFrame(() => resolve());
     });
-    if (this.disposed) throw new Error("Overlay visual measurement controller was disposed before initial synchronization");
-    if (this._map === undefined) throw new Error("Overlay visual measurement controller must be mounted before synchronization");
+    if (this.disposed) throw new AppError("disposed_overlay_measurement", "Overlay visual measurement controller was disposed before initial synchronization");
+    if (this._map === undefined) throw new AppError("unmounted_overlay_measurement", "Overlay visual measurement controller must be mounted before synchronization");
     this.synchronize();
   }
 
@@ -285,7 +286,7 @@ export class OverlayVisualMeasurementController extends Layer implements Overlay
       presentation = this.cachedCssPresentations.get(layer) ?? getOptionPresentation(registration.featureType, layer);
     } else {
       const view = element.ownerDocument.defaultView;
-      if (view === null) throw new Error("CSS Overlay layer is not attached to a browser window");
+      if (view === null) throw new AppError("detached_overlay_css", "CSS Overlay layer is not attached to a browser window");
       presentation = measureComputedPresentation(registration.featureType, view.getComputedStyle(element));
       this.cachedCssPresentations.set(layer, presentation);
       this.warnIfCssLimitExceeded(registration, layer, presentation);

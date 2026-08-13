@@ -9,6 +9,7 @@
 import {USER_STYLE_PRIORITY_OFFSET} from "../../models/built-in-style-models.js";
 import type {CompiledStyleBundle, CompiledStyleRule} from "../../models/style/runtime-style-models.js";
 import type {UserCssStyleRuleConfig} from "../../models/style/user-css-style-models.js";
+import {AppError} from "../../utils/app-error.js";
 
 /** 把可序列化的 regex source 恢复为运行时 RegExp；exact value 保持字符串。 */
 function compileValueMatcher(rule: UserCssStyleRuleConfig): string | RegExp {
@@ -17,8 +18,7 @@ function compileValueMatcher(rule: UserCssStyleRuleConfig): string | RegExp {
     // 用户侧只允许 value regex；统一附加 Unicode flag 后交给 resolver 反复复用。
     return Object.freeze(new RegExp(rule.value.regex, "u"));
   } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
-    throw new Error(`Unable to compile user style rule "${rule.id}" regex: ${reason}`);
+    throw AppError.fromUnknown(error, "invalid_user_style", `Unable to compile user style rule "${rule.id}" regex`);
   }
 }
 

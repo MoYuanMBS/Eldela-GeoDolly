@@ -4,6 +4,7 @@ import {initializeRuntimeStyle} from "../leaflet/styles/runtime-style-initialize
 import {commonVisualMapPayloadSchema, type CommonVisualMapPayloadType} from "../models/map-payload-models.js";
 import type {RuntimeStylePlan} from "../models/style/runtime-style-models.js";
 import {renderStylePayloadSchema} from "../models/style/user-css-style-models.js";
+import {AppError} from "../utils/app-error.js";
 import {UI_BUILT_IN_CONFIG} from "./built-in-config.js";
 import {MapSurfaceView} from "./map-surface-view.js";
 
@@ -42,7 +43,7 @@ export function MapPage({mapDataUrl}: MapPageProps) {
       try {
         const response = await fetch(dataUrl, {cache: "no-store", signal: abortController.signal});
         if (!response.ok) {
-          throw new Error(`Map data request failed with HTTP ${response.status}`);
+          throw new AppError("map_data_request", `Map data request failed with HTTP ${response.status}`);
         }
         const publishedPayload = publishedMapPayloadSchema.parse(await response.json());
         const payload = publishedPayload.map_payload;

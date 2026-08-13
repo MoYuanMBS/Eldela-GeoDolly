@@ -8,6 +8,7 @@
 import {DomUtil, Layer, point, type LatLngTuple, type Map as LeafletMap, type Point} from "leaflet";
 import type {LeafletSpatialGeometry, OverlayLabelCandidate, OverlayVisualMeasurement} from "../../models/leaflet-renderer-models.js";
 import type {CanvasSpatialFeatureType} from "../../models/style/base-canvas-style.js";
+import {AppError} from "../../utils/app-error.js";
 import {LEAFLET_INTERNAL_RENDER_CONFIG} from "../../utils/leaflet-internal-render-config.js";
 
 const LABEL_CONFIG = LEAFLET_INTERNAL_RENDER_CONFIG.label;
@@ -305,7 +306,7 @@ export class OverlayLabelLayer extends Layer {
   async prepareFont(targetDocument: Document = document): Promise<void> {
     const fontLoads = [LABEL_FONT, LABEL_ID_FONT].map((font) => targetDocument.fonts.load(font, LABEL_CONFIG.fontLoadSample));
     const loadedFaces = await Promise.all(fontLoads);
-    if (loadedFaces.some((faces) => faces.length === 0)) throw new Error(`Leaflet label font "${LABEL_CONFIG.fontFaceFamily}" could not be loaded`);
+    if (loadedFaces.some((faces) => faces.length === 0)) throw new AppError("missing_label_font", `Leaflet label font "${LABEL_CONFIG.fontFaceFamily}" could not be loaded`);
     this.fontReady = true;
   }
 
@@ -330,9 +331,9 @@ export class OverlayLabelLayer extends Layer {
   }
 
   override onAdd(map: LeafletMap): this {
-    if (!this.fontReady) throw new Error("Overlay label font must be prepared before the label layer is mounted");
+    if (!this.fontReady) throw new AppError("unprepared_label_font", "Overlay label font must be prepared before the label layer is mounted");
     const pane = map.getPane("labels");
-    if (pane === undefined) throw new Error('Leaflet pane "labels" was not created');
+    if (pane === undefined) throw new AppError("missing_leaflet_pane", 'Leaflet pane "labels" was not created', {pane: "labels"});
     const canvas = DomUtil.create("canvas", "geomcp-overlay-label-canvas") as HTMLCanvasElement;
     canvas.style.position = "absolute";
     canvas.style.pointerEvents = "none";
@@ -371,7 +372,7 @@ export class OverlayLabelLayer extends Layer {
     const size = map.getSize();
     // 使用浏览器实际 DPR；snapshot worker 负责在浏览器边界约束合法值，Renderer 不再静默钳制。
     const pixelRatio = globalThis.devicePixelRatio;
-    if (!Number.isFinite(pixelRatio) || pixelRatio <= 0) throw new Error(`Invalid browser devicePixelRatio: ${String(pixelRatio)}`);
+    if (!Number.isFinite(pixelRatio) || pixelRatio <= 0) throw new AppError("invalid_device_pixel_ratio", `Invalid browser devicePixelRatio: ${String(pixelRatio)}`);
     canvas.width = Math.max(1, Math.round(size.x * pixelRatio));
     canvas.height = Math.max(1, Math.round(size.y * pixelRatio));
     canvas.style.width = `${size.x}px`;
@@ -379,7 +380,7 @@ export class OverlayLabelLayer extends Layer {
     DomUtil.setPosition(canvas, map.containerPointToLayerPoint(point(0, 0)));
 
     const context = canvas.getContext("2d");
-    if (context === null) throw new Error("Overlay label canvas does not provide a 2D context");
+    if (context === null) throw new AppError("missing_label_canvas_context", "Overlay label canvas does not provide a 2D context");
     context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
     const collisions = new LabelCollisionIndex();
 

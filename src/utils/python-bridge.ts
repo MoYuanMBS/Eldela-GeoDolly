@@ -30,6 +30,7 @@ import {
   BridgeActionsRegistry,
   pyToolReqSchema
 } from "../models/bridge-models.js";
+import {AppError} from "./app-error.js";
 import { config } from "./config-loader.js";
 
 const PYTHON_ENTRYPOINT = "python/main.py";
@@ -71,15 +72,11 @@ export function resolvePythonExecutable(): string {
   return process.platform === "win32" ? "python" : "python3";
 }
 
-export class PythonBridgeError extends Error {
-  readonly code: string;
-  readonly details: JsonValueType | undefined;
-
+/** 保留旧的专用类名供调用方识别，其实例同时遵守统一 AppError 契约。 */
+export class PythonBridgeError extends AppError {
   constructor(error: AppErrorType) {
-    super(error.message);
+    super(error.code, error.message, error.details ?? null);
     this.name = "PythonBridgeError";
-    this.code = error.code;
-    this.details = error.details;
   }
 }
 
@@ -122,11 +119,11 @@ export function unwrapBridgeResponseData<T>(response: BridgeResponseType<T>): T 
       throw new PythonBridgeError(response.error);
     }
 
-    throw new Error("python bridge returned ok=false without an error payload");
+    throw new AppError("invalid_bridge_response", "python bridge returned ok=false without an error payload");
   }
 
   if (response.data === null) {
-    throw new Error("python bridge returned ok=true with null data");
+    throw new AppError("invalid_bridge_response", "python bridge returned ok=true with null data");
   }
 
   return response.data;
@@ -202,7 +199,7 @@ function callPython<
 
     // 这里处理的是“进程级错误”
     child.on("error", (error) => {
-      reject(error);
+      reject(new AppError("python_process", error.message, null, {cause: error}));
     });
 
     child.on("close", (code) => {
@@ -215,8 +212,10 @@ function callPython<
       // 这时把 exit code 和 stderr 一起带出去，方便定位问题。
       if (!stdout.trim()) {
         reject(
-          new Error(
+          new AppError(
+            "empty_bridge_response",
             `python process returned no stdout (exit code ${code ?? "unknown"}): ${stderr.trim()}`,
+            {exit_code: code, stderr: stderr.trim()},
           ),
         );
         return;
@@ -234,12 +233,13 @@ function callPython<
         // - ok=false -> 把 Python 返回的结构化错误包装成 PythonBridgeError 再抛出
         resolve(unwrapBridgeResponseData(responseEnvelope));
       } catch (error) {
-        // 兜底“响应处理失败”的情况
-        reject(
-          new Error(
-            `failed to handle python bridge response: ${String(error)}\nstderr: ${stderr.trim()}\nstdout: ${stdout.trim()}`,
-          ),
-        );
+        // Python 明确返回的 AppError 保留原 code；只把 JSON/Zod 等边界异常收敛为响应错误。
+        if (error instanceof AppError) reject(error);
+        else reject(new AppError("invalid_bridge_response", `failed to handle python bridge response: ${String(error)}\nstderr: ${stderr.trim()}\nstdout: ${stdout.trim()}`, {
+          reason: error instanceof Error ? error.message : String(error),
+          stderr: stderr.trim(),
+          stdout: stdout.trim(),
+        }, error instanceof Error ? {cause: error} : undefined));
       }
     });
 
@@ -255,7 +255,7 @@ export function callBridge(
 ): Promise<JsonValueType> {
   // `error` 只保留给协议层类型对齐，不允许作为主动调用的 bridge action。
   if (action === "error") {
-    throw new Error("cannot call bridge with action 'error'");
+    throw new AppError("invalid_bridge_action", "cannot call bridge with action 'error'");
   }
 
   const registryEntry = BridgeActionsRegistry[action];
@@ -271,7 +271,7 @@ export function exportToolsQueryForPython(
   const selected = cachedSelection.candidates.find((candidate) => candidate.index === selectedIndex);
 
   if (!selected) {
-    throw new Error(`selected candidate index ${selectedIndex} not found in cached search response`);
+    throw new AppError("missing_candidate", `selected candidate index ${selectedIndex} not found in cached search response`);
   }
 
   return pyToolReqSchema.parse({

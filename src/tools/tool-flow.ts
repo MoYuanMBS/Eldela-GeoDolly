@@ -36,8 +36,9 @@ import type {
   ProcessedToolReplyType,
   RunToolFlowResultType,
 } from "../models/tool-flow-models.js";
+import {AppError} from "../utils/app-error.js";
 import {config} from "../utils/config-loader.js";
-import {callBridge, exportToolsQueryForPython} from "../utils/python-bridge.js";
+import {PythonBridgeError, callBridge, exportToolsQueryForPython} from "../utils/python-bridge.js";
 import {getUserStyle} from "../utils/user-style-rule.js";
 import {buildBasemapOnlyMapPayload} from "./basemap-only-flow.js";
 import {buildCoreMapPayload} from "./core-flow.js";
@@ -54,8 +55,15 @@ export async function callPythonTool(tool: ToolType, pythonQuery: PyToolReqType)
     // callBridge 已按 action registry 的 pyToolReplySchema 完成运行时校验，这里只恢复静态类型。
     return await callBridge(tool, pythonQuery) as PyToolReplyType;
   } catch (error) {
+    // Python 明确返回的结构化业务错误保持原 code；TS bridge/进程故障增加当前 Tool 上下文。
+    if (error instanceof PythonBridgeError) throw error;
     const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`Python ${tool} call failed: ${message}`, {cause: error});
+    throw new AppError(
+      "python_tool",
+      `Python ${tool} call failed: ${message}`,
+      error instanceof AppError ? error.toJSON() : message,
+      error instanceof Error ? {cause: error} : undefined,
+    );
   }
 }
 

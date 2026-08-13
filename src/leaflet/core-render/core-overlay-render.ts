@@ -12,6 +12,7 @@ import {
 import type {CoreOverlayRendererOptions, CoreOverlayRenderResult} from "../../models/core-render.js";
 import type {LeafletSpatialGeometry} from "../../models/leaflet-renderer-models.js";
 import type {CanvasCircleOperation, CanvasLineOperation} from "../../models/style/base-canvas-style.js";
+import {AppError} from "../../utils/app-error.js";
 import {LEAFLET_INTERNAL_RENDER_CONFIG} from "../../utils/leaflet-internal-render-config.js";
 import {CORE_RENDER_STYLE} from "../styles/core-render-style.js";
 import {InnerBandCanvas} from "../runtime/inner-band-canvas.js";
@@ -19,8 +20,14 @@ import {prepareLeafletGeoJsonGeometry} from "../runtime/leaflet-geometry.js";
 import {NodeZoomController} from "../runtime/node-zoom-controller.js";
 import {parseCoreRenderableGeometries} from "./core-overlay-geometry.js";
 
+function createCoreAbortError(reason: unknown): AppError {
+  if (reason instanceof AppError) return reason;
+  const message = reason instanceof Error ? reason.message : reason === undefined ? "Core Overlay rendering was aborted" : String(reason);
+  return new AppError("core_render_aborted", message, null, reason instanceof Error ? {cause: reason} : undefined);
+}
+
 function throwIfAborted(signal: AbortSignal | undefined): void {
-  if (signal?.aborted) throw signal.reason instanceof Error ? signal.reason : new Error("Core Overlay rendering was aborted");
+  if (signal?.aborted) throw createCoreAbortError(signal.reason);
 }
 
 function ensureCorePane(options: CoreOverlayRendererOptions): void {
@@ -68,7 +75,7 @@ function waitForFirstPaint(signal: AbortSignal | undefined): Promise<void> {
       signal?.removeEventListener("abort", onAbort);
       callback();
     };
-    const onAbort = (): void => finish(() => reject(signal?.reason instanceof Error ? signal.reason : new Error("Core Overlay rendering was aborted")));
+    const onAbort = (): void => finish(() => reject(createCoreAbortError(signal?.reason)));
     signal?.addEventListener("abort", onAbort, {once: true});
     requestAnimationFrame(() => finish(resolve));
   });
@@ -99,7 +106,7 @@ export async function renderCoreOverlay(options: CoreOverlayRendererOptions): Pr
     // 同一 Canvas 内保持 Area → Line → Point 的稳定创建顺序；pane 负责与普通 Overlay 的总层级。
     for (const sourceGeometry of parsed.geometries.areas) {
       const geometry = prepareLeafletGeoJsonGeometry(sourceGeometry, options.centerLongitude);
-      if (geometry.featureType !== "area") throw new Error("Core area produced non-polygon Leaflet geometry");
+      if (geometry.featureType !== "area") throw new AppError("invalid_core_geometry", "Core area produced non-polygon Leaflet geometry");
       const outlineLayer = polygon(geometry.latLngs, {
         ...basePathOptions(renderer),
         stroke: true,
@@ -125,7 +132,7 @@ export async function renderCoreOverlay(options: CoreOverlayRendererOptions): Pr
 
     for (const sourceGeometry of parsed.geometries.lines) {
       const geometry = prepareLeafletGeoJsonGeometry(sourceGeometry, options.centerLongitude);
-      if (geometry.featureType !== "way") throw new Error("Core line produced non-line Leaflet geometry");
+      if (geometry.featureType !== "way") throw new AppError("invalid_core_geometry", "Core line produced non-line Leaflet geometry");
       rootLayer.addLayer(createLineLayer(geometry.latLngs, CORE_RENDER_STYLE.lineOperation, renderer));
     }
 
@@ -135,7 +142,7 @@ export async function renderCoreOverlay(options: CoreOverlayRendererOptions): Pr
       for (const sourceGeometry of parsed.geometries.points) {
         const geometry = prepareLeafletGeoJsonGeometry(sourceGeometry, options.centerLongitude);
         if (geometry.featureType !== "node" && geometry.featureType !== "multiPoint") {
-          throw new Error("Core point geometry produced a non-point Leaflet geometry");
+          throw new AppError("invalid_core_geometry", "Core point geometry produced a non-point Leaflet geometry");
         }
         // MultiPoint 是一组独立的 CircleMarker，不连线；同一组只注册一次 zoom 生命周期。
         const centers = geometry.featureType === "node" ? [geometry.center] : geometry.centers;
@@ -158,6 +165,6 @@ export async function renderCoreOverlay(options: CoreOverlayRendererOptions): Pr
   } catch (error) {
     disposed = true;
     rootLayer.remove();
-    throw error;
+    throw AppError.fromUnknown(error, "core_render", "Core Overlay rendering failed");
   }
 }

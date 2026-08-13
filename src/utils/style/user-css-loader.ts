@@ -4,6 +4,7 @@ import {existsSync, readFileSync, realpathSync, statSync} from "node:fs";
 import path from "node:path";
 import {transform, type Declaration, type ImportDependency, type Selector} from "lightningcss";
 import type {UserCssSource} from "../../models/style/user-css-style-models.js";
+import {AppError} from "../app-error.js";
 
 // 这些是加载边界而非用户配置，避免递归导入拖垮地图服务或占用无界内存。
 const MAX_IMPORT_DEPTH = 16;
@@ -53,13 +54,13 @@ function isPathInside(parentPath: string, candidatePath: string): boolean {
 function resolveLocalImport(specifier: string, sourceFilePath: string, layersDirPath: string): string {
   // 先拒绝所有 URL scheme 和绝对路径，再用 realpath 阻止 `..` 与符号链接逃逸。
   if (path.isAbsolute(specifier) || specifier.startsWith("//") || /^[A-Za-z][A-Za-z0-9+.-]*:/u.test(specifier)) {
-    throw new Error(`User CSS import must be a local relative path: ${specifier}`);
+    throw new AppError("invalid_user_css", `User CSS import must be a local relative path: ${specifier}`);
   }
   const resolvedPath = realpathSync(path.resolve(path.dirname(sourceFilePath), specifier));
   if (path.extname(resolvedPath).toLowerCase() !== ".css" || !isPathInside(layersDirPath, resolvedPath)) {
-    throw new Error(`User CSS import must resolve to a .css file inside config/style/layers: ${specifier}`);
+    throw new AppError("invalid_user_css", `User CSS import must resolve to a .css file inside config/style/layers: ${specifier}`);
   }
-  if (!statSync(resolvedPath).isFile()) throw new Error(`User CSS import is not a file: ${specifier}`);
+  if (!statSync(resolvedPath).isFile()) throw new AppError("invalid_user_css", `User CSS import is not a file: ${specifier}`);
   return resolvedPath;
 }
 
@@ -84,9 +85,9 @@ function getNestedSelectors(component: Selector[number]): ReadonlyArray<Selector
 /** 禁止 ID 与 built-in 命名空间，包括嵌套 pseudo selector 中的引用。 */
 function validateSelectorComponents(selector: Selector): void {
   for (const component of selector) {
-    if (component.type === "id") throw new Error(`#${component.name} is not allowed in user CSS selectors`);
+    if (component.type === "id") throw new AppError("invalid_user_css", `#${component.name} is not allowed in user CSS selectors`);
     if (component.type === "class" && component.name.startsWith(BUILT_IN_CLASS_PREFIX)) {
-      throw new Error(`.${component.name} cannot be referenced by user CSS`);
+      throw new AppError("invalid_user_css", `.${component.name} cannot be referenced by user CSS`);
     }
     for (const nestedSelector of getNestedSelectors(component)) validateSelectorComponents(nestedSelector);
   }
@@ -112,10 +113,10 @@ function validateAndCollectOverlayClassNames(selector: Selector, output: Set<str
     else if (component.type === "class") compoundClassNames.push(component.name);
   }
   flushCompound(null);
-  if (lastScopeNextCombinator === undefined) throw new Error(`User CSS selector must include .${OVERLAY_SCOPE_CLASS}`);
+  if (lastScopeNextCombinator === undefined) throw new AppError("invalid_user_css", `User CSS selector must include .${OVERLAY_SCOPE_CLASS}`);
   // scope 后只允许进入其子树；紧邻/普通兄弟组合符会把最终目标移到 Overlay 外部。
   if (lastScopeNextCombinator !== null && lastScopeNextCombinator !== "child" && lastScopeNextCombinator !== "descendant") {
-    throw new Error(`User CSS selector cannot escape .${OVERLAY_SCOPE_CLASS} through ${lastScopeNextCombinator}`);
+    throw new AppError("invalid_user_css", `User CSS selector cannot escape .${OVERLAY_SCOPE_CLASS} through ${lastScopeNextCombinator}`);
   }
 }
 
@@ -132,7 +133,7 @@ function getDeclarationPropertyName(declaration: Declaration): string {
 function validateOverlayDeclaration(declaration: Declaration): void {
   const propertyName = getDeclarationPropertyName(declaration);
   if (!ALLOWED_OVERLAY_DECLARATIONS.has(propertyName)) {
-    throw new Error(`${propertyName} is not allowed in user Overlay CSS declarations`);
+    throw new AppError("invalid_user_css", `${propertyName} is not allowed in user Overlay CSS declarations`);
   }
 }
 
@@ -146,7 +147,7 @@ function minifyExpandedCss(source: UserCssSource, entryFilePath: string): UserCs
     errorRecovery: false,
   });
   if (transformResult.warnings.length > 0) {
-    throw new Error(`Invalid expanded user CSS in ${entryFilePath}: ${transformResult.warnings[0].message}`);
+    throw new AppError("invalid_user_css", `Invalid expanded user CSS in ${entryFilePath}: ${transformResult.warnings[0].message}`);
   }
   return Object.freeze({css: Buffer.from(transformResult.code).toString("utf8"), classNames: source.classNames});
 }
@@ -157,14 +158,14 @@ function loadCssFile(filePath: string, state: LoadState, depth: number): UserCss
   if (cachedResult !== undefined) return cachedResult;
 
   // 在读取内容前完成递归、数量和单文件限制，失败时不留下半成品缓存。
-  if (depth > MAX_IMPORT_DEPTH) throw new Error(`User CSS import depth exceeds ${MAX_IMPORT_DEPTH}`);
-  if (state.activeFiles.has(resolvedFilePath)) throw new Error(`Circular user CSS import detected at ${resolvedFilePath}`);
-  if (state.loadedFiles.size + state.activeFiles.size >= MAX_FILE_COUNT) throw new Error(`User CSS file count exceeds ${MAX_FILE_COUNT}`);
+  if (depth > MAX_IMPORT_DEPTH) throw new AppError("invalid_user_css", `User CSS import depth exceeds ${MAX_IMPORT_DEPTH}`);
+  if (state.activeFiles.has(resolvedFilePath)) throw new AppError("invalid_user_css", `Circular user CSS import detected at ${resolvedFilePath}`);
+  if (state.loadedFiles.size + state.activeFiles.size >= MAX_FILE_COUNT) throw new AppError("invalid_user_css", `User CSS file count exceeds ${MAX_FILE_COUNT}`);
 
   const fileSize = statSync(resolvedFilePath).size;
-  if (fileSize > MAX_FILE_BYTES) throw new Error(`User CSS file exceeds ${MAX_FILE_BYTES} bytes: ${resolvedFilePath}`);
+  if (fileSize > MAX_FILE_BYTES) throw new AppError("invalid_user_css", `User CSS file exceeds ${MAX_FILE_BYTES} bytes: ${resolvedFilePath}`);
   state.totalBytes += fileSize;
-  if (state.totalBytes > MAX_TOTAL_BYTES) throw new Error(`User CSS total size exceeds ${MAX_TOTAL_BYTES} bytes`);
+  if (state.totalBytes > MAX_TOTAL_BYTES) throw new AppError("invalid_user_css", `User CSS total size exceeds ${MAX_TOTAL_BYTES} bytes`);
 
   state.activeFiles.add(resolvedFilePath);
   try {
@@ -183,21 +184,21 @@ function loadCssFile(filePath: string, state: LoadState, depth: number): UserCss
       },
     });
     if (transformResult.warnings.length > 0) {
-      throw new Error(`Invalid user CSS in ${resolvedFilePath}: ${transformResult.warnings[0].message}`);
+      throw new AppError("invalid_user_css", `Invalid user CSS in ${resolvedFilePath}: ${transformResult.warnings[0].message}`);
     }
 
     let cssText = Buffer.from(transformResult.code).toString("utf8");
     for (const dependency of transformResult.dependencies ?? []) {
       // iframe 只接收完整 CSS 文本，因此不保留任何运行时资源 URL。
-      if (dependency.type === "url") throw new Error(`url() is not allowed in user CSS: ${dependency.url}`);
+      if (dependency.type === "url") throw new AppError("invalid_user_css", `url() is not allowed in user CSS: ${dependency.url}`);
       if (dependency.type !== "import") continue;
       const importDependency = dependency as ImportDependency;
       if (importDependency.media !== null || importDependency.supports !== null) {
-        throw new Error(`Conditional @import is not supported in user CSS: ${importDependency.url}`);
+        throw new AppError("invalid_user_css", `Conditional @import is not supported in user CSS: ${importDependency.url}`);
       }
       const importedSource = loadCssFile(resolveLocalImport(importDependency.url, resolvedFilePath, state.layersDirPath), state, depth + 1);
       const generatedImport = `@import ${JSON.stringify(importDependency.placeholder)};`;
-      if (!cssText.includes(generatedImport)) throw new Error(`Unable to expand user CSS import: ${importDependency.url}`);
+      if (!cssText.includes(generatedImport)) throw new AppError("invalid_user_css", `Unable to expand user CSS import: ${importDependency.url}`);
       // 在 parser 生成的占位位置展开，保持用户声明的 cascade 顺序。
       cssText = cssText.replace(generatedImport, importedSource.css);
       for (const className of importedSource.classNames) classNames.add(className);
@@ -230,10 +231,10 @@ export class UserCssLoader {
     const resolvedStyleDirPath = realpathSync(this.styleDirPath);
     const resolvedStylePath = realpathSync(stylePath);
     // 主入口和 layers 目录自身也需要 realpath 校验，不能只检查各个导入文件。
-    if (!isPathInside(resolvedStyleDirPath, resolvedStylePath)) throw new Error("User style.css must remain inside config/style");
+    if (!isPathInside(resolvedStyleDirPath, resolvedStylePath)) throw new AppError("invalid_user_css", "User style.css must remain inside config/style");
     const layersDirPath = realpathSync(path.join(this.styleDirPath, "layers"));
     if (!isPathInside(resolvedStyleDirPath, layersDirPath) || !statSync(layersDirPath).isDirectory()) {
-      throw new Error("User CSS layers directory must remain inside config/style");
+      throw new AppError("invalid_user_css", "User CSS layers directory must remain inside config/style");
     }
     const expandedSource = loadCssFile(resolvedStylePath, {
       activeFiles: new Set<string>(),

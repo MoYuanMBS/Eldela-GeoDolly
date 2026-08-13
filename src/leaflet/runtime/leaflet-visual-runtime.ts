@@ -7,6 +7,7 @@
 
 import type {CoreOverlayRendererOptions, CoreOverlayRenderResult} from "../../models/core-render.js";
 import type {MapSurfaceHandle, OverlayRendererOptions, OverlayRenderResult} from "../../models/leaflet-renderer-models.js";
+import {AppError} from "../../utils/app-error.js";
 import {renderCoreOverlay} from "../core-render/core-overlay-render.js";
 import {createMapSurface, type MapSurfaceOptions} from "./map-surface.js";
 import {renderOverlay} from "./overlay-render.js";
@@ -41,7 +42,12 @@ export interface LeafletVisualRuntimeResult {
  */
 export async function createLeafletVisualRuntime(options: LeafletVisualRuntimeOptions): Promise<LeafletVisualRuntimeResult> {
   // 视口必须先稳定，Visual 的首次投影与像素测量才有可信的 zoom 和容器尺寸。
-  const mapSurface = createMapSurface(options.mapSurface);
+  let mapSurface: MapSurfaceHandle;
+  try {
+    mapSurface = createMapSurface(options.mapSurface);
+  } catch (error) {
+    throw AppError.fromUnknown(error, "leaflet_init", "Leaflet map initialization failed");
+  }
   let visualResult: OverlayRenderResult | null = null;
   let coreResult: CoreOverlayRenderResult | null = null;
   let disposed = false;
@@ -63,6 +69,6 @@ export async function createLeafletVisualRuntime(options: LeafletVisualRuntimeOp
     visualResult?.dispose();
     coreResult?.dispose();
     mapSurface.dispose();
-    throw error;
+    throw AppError.fromUnknown(error, "map_render", "Map visual rendering failed");
   }
 }

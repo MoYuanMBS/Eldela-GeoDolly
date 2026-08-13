@@ -7,6 +7,7 @@
 
 import {type FeatureIdDisplayConfigType, featureIdDisplayConfigSchema} from "../models/config-models.js";
 import type {IdentifiedOverlayFeatureType, IdentifiedOverlayGroupsType, IdentifiedOverlayGroupsWithDisplayIdType} from "../models/map-data-models.js";
+import {AppError} from "../utils/app-error.js";
 import { config } from "../utils/config-loader.js";
 
 const CANONICAL_DIGITS = "0123456789";
@@ -46,7 +47,11 @@ function addDisplayIdsToGroup<TFeature extends IdentifiedOverlayFeatureType>(fea
     }
     const existingCanonicalId = canonicalIdByDisplayId.get(displayId);
     if (existingCanonicalId !== undefined) {
-      throw new Error(`display ID collision in ${feature.feature_type}: "${existingCanonicalId}" and "${feature.feature_id}" both map to "${displayId}"`);
+      throw new AppError(
+        "duplicate_display_id",
+        `display ID collision in ${feature.feature_type}: "${existingCanonicalId}" and "${feature.feature_id}" both map to "${displayId}"`,
+        {display_id: displayId, feature_ids: [existingCanonicalId, feature.feature_id]},
+      );
     }
     canonicalIdByDisplayId.set(displayId, feature.feature_id);
     return {...feature, display_id: displayId};

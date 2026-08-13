@@ -7,6 +7,7 @@
 import type {BBoxType} from "../models/map-data-models.js";
 import {iframeAdaptiveConfigSchema, type IframeAdaptiveConfigType} from "../models/config-models.js";
 import {config} from "../utils/config-loader.js";
+import {AppError} from "../utils/app-error.js";
 import {getContinuousEastLongitude, projectLatitude, projectLongitude} from "./projection.js";
 
 /**
@@ -52,7 +53,7 @@ function finalizeIntegerSize(width: number, height: number, captureConfig: Ifram
   const belowMinimum = screenshotWidth < captureConfig.min_screenshot_width || screenshotHeight < captureConfig.min_screenshot_height;
   const aboveMaximum = screenshotWidth > captureConfig.max_screenshot_width || screenshotHeight > captureConfig.max_screenshot_height;
   if (belowMinimum || aboveMaximum || screenshotWidth * screenshotHeight > captureConfig.max_screenshot_pixels) {
-    throw new Error("capture constraints cannot produce a legal integer screenshot size");
+    throw new AppError("invalid_screenshot_size", "capture constraints cannot produce a legal integer screenshot size");
   }
   // 固定返回 [screenshotWidth, screenshotHeight]，两项均为 MapSurface 的 CSS 整数像素。
   return [screenshotWidth, screenshotHeight];

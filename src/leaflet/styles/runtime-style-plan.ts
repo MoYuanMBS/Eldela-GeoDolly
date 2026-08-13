@@ -10,6 +10,7 @@
 
 import type {CanvasSpatialFeatureType} from "../../models/style/base-canvas-style.js";
 import type {CompiledStyleBundle, CompiledStyleRule, RuntimeStyleFeatureRuleIndexes, RuntimeStylePlan, RuntimeStyleRule, RuntimeStyleRuleIndex} from "../../models/style/runtime-style-models.js";
+import {AppError} from "../../utils/app-error.js";
 import {BUILT_IN_RELATION_MEMBERSHIP_STYLE} from "./built-in/built-in-style.js";
 
 interface MutableRuleIndex {
@@ -91,14 +92,14 @@ function resolveDefaultBaseStyleIds(canvasStyles: CompiledStyleBundle["canvasSty
   for (const bundle of bundles) {
     for (const [featureType, styleId] of Object.entries(bundle.defaultBaseStyleIds) as Array<[CanvasSpatialFeatureType, string]>) {
       const existingStyleId = mergedDefaults[featureType];
-      if (existingStyleId !== undefined && existingStyleId !== styleId) throw new Error(`Conflicting default ${featureType} styles "${existingStyleId}" and "${styleId}"`);
+      if (existingStyleId !== undefined && existingStyleId !== styleId) throw new AppError("invalid_render_style", `Conflicting default ${featureType} styles "${existingStyleId}" and "${styleId}"`);
       mergedDefaults[featureType] = styleId;
     }
   }
   const getDefaultStyleId = (featureType: CanvasSpatialFeatureType): string => {
     const styleId = mergedDefaults[featureType];
-    if (styleId === undefined) throw new Error(`Missing default ${featureType} style`);
-    if (canvasStyles[styleId] === undefined) throw new Error(`Default ${featureType} style "${styleId}" was not loaded`);
+    if (styleId === undefined) throw new AppError("missing_render_style", `Missing default ${featureType} style`);
+    if (canvasStyles[styleId] === undefined) throw new AppError("missing_render_style", `Default ${featureType} style "${styleId}" was not loaded`);
     return styleId;
   };
   return Object.freeze({node: getDefaultStyleId("node"), way: getDefaultStyleId("way"), area: getDefaultStyleId("area")});
@@ -108,7 +109,7 @@ function resolveDefaultBaseStyleIds(canvasStyles: CompiledStyleBundle["canvasSty
 function resolveRelationMembershipStyle(bundles: ReadonlyArray<CompiledStyleBundle>): RuntimeStylePlan["relationMembershipStyle"] {
   const styles = bundles.flatMap((bundle) => bundle.relationMembershipStyle === undefined ? [] : [bundle.relationMembershipStyle]);
   if (styles.length === 0) return Object.freeze({...BUILT_IN_RELATION_MEMBERSHIP_STYLE});
-  if (styles.length > 1) throw new Error("Multiple default relation membership styles were loaded");
+  if (styles.length > 1) throw new AppError("invalid_render_style", "Multiple default relation membership styles were loaded");
   return Object.freeze({...styles[0]});
 }
 

@@ -9,6 +9,7 @@ import type {LeafletConfigType} from "../../models/config-models.js";
 import type {CanvasBaseStyleRecipe} from "../../models/style/base-canvas-style.js";
 import type {RuntimeStylePlan} from "../../models/style/runtime-style-models.js";
 import type {RenderStylePayload} from "../../models/style/user-css-style-models.js";
+import {AppError} from "../../utils/app-error.js";
 import {getBuiltInStyle} from "./built-in-style-loader.js";
 import {compileUserStyle} from "./runtime-style-compiler.js";
 import {createRuntimeStylePlan} from "./runtime-style-plan.js";
@@ -24,16 +25,16 @@ function validateCanvasVisualLimits(plan: RuntimeStylePlan, limits: LeafletConfi
   const validateRecipe = (styleId: string, recipe: CanvasBaseStyleRecipe): void => {
     for (const operation of recipe.operations) {
       if (operation.kind === "circle") {
-        if (!Number.isFinite(operation.radius) || operation.radius <= 0) throw new Error(`Canvas style "${styleId}" has an invalid node radius`);
-        if (operation.radius > limits.max_canvas_node_radius_px) throw new Error(`Canvas style "${styleId}" exceeds max_canvas_node_radius_px`);
-        if (!Number.isFinite(operation.strokeWidth) || operation.strokeWidth < 0) throw new Error(`Canvas style "${styleId}" has an invalid node stroke width`);
-        if (operation.strokeWidth > limits.max_canvas_stroke_width_px) throw new Error(`Canvas style "${styleId}" exceeds max_canvas_stroke_width_px`);
+        if (!Number.isFinite(operation.radius) || operation.radius <= 0) throw new AppError("invalid_render_style", `Canvas style "${styleId}" has an invalid node radius`);
+        if (operation.radius > limits.max_canvas_node_radius_px) throw new AppError("invalid_render_style", `Canvas style "${styleId}" exceeds max_canvas_node_radius_px`);
+        if (!Number.isFinite(operation.strokeWidth) || operation.strokeWidth < 0) throw new AppError("invalid_render_style", `Canvas style "${styleId}" has an invalid node stroke width`);
+        if (operation.strokeWidth > limits.max_canvas_stroke_width_px) throw new AppError("invalid_render_style", `Canvas style "${styleId}" exceeds max_canvas_stroke_width_px`);
       } else {
         const strokeWidth = operation.kind === "line" ? operation.width : operation.strokeWidth;
         if (!Number.isFinite(strokeWidth) || strokeWidth < 0 || (operation.kind === "line" && strokeWidth === 0)) {
-          throw new Error(`Canvas style "${styleId}" has an invalid stroke width`);
+          throw new AppError("invalid_render_style", `Canvas style "${styleId}" has an invalid stroke width`);
         }
-        if (strokeWidth > limits.max_canvas_stroke_width_px) throw new Error(`Canvas style "${styleId}" exceeds max_canvas_stroke_width_px`);
+        if (strokeWidth > limits.max_canvas_stroke_width_px) throw new AppError("invalid_render_style", `Canvas style "${styleId}" exceeds max_canvas_stroke_width_px`);
       }
     }
   };
@@ -63,6 +64,6 @@ export function initializeRuntimeStyle(
 
 /** Overlay renderer 后续只读取已冻结计划，不在首次 Feature 到来时隐式初始化。 */
 export function getRuntimeStylePlan(): RuntimeStylePlan {
-  if (cachedRuntimeStylePlan === null) throw new Error("Runtime style plan has not been initialized");
+  if (cachedRuntimeStylePlan === null) throw new AppError("missing_render_style", "Runtime style plan has not been initialized");
   return cachedRuntimeStylePlan;
 }

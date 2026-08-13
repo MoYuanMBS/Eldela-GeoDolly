@@ -17,6 +17,7 @@ import type {
   OverlayVisualMeasurement,
 } from "../../models/leaflet-renderer-models.js";
 import type {CanvasSpatialFeatureType} from "../../models/style/base-canvas-style.js";
+import {AppError} from "../../utils/app-error.js";
 import {LEAFLET_INTERNAL_RENDER_CONFIG} from "../../utils/leaflet-internal-render-config.js";
 
 /** Interaction attach 只接收已有 Visual 结果和自己的命中容错配置。 */
@@ -126,7 +127,7 @@ function synchronizeInteractionLayer(
 
   if (!rootLayer.hasLayer(hitLayer)) rootLayer.addLayer(hitLayer);
   if (featureType === "node") {
-    if (!(hitLayer instanceof CircleMarker)) throw new Error("Node interaction layer must be a CircleMarker");
+    if (!(hitLayer instanceof CircleMarker)) throw new AppError("invalid_overlay_interaction", "Node interaction layer must be a CircleMarker");
     hitLayer.setRadius(clamp(
       measurement.visualSizePx + config.node_extra_radius_px,
       config.min_node_radius_px,
@@ -219,6 +220,6 @@ export function attachOverlayInteraction(options: AttachOverlayInteractionOption
     disposed = true;
     for (const unsubscribe of unsubscribeCallbacks.splice(0)) unsubscribe();
     rootLayer.remove();
-    throw error;
+    throw AppError.fromUnknown(error, "overlay_interaction", "Overlay interaction initialization failed");
   }
 }

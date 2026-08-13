@@ -2,6 +2,7 @@
 
 import type {LeafletConfigType} from "../models/config-models.js";
 import type {OverlayInteractionResult} from "../models/leaflet-renderer-models.js";
+import {AppError} from "../utils/app-error.js";
 import {attachOverlayInteraction} from "./runtime/overlay-interaction.js";
 import {
   createLeafletVisualRuntime,
@@ -58,6 +59,6 @@ export async function createInteractiveMapFlow(options: InteractiveMapFlowOption
     // attach 可能只完成了部分命中层；异常路径仍严格遵循 Interaction → Visual 的清理顺序。
     interactionResult?.dispose();
     visualRuntime.dispose();
-    throw error;
+    throw AppError.fromUnknown(error, "overlay_interaction", "Overlay interaction initialization failed");
   }
 }
