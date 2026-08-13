@@ -1,14 +1,16 @@
 /**
- * `config/app.yaml` 的 TypeScript 配置加载器。
+ * TypeScript 消费的部署配置加载器。
  *
  * 当前使用 `yaml` 包解析 YAML，
- * 但 TypeScript 只校验并缓存自己实际使用的配置分段。
+ * 但 TypeScript 只校验并缓存自己实际使用的 app section 与 basemap registry。
  */
 import { readFileSync, existsSync, readdirSync } from "node:fs";
 import path from "node:path";
 import type { ZodType } from "zod";
 import { parse } from "yaml";
+import {basemapProfileRegistrySchema, type BasemapProfileRegistryType} from "../models/basemap-models.js";
 import {featureIdDisplayConfigSchema, iframeAdaptiveConfigSchema, leafletConfigSchema, toolPromptsConfigSchema} from "../models/config-models.js";
+import {AppError} from "./app-error.js";
 
 /**
  * 读取单个 YAML 文件；raw 数据只用于当次 schema 构建，不进入 loader 缓存。
@@ -21,6 +23,7 @@ export class ConfigLoader {
   private readonly configDirPath = path.join(process.cwd(), "config");
   private readonly cachedConfigSections = new Map<string, unknown>();
   private cachedAvailableExpertNames: Set<string> | null = null;
+  private cachedBasemapProfiles: BasemapProfileRegistryType | null = null;
 
   /**
    * 在 MCP Server 注册工具前预载当前 TypeScript 会消费的全部配置。
@@ -32,6 +35,7 @@ export class ConfigLoader {
     this.getAppSection("iframe_adaptive", iframeAdaptiveConfigSchema);
     this.getAppSection("leaflet", leafletConfigSchema);
     this.getAvailableExpertNames();
+    this.getBasemapProfiles();
   }
 
   /**
@@ -101,10 +105,31 @@ export class ConfigLoader {
   }
 
   /**
+   * 读取、校验并缓存完整的 `config/tiles.yaml` profile registry。
+   */
+  getBasemapProfiles(): BasemapProfileRegistryType {
+    if (this.cachedBasemapProfiles !== null) {
+      return this.cachedBasemapProfiles;
+    }
+
+    const tilesPath = path.join(this.configDirPath, "tiles.yaml");
+    if (!existsSync(tilesPath)) {
+      throw new AppError("config_not_found", `config file not found: ${tilesPath}`);
+    }
+    try {
+      this.cachedBasemapProfiles = basemapProfileRegistrySchema.parse(loadYamlFile(tilesPath));
+      return this.cachedBasemapProfiles;
+    } catch (error) {
+      throw AppError.fromUnknown(error, "invalid_config", `Failed to load basemap profiles from ${tilesPath}`);
+    }
+  }
+
+  /**
    * 清空当前实例持有的配置缓存。
    */
   resetCache(): void {
     this.cachedAvailableExpertNames = null;
+    this.cachedBasemapProfiles = null;
     this.cachedConfigSections.clear();
   }
 }

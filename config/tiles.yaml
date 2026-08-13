@@ -1,1 +1,17 @@
-# GeoMCP tiles configuration placeholder
+# 在线 raster tile 底图 profile registry。
+# 顶层 key 是 Tool Input 使用的稳定 profile ID；部署修改后需要重启进程。
+osm:
+  name: OpenStreetMap
+  url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+  max_native_zoom: 19
+  crs: EPSG:3857
+  attribution: "OpenStreetMap"
+  full_attribution: 
+
+arcgis_satellite:
+  name: ArcGIS Satellite
+  url: "https://ibasemaps-api.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}?token=..."
+  max_native_zoom: 22
+  crs: EPSG:3857
+  attribution: "Powered by Esri"
+  full_attribution: "Esri, Vantor, Earthstar Geographics, GIS User Community"
