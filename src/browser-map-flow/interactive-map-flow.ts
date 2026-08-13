@@ -3,12 +3,12 @@
 import type {LeafletConfigType} from "../models/config-models.js";
 import type {OverlayInteractionResult} from "../models/leaflet-renderer-models.js";
 import {AppError} from "../utils/app-error.js";
-import {attachOverlayInteraction} from "./runtime/overlay-interaction.js";
+import {attachOverlayInteraction} from "../leaflet/runtime/overlay-interaction.js";
 import {
   createLeafletVisualRuntime,
   type LeafletVisualRuntimeOptions,
   type LeafletVisualRuntimeResult,
-} from "./runtime/leaflet-visual-runtime.js";
+} from "../leaflet/runtime/leaflet-visual-runtime.js";
 
 export interface InteractiveMapFlowOptions extends LeafletVisualRuntimeOptions {
   /** 仅供透明命中层使用；Visual runtime 不读取交互配置。 */

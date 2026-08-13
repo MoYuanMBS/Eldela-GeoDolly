@@ -4,7 +4,7 @@ import {
   createLeafletVisualRuntime,
   type LeafletVisualRuntimeOptions,
   type LeafletVisualRuntimeResult,
-} from "./runtime/leaflet-visual-runtime.js";
+} from "../leaflet/runtime/leaflet-visual-runtime.js";
 
 /** Snapshot 不附加交互状态，因此输入契约与共享 Visual runtime 完全一致。 */
 export type SnapshotMapFlowOptions = LeafletVisualRuntimeOptions;

@@ -25,6 +25,7 @@
     "src/web/**/*.ts",
     "src/web/**/*.tsx",
     "src/web/**/*.d.ts",
+    "src/browser-map-flow/**/*.ts",
     "src/leaflet/**/*.ts"
   ],
   "exclude": [

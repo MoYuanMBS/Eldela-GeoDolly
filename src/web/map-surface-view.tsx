@@ -1,6 +1,6 @@
 import {useEffect, useRef} from "react";
 import type {LatLngBoundsLiteral, LatLngTuple} from "leaflet";
-import {createInteractiveMapFlow, type InteractiveMapFlowResult} from "../leaflet/interactive-map-flow.js";
+import {createInteractiveMapFlow, type InteractiveMapFlowResult} from "../browser-map-flow/interactive-map-flow.js";
 import type {LeafletConfigType} from "../models/config-models.js";
 import type {IdentifiedOverlayGroupsWithDisplayIdType, RelationMemberFeaturesByRelationType} from "../models/map-data-models.js";
 import type {CoreVisualPayloadType} from "../models/map-payload-models.js";
