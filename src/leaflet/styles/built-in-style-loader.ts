@@ -7,9 +7,9 @@
  * 执行顺序：复制并冻结源码声明 → 缓存 CompiledStyleBundle → 由 RuntimeStylePlan 与用户 bundle 合并。
  */
 
-import {USER_STYLE_PRIORITY_OFFSET, type BuiltInStyleRule, type CanvasTagMatcher} from "../../models/built-in-style-models.js";
-import type {CanvasBaseStyleRecipe, CanvasDrawOperation} from "../../models/style/base-canvas-style.js";
-import type {CompiledStyleBundle, CompiledStyleRule} from "../../models/style/runtime-style-models.js";
+import {USER_STYLE_PRIORITY_OFFSET, type BuiltInStyleRule, type CanvasTagMatcher} from "../../models/mapsurface/built-in-style-models.js";
+import type {CanvasBaseStyleRecipe, CanvasDrawOperation} from "../../models/mapsurface/style/base-canvas-style.js";
+import type {CompiledStyleBundle, CompiledStyleRule} from "../../models/mapsurface/style/runtime-style-models.js";
 import {AppError} from "../../utils/app-error.js";
 import {BUILT_IN_STYLE_RULES, DEFAULT_CANVAS_BASE_STYLE_IDS} from "./built-in/built-in-style-rules.js";
 import {BUILT_IN_CANVAS_STYLES, BUILT_IN_RELATION_MEMBERSHIP_STYLE} from "./built-in/built-in-style.js";

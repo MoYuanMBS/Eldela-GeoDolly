@@ -1,7 +1,7 @@
 /** Leaflet TileLayer 初始视口 ready 控制器。 */
 
 import type {Map as LeafletMap, TileErrorEvent, TileLayer} from "leaflet";
-import type {BasemapRuntimeStatus} from "../models/browser-map-flow-models.js";
+import type {BasemapRuntimeStatus} from "../models/mapsurface/basemap-runtime-models.js";
 
 /**
  * 在挂载 TileLayer 前绑定监听，并把第一次初始加载周期收敛为唯一终态。

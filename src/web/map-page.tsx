@@ -1,9 +1,9 @@
 import {useEffect, useState, type CSSProperties} from "react";
 import {z} from "zod";
 import {initializeRuntimeStyle} from "../leaflet/styles/runtime-style-initializer.js";
-import {commonVisualMapPayloadSchema, type CommonVisualMapPayloadType} from "../models/map-payload-models.js";
-import type {RuntimeStylePlan} from "../models/style/runtime-style-models.js";
-import {renderStylePayloadSchema} from "../models/style/user-css-style-models.js";
+import {commonVisualMapPayloadSchema, type CommonVisualMapPayloadType} from "../models/mapsurface/map-payload-models.js";
+import type {RuntimeStylePlan} from "../models/mapsurface/style/runtime-style-models.js";
+import {renderStylePayloadSchema} from "../models/mapsurface/style/user-css-style-models.js";
 import {AppError} from "../utils/app-error.js";
 import {UI_BUILT_IN_CONFIG} from "./built-in-config.js";
 import {MapSurfaceView} from "./map-surface-view.js";

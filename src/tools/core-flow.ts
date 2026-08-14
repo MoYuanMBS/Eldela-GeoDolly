@@ -3,8 +3,8 @@
 import {
   coreMapPayloadSchema,
   type CoreMapPayloadType,
-} from "../models/map-payload-models.js";
-import type {CoreFlowInput} from "../models/tool-flow-models.js";
+} from "../models/mapsurface/map-payload-models.js";
+import type {CoreFlowInput} from "../models/backend/tool-flow-models.js";
 
 /**
  * 为普通 Overlay 追加地点确认阶段保存的独立 Core visual。

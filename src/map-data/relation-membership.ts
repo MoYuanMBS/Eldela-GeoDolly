@@ -11,7 +11,7 @@ import type {
   RelationMemberFeaturesByRelationType,
   RelationFeatureIdsByFeatureIdType,
   RelationMembershipByFeatureIdType,
-} from "../models/map-data-models.js";
+} from "../models/backend/map-data-models.js";
 
 /** 从 relation members 提取指定 OSM primitive type 的 ref → role；重复 ref 保留先出现的 role。 */
 function buildMemberRoleIndex(members: Array<IdentifiedRelationMemberType>, memberType: "node" | "way"): Map<number, string> {

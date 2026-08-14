@@ -29,7 +29,7 @@ import {
   locSearchReplySchema,
   BridgeActionsRegistry,
   pyToolReqSchema
-} from "../models/bridge-models.js";
+} from "../models/backend/bridge-models.js";
 import {AppError} from "./app-error.js";
 import { config } from "./config-loader.js";
 

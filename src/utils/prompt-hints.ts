@@ -3,15 +3,8 @@
  * 这些 helper 只负责把运行时配置值整理成给 AI / MCP client 看的说明文字；
  */
 
-import { type ToolPromptsConfigType, toolPromptsConfigSchema} from "../models/config-models.js";
+import {type ChoiceFieldHintOptions, type ToolPromptsConfigType, toolPromptsConfigSchema} from "../models/backend/config-models.js";
 import { config } from "./config-loader.js";
-
-export type ChoiceFieldHintOptions = {
-  fieldName: string;
-  values: Iterable<string>;
-  usage: string;
-  emptyInstruction?: string;
-};
 
 /**
  * 为“字段只能/应当填写某些配置值”的场景构造说明片段。

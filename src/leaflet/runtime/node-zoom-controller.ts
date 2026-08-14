@@ -6,7 +6,7 @@
  */
 
 import {LayerGroup, type CircleMarker, type Map as LeafletMap} from "leaflet";
-import type {LeafletConfigType} from "../../models/config-models.js";
+import type {LeafletConfigType} from "../../models/backend/config-models.js";
 
 interface NodeCircleRegistration {
   // 原始半径始终来自 style recipe，避免连续 zoom 在上次缩放结果上累乘误差。

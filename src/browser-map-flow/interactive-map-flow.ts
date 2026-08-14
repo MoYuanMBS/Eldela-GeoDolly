@@ -1,32 +1,15 @@
 /** Interactive 入口在共享 Visual 首次测量完成后，再附加唯一透明命中层。 */
 
-import type {LeafletConfigType} from "../models/config-models.js";
-import type {MapSurfaceHandle, OverlayInteractionResult} from "../models/leaflet-renderer-models.js";
+import type {
+  InteractiveMapFlowOptions,
+  InteractiveMapFlowResult,
+  LeafletVisualRuntimeResult,
+} from "../models/mapsurface/basemap-runtime-models.js";
+import type {MapSurfaceHandle, OverlayInteractionResult} from "../models/mapsurface/leaflet-renderer-models.js";
 import {AppError} from "../utils/app-error.js";
 import {attachOverlayInteraction} from "../leaflet/runtime/overlay-interaction.js";
-import {createMapSurface, type MapSurfaceOptions} from "../leaflet/runtime/map-surface.js";
-import {
-  createLeafletVisualRuntime,
-  type LeafletVisualRuntimeOptions,
-  type LeafletVisualRuntimeResult,
-} from "../leaflet/runtime/leaflet-visual-runtime.js";
-
-export interface InteractiveMapFlowOptions extends Omit<LeafletVisualRuntimeOptions, "mapSurface"> {
-  /** Browser Flow 用于创建唯一 MapSurface 的固定尺寸与初始视口输入。 */
-  mapSurface: MapSurfaceOptions;
-  /** 仅供透明命中层使用；Visual runtime 不读取交互配置。 */
-  interactionConfig: LeafletConfigType["interaction"];
-}
-
-/** Interactive 入口持有共享 Visual 结果，以及后挂载的透明命中层。 */
-export interface InteractiveMapFlowResult extends LeafletVisualRuntimeResult {
-  /** Basemap、Visual 与 Interaction 共用的唯一 MapSurface。 */
-  mapSurface: MapSurfaceHandle;
-  /** Basemap-only 或没有 Overlay 时为 null，不表示初始化失败。 */
-  interactionResult: OverlayInteractionResult | null;
-  /** 幂等执行 Interaction → Visual → MapSurface 清理。 */
-  dispose(): void;
-}
+import {createMapSurface} from "../leaflet/runtime/map-surface.js";
+import {createLeafletVisualRuntime} from "../leaflet/runtime/leaflet-visual-runtime.js";
 
 /**
  * 先完成 Visual 的首次测量，再使用同一份投影 geometry 和 measurement 附加 Interaction。

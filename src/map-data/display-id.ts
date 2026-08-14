@@ -5,8 +5,8 @@
  * 也不负责 AI Output join 或 relation membership 整理。
  */
 
-import {type FeatureIdDisplayConfigType, featureIdDisplayConfigSchema} from "../models/config-models.js";
-import type {IdentifiedOverlayFeatureType, IdentifiedOverlayGroupsType, IdentifiedOverlayGroupsWithDisplayIdType} from "../models/map-data-models.js";
+import {type FeatureIdDisplayConfigType, featureIdDisplayConfigSchema} from "../models/backend/config-models.js";
+import type {IdentifiedOverlayFeatureType, IdentifiedOverlayGroupsType, IdentifiedOverlayGroupsWithDisplayIdType} from "../models/backend/map-data-models.js";
 import {AppError} from "../utils/app-error.js";
 import { config } from "../utils/config-loader.js";
 

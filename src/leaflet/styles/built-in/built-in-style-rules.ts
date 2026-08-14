@@ -5,8 +5,8 @@
  * 本文件只声明“什么 tag 选择什么目标”，不包含 Canvas 绘制参数，也不执行正式 Feature 匹配。
  */
 
-import type {BuiltInStyleRule} from "../../../models/built-in-style-models.js";
-import type {CanvasSpatialFeatureType} from "../../../models/style/base-canvas-style.js";
+import type {BuiltInStyleRule} from "../../../models/mapsurface/built-in-style-models.js";
+import type {CanvasSpatialFeatureType} from "../../../models/mapsurface/style/base-canvas-style.js";
 import type {BUILT_IN_CANVAS_STYLES} from "./built-in-style.js";
 
 export const DEFAULT_CANVAS_BASE_STYLE_IDS = {

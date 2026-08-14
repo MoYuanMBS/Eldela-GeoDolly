@@ -7,9 +7,9 @@
 
 import type {LatLngTuple} from "leaflet";
 import {getContinuousAreaGeometry, getContinuousLineGeometry, getContinuousPointGeometry} from "../../iframe-capture/projection.js";
-import type {CoreGeoJsonPrimitiveGeometryType} from "../../models/core-render.js";
-import type {IdentifiedOverlaySpatialFeatureType} from "../../models/map-data-models.js";
-import type {LeafletGeoJsonGeometry, LeafletSpatialGeometry} from "../../models/leaflet-renderer-models.js";
+import type {CoreGeoJsonPrimitiveGeometryType} from "../../models/mapsurface/core-render-models.js";
+import type {IdentifiedOverlaySpatialFeatureType} from "../../models/backend/map-data-models.js";
+import type {LeafletGeoJsonGeometry, LeafletSpatialGeometry} from "../../models/mapsurface/leaflet-renderer-models.js";
 import {AppError} from "../../utils/app-error.js";
 
 function toLatLng(position: readonly [number, number]): LatLngTuple {

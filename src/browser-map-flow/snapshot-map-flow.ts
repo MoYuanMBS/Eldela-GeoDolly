@@ -1,26 +1,14 @@
 /** Snapshot 入口只启动共享 MapSurface + Visual runtime，不静态依赖 Interaction。 */
 
-import type {MapSurfaceHandle} from "../models/leaflet-renderer-models.js";
+import type {
+  LeafletVisualRuntimeResult,
+  SnapshotMapFlowOptions,
+  SnapshotMapFlowResult,
+} from "../models/mapsurface/basemap-runtime-models.js";
+import type {MapSurfaceHandle} from "../models/mapsurface/leaflet-renderer-models.js";
 import {AppError} from "../utils/app-error.js";
-import {createMapSurface, type MapSurfaceOptions} from "../leaflet/runtime/map-surface.js";
-import {
-  createLeafletVisualRuntime,
-  type LeafletVisualRuntimeOptions,
-  type LeafletVisualRuntimeResult,
-} from "../leaflet/runtime/leaflet-visual-runtime.js";
-
-/** Snapshot 不附加交互状态，但负责创建并持有唯一 MapSurface。 */
-export interface SnapshotMapFlowOptions extends Omit<LeafletVisualRuntimeOptions, "mapSurface"> {
-  /** Browser Flow 用于创建唯一 MapSurface 的固定尺寸与初始视口输入。 */
-  mapSurface: MapSurfaceOptions;
-}
-
-/** Snapshot 返回自己持有的 MapSurface 与借助共享 runtime 创建的 Visual。 */
-export interface SnapshotMapFlowResult extends LeafletVisualRuntimeResult {
-  mapSurface: MapSurfaceHandle;
-  /** 幂等执行 Visual → MapSurface 清理。 */
-  dispose(): void;
-}
+import {createMapSurface} from "../leaflet/runtime/map-surface.js";
+import {createLeafletVisualRuntime} from "../leaflet/runtime/leaflet-visual-runtime.js";
 
 /**
  * 启动截图使用的共享地图流程。

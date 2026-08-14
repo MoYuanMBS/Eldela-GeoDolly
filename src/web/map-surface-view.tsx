@@ -1,10 +1,11 @@
 import {useEffect, useRef} from "react";
 import type {LatLngBoundsLiteral, LatLngTuple} from "leaflet";
-import {createInteractiveMapFlow, type InteractiveMapFlowResult} from "../browser-map-flow/interactive-map-flow.js";
-import type {LeafletConfigType} from "../models/config-models.js";
-import type {IdentifiedOverlayGroupsWithDisplayIdType, RelationMemberFeaturesByRelationType} from "../models/map-data-models.js";
-import type {CoreVisualPayloadType} from "../models/map-payload-models.js";
-import type {RuntimeStylePlan} from "../models/style/runtime-style-models.js";
+import {createInteractiveMapFlow} from "../browser-map-flow/interactive-map-flow.js";
+import type {LeafletConfigType} from "../models/backend/config-models.js";
+import type {IdentifiedOverlayGroupsWithDisplayIdType, RelationMemberFeaturesByRelationType} from "../models/backend/map-data-models.js";
+import type {InteractiveMapFlowResult} from "../models/mapsurface/basemap-runtime-models.js";
+import type {CoreVisualPayloadType} from "../models/mapsurface/map-payload-models.js";
+import type {RuntimeStylePlan} from "../models/mapsurface/style/runtime-style-models.js";
 
 /** Web 入口收到的仍是完整 Leaflet payload；组件只在边界处分配 Visual/Interaction 配置。 */
 interface MapSurfaceViewProps {

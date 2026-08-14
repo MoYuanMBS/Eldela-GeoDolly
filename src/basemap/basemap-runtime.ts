@@ -1,15 +1,8 @@
 /** Browser 侧在线 raster TileLayer runtime。 */
 
 import {tileLayer} from "leaflet";
-import type {MapSurfaceHandle} from "../models/leaflet-renderer-models.js";
-import type {ResolvedBasemapType} from "../models/basemap-models.js";
-import type {BasemapRuntimeStatus} from "../models/browser-map-flow-models.js";
+import type {BasemapRuntimeOptions, BasemapRuntimeStatus} from "../models/mapsurface/basemap-runtime-models.js";
 import {mountTileLayerAndWaitForInitialReady} from "./tile-ready-controller.js";
-
-export interface BasemapRuntimeOptions {
-  mapSurface: MapSurfaceHandle;
-  basemap: ResolvedBasemapType;
-}
 
 /**
  * 创建并挂载所选在线瓦片层，等待当前初始视口的瓦片加载终态。

@@ -20,8 +20,8 @@ import type {
   CommonVisualMapPayloadType,
   CoreMapPayloadType,
   NonCoreMapPayloadType,
-} from "./map-payload-models.js";
-import type {RenderStylePayload} from "./style/user-css-style-models.js";
+} from "../mapsurface/map-payload-models.js";
+import type {RenderStylePayload} from "../mapsurface/style/user-css-style-models.js";
 
 /** processToolReply() 生成的公共数据结果；样式与具体 render_mode 不进入该阶段。 */
 export interface ProcessedToolReplyType {

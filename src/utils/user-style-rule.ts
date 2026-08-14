@@ -1,6 +1,6 @@
 /** Node 用户样式系统唯一公开入口；初始化后只暴露冻结的可序列化结果。 */
 
-import type {SerializableUserStyle} from "../models/style/user-css-style-models.js";
+import type {SerializableUserStyle} from "../models/mapsurface/style/user-css-style-models.js";
 import {logger} from "./logger.js";
 import {userCssLoader} from "./style/user-css-loader.js";
 import {userStyleConfigLoader} from "./style/user-style-config-loader.js";

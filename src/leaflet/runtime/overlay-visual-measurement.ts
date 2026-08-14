@@ -7,14 +7,14 @@
  */
 
 import {CircleMarker, Layer, type Map as LeafletMap, type Path} from "leaflet";
-import type {LeafletConfigType} from "../../models/config-models.js";
+import type {LeafletConfigType} from "../../models/backend/config-models.js";
 import type {
   OverlayCssPresentationMeasurement,
   OverlayVisualMeasurement,
   OverlayVisualMeasurementListener,
   OverlayVisualMeasurementSource,
-} from "../../models/leaflet-renderer-models.js";
-import type {CanvasSpatialFeatureType} from "../../models/style/base-canvas-style.js";
+} from "../../models/mapsurface/leaflet-renderer-models.js";
+import type {CanvasSpatialFeatureType} from "../../models/mapsurface/style/base-canvas-style.js";
 import {AppError} from "../../utils/app-error.js";
 
 interface OverlayVisualMeasurementRegistration {

@@ -6,9 +6,9 @@
  * 输出仍是可合并声明，不建立 Feature 索引，也不读取正式 Overlay properties。
  */
 
-import {USER_STYLE_PRIORITY_OFFSET} from "../../models/built-in-style-models.js";
-import type {CompiledStyleBundle, CompiledStyleRule} from "../../models/style/runtime-style-models.js";
-import type {UserCssStyleRuleConfig} from "../../models/style/user-css-style-models.js";
+import {USER_STYLE_PRIORITY_OFFSET} from "../../models/mapsurface/built-in-style-models.js";
+import type {CompiledStyleBundle, CompiledStyleRule} from "../../models/mapsurface/style/runtime-style-models.js";
+import type {UserCssStyleRuleConfig} from "../../models/mapsurface/style/user-css-style-models.js";
 import {AppError} from "../../utils/app-error.js";
 
 /** 把可序列化的 regex source 恢复为运行时 RegExp；exact value 保持字符串。 */

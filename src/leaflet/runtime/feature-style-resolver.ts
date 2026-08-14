@@ -8,8 +8,8 @@
  * 输出拍平的 ResolvedFeatureStyle。Renderer 只看 kind 与 styleId/className，不再理解 tag。
  */
 
-import type {IdentifiedOverlayFeatureType, IdentifiedOverlaySpatialFeatureType} from "../../models/map-data-models.js";
-import type {ResolvedFeatureStyle, RuntimeStylePlan, RuntimeStyleRule, RuntimeStyleRuleIndex} from "../../models/style/runtime-style-models.js";
+import type {IdentifiedOverlayFeatureType, IdentifiedOverlaySpatialFeatureType} from "../../models/backend/map-data-models.js";
+import type {ResolvedFeatureStyle, RuntimeStylePlan, RuntimeStyleRule, RuntimeStyleRuleIndex} from "../../models/mapsurface/style/runtime-style-models.js";
 import {AppError} from "../../utils/app-error.js";
 
 type RuntimeAddonStyleRule = Extract<RuntimeStyleRule, {renderLayer: "border" | "translucent"}>;

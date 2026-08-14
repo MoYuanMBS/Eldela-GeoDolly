@@ -8,8 +8,8 @@ import { readFileSync, existsSync, readdirSync } from "node:fs";
 import path from "node:path";
 import type { ZodType } from "zod";
 import { parse } from "yaml";
-import {basemapProfileRegistrySchema, type BasemapProfileRegistryType} from "../models/basemap-models.js";
-import {featureIdDisplayConfigSchema, iframeAdaptiveConfigSchema, leafletConfigSchema, toolPromptsConfigSchema} from "../models/config-models.js";
+import {basemapProfileRegistrySchema, type BasemapProfileRegistryType} from "../models/common/basemap-models.js";
+import {featureIdDisplayConfigSchema, iframeAdaptiveConfigSchema, leafletConfigSchema, toolPromptsConfigSchema} from "../models/backend/config-models.js";
 import {AppError} from "./app-error.js";
 
 /**

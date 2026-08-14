@@ -20,7 +20,7 @@ import {
   locSearchQueryReqSchema,
   locSearchReplyRawSchema,
   AitoolInputReqSchema,
-} from "./models/bridge-models.js";
+} from "./models/backend/bridge-models.js";
 import {runToolFlow} from "./tools/tool-flow.js";
 import {AppError} from "./utils/app-error.js";
 import { getToolPromptsConfigWithHints } from "./utils/prompt-hints.js";

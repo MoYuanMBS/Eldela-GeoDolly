@@ -8,8 +8,8 @@
  * priority 排序与 planOrder 固化 → 按 featureType/renderLayer/key 类型建立只读索引。
  */
 
-import type {CanvasSpatialFeatureType} from "../../models/style/base-canvas-style.js";
-import type {CompiledStyleBundle, CompiledStyleRule, RuntimeStyleFeatureRuleIndexes, RuntimeStylePlan, RuntimeStyleRule, RuntimeStyleRuleIndex} from "../../models/style/runtime-style-models.js";
+import type {CanvasSpatialFeatureType} from "../../models/mapsurface/style/base-canvas-style.js";
+import type {CompiledStyleBundle, CompiledStyleRule, RuntimeStyleFeatureRuleIndexes, RuntimeStylePlan, RuntimeStyleRule, RuntimeStyleRuleIndex} from "../../models/mapsurface/style/runtime-style-models.js";
 import {AppError} from "../../utils/app-error.js";
 import {BUILT_IN_RELATION_MEMBERSHIP_STYLE} from "./built-in/built-in-style.js";
 

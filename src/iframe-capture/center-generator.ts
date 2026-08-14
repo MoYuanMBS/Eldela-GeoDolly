@@ -2,7 +2,7 @@
  * 根据 Python 提供的标准 GIS bbox 生成截图与互动地图共用的初始 center。
  */
 
-import type {BBoxType} from "../models/map-data-models.js";
+import type {BBoxType} from "../models/backend/map-data-models.js";
 import {getContinuousEastLongitude, projectLatitude, projectLongitude, unprojectLatitude} from "./projection.js";
 
 /**

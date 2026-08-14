@@ -2,8 +2,8 @@
 
 import type {LayerGroup, Map as LeafletMap} from "leaflet";
 import {z} from "zod";
-import type {JsonDictType} from "./bridge-models.js";
-import type {LeafletConfigType} from "./config-models.js";
+import type {JsonDictType} from "../backend/bridge-models.js";
+import type {LeafletConfigType} from "../backend/config-models.js";
 
 export type CoreGeoJsonPositionType = [number, number];
 

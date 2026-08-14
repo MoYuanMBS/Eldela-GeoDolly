@@ -3,8 +3,8 @@
 import {
   nonCoreMapPayloadSchema,
   type NonCoreMapPayloadType,
-} from "../models/map-payload-models.js";
-import type {NonCoreFlowInput} from "../models/tool-flow-models.js";
+} from "../models/mapsurface/map-payload-models.js";
+import type {NonCoreFlowInput} from "../models/backend/tool-flow-models.js";
 
 /**
  * 为不需要 Core 装饰的地图补上稳定判别字段。

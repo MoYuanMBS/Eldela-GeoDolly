@@ -9,9 +9,9 @@ import {
   type LayerGroup,
   type Path,
 } from "leaflet";
-import type {CoreOverlayRendererOptions, CoreOverlayRenderResult} from "../../models/core-render.js";
-import type {LeafletSpatialGeometry} from "../../models/leaflet-renderer-models.js";
-import type {CanvasCircleOperation, CanvasLineOperation} from "../../models/style/base-canvas-style.js";
+import type {CoreOverlayRendererOptions, CoreOverlayRenderResult} from "../../models/mapsurface/core-render-models.js";
+import type {LeafletSpatialGeometry} from "../../models/mapsurface/leaflet-renderer-models.js";
+import type {CanvasCircleOperation, CanvasLineOperation} from "../../models/mapsurface/style/base-canvas-style.js";
 import {AppError} from "../../utils/app-error.js";
 import {LEAFLET_INTERNAL_RENDER_CONFIG} from "../../utils/leaflet-internal-render-config.js";
 import {CORE_RENDER_STYLE} from "../styles/core-render-style.js";

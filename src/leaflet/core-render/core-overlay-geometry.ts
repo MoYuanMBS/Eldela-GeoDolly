@@ -1,12 +1,12 @@
 /** Core 原始 GeoJSON 的 Browser 校验与可绘制 geometry 分类。 */
 
-import type {JsonDictType} from "../../models/bridge-models.js";
+import type {JsonDictType} from "../../models/backend/bridge-models.js";
 import {
   coreGeoJsonGeometrySchema,
   type CoreGeoJsonGeometryType,
   type CoreGeometryParseResult,
   type CoreRenderableGeometryGroups,
-} from "../../models/core-render.js";
+} from "../../models/mapsurface/core-render-models.js";
 
 function collectRenderableGeometry(geometry: CoreGeoJsonGeometryType, output: CoreRenderableGeometryGroups): void {
   switch (geometry.type) {

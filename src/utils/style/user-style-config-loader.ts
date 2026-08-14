@@ -7,7 +7,7 @@ import {
   userCssStyleRuleConfigSchema,
   userCssStyleRulesDocumentSchema,
   type UserCssStyleRuleConfig,
-} from "../../models/style/user-css-style-models.js";
+} from "../../models/mapsurface/style/user-css-style-models.js";
 import {logger} from "../logger.js";
 
 export class UserStyleConfigLoader {

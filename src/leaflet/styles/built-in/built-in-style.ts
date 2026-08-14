@@ -6,7 +6,7 @@
  * 本文件只声明“如何画”，不声明“什么 tag 命中”；operations 的数组顺序就是同一 Base 内的绘制顺序。
  */
 
-import type {CanvasBaseStyleRecipe, CanvasRelationMembershipStyle} from "../../../models/style/base-canvas-style.js";
+import type {CanvasBaseStyleRecipe, CanvasRelationMembershipStyle} from "../../../models/mapsurface/style/base-canvas-style.js";
 
 /**
  * OSM iD 风格道路 recipe：先画较宽 casing，再画内部主线。

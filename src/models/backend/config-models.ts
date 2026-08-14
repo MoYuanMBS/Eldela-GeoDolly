@@ -5,8 +5,8 @@
  */
 
 import { z } from "zod";
-import {logger} from "../utils/logger.js";
-import {UI_BUILT_IN_CONFIG} from "../web/built-in-config.js";
+import {logger} from "../../utils/logger.js";
+import {UI_BUILT_IN_CONFIG} from "../../web/built-in-config.js";
 
 // MCP Tool 的展示文案；这里只接受当前三个固定工具，避免配置拼写错误被静默忽略。
 export const toolPromptConfigSchema = z.object({
@@ -18,6 +18,13 @@ export const toolPromptsConfigSchema = z.object({
   tool_a: toolPromptConfigSchema,
   tool_b: toolPromptConfigSchema,
 }).strict();
+
+export type ChoiceFieldHintOptions = {
+  fieldName: string;
+  values: Iterable<string>;
+  usage: string;
+  emptyInstruction?: string;
+};
 
 
 

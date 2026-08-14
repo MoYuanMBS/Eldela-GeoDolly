@@ -2,7 +2,7 @@
  * iframe capture 共用的 Leaflet EPSG:3857 基础投影。
  */
 
-import type { OverlayGeoJsonGeometryType } from "../models/map-data-models.js";
+import type { OverlayGeoJsonGeometryType } from "../models/backend/map-data-models.js";
 
 // Leaflet CRS.EPSG3857 使用的纬度上限；超过后会投影到同一极区边界。
 const MAX_MERCATOR_LATITUDE = 85.0511287798066;

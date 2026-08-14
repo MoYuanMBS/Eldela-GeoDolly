@@ -11,13 +11,13 @@
  */
 
 import {z} from "zod";
-import {resolvedBasemapSchema} from "./basemap-models.js";
-import {jsonDictSchema} from "./bridge-models.js";
-import {leafletConfigSchema} from "./config-models.js";
+import {resolvedBasemapSchema} from "../common/basemap-models.js";
+import {jsonDictSchema} from "../backend/bridge-models.js";
+import {leafletConfigSchema} from "../backend/config-models.js";
 import {
   identifiedOverlayGroupsWithDisplayIdSchema,
   relationMemberFeaturesByRelationSchema,
-} from "./map-data-models.js";
+} from "../backend/map-data-models.js";
 
 const finiteNumberSchema = z.number().finite();
 const positiveIntegerSchema = z.number().int().positive();

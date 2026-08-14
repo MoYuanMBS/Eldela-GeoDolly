@@ -7,7 +7,7 @@
 
 import { z } from "zod";
 
-import {basemapProfileIdSchema} from "./basemap-models.js";
+import {basemapProfileIdSchema} from "../common/basemap-models.js";
 import { pyToolResultSchema } from "./map-data-models.js";
 
 export const toolTypeSchema = z.enum(["tool_a", "tool_b"]);

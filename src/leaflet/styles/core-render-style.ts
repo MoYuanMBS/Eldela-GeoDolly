@@ -1,6 +1,6 @@
 /** Core Overlay 固定 Canvas 样式；不进入 RuntimeStylePlan，也不接受用户 CSS。 */
 
-import type {CanvasCircleOperation, CanvasLineOperation} from "../../models/style/base-canvas-style.js";
+import type {CanvasCircleOperation, CanvasLineOperation} from "../../models/mapsurface/style/base-canvas-style.js";
 
 interface CoreRenderStyle {
   pointOperation: CanvasCircleOperation;

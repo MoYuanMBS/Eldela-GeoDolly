@@ -1,6 +1,6 @@
 /** Node 侧 basemap profile resolver。 */
 
-import type {BasemapProfileIdType, ResolvedBasemapType} from "../models/basemap-models.js";
+import type {BasemapProfileIdType, ResolvedBasemapType} from "../models/common/basemap-models.js";
 import {AppError} from "../utils/app-error.js";
 import {config} from "../utils/config-loader.js";
 

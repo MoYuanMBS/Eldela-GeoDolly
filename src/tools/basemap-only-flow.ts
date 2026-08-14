@@ -3,8 +3,8 @@
 import {
   basemapOnlyMapPayloadSchema,
   type BasemapOnlyMapPayloadType,
-} from "../models/map-payload-models.js";
-import type {BasemapOnlyFlowInput} from "../models/tool-flow-models.js";
+} from "../models/mapsurface/map-payload-models.js";
+import type {BasemapOnlyFlowInput} from "../models/backend/tool-flow-models.js";
 
 /**
  * 构造只包含 MapSurface、底图选择和 Leaflet 部署配置的 payload。

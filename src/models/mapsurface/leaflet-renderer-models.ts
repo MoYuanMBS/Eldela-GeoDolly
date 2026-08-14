@@ -1,8 +1,8 @@
 /** Leaflet Overlay renderer 的浏览器运行时模型；不进入 Bridge 或 session 序列化。 */
 
 import type {LatLng, LatLngBounds, LatLngTuple, LayerGroup, Map as LeafletMap, Path, Point, Renderer} from "leaflet";
-import type {LeafletConfigType} from "./config-models.js";
-import type {IdentifiedOverlayGroupsWithDisplayIdType, RelationMemberFeaturesByRelationType} from "./map-data-models.js";
+import type {LeafletConfigType} from "../backend/config-models.js";
+import type {IdentifiedOverlayGroupsWithDisplayIdType, RelationMemberFeaturesByRelationType} from "../backend/map-data-models.js";
 import type {CanvasRelationMembershipStyle, CanvasSpatialFeatureType} from "./style/base-canvas-style.js";
 import type {RuntimeStylePlan} from "./style/runtime-style-models.js";
 
@@ -201,6 +201,16 @@ export interface OverlayInteractionResult {
   layerIndex: OverlayInteractionLayerIndex;
   /** 幂等清理 measurement 订阅、未来 UI listener 与全部透明 hit Paths。 */
   dispose(): void;
+}
+
+/** Interaction attach 只接收已有 Visual 结果和自己的命中容错配置。 */
+export interface AttachOverlayInteractionOptions {
+  /** 与 Visual 共用、且仍处于活动生命周期的 Leaflet map。 */
+  map: LeafletMap;
+  /** 已完成首次 measurement 的 Visual；本层不会重新解析 Feature。 */
+  visualResult: OverlayRenderResult;
+  /** 仅影响透明命中半径/宽度，不参与可见绘制。 */
+  config: LeafletConfigType["interaction"];
 }
 
 export interface OverlayRendererOptions {

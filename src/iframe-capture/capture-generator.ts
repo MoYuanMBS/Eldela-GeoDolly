@@ -4,8 +4,8 @@
  * bbox 使用标准 GIS 顺序 (west, south, east, north)；输出只表示 MapSurface，不包含 Toolbar。
  */
 
-import type {BBoxType} from "../models/map-data-models.js";
-import {iframeAdaptiveConfigSchema, type IframeAdaptiveConfigType} from "../models/config-models.js";
+import type {BBoxType} from "../models/backend/map-data-models.js";
+import {iframeAdaptiveConfigSchema, type IframeAdaptiveConfigType} from "../models/backend/config-models.js";
 import {config} from "../utils/config-loader.js";
 import {AppError} from "../utils/app-error.js";
 import {getContinuousEastLongitude, projectLatitude, projectLongitude} from "./projection.js";

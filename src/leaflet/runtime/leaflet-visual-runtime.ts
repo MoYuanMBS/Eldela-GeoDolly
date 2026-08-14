@@ -5,31 +5,12 @@
  * 不导入透明 interaction。Basemap-only 把两种 visual 都设为 null。
  */
 
-import type {CoreOverlayRendererOptions, CoreOverlayRenderResult} from "../../models/core-render.js";
-import type {MapSurfaceHandle, OverlayRendererOptions, OverlayRenderResult} from "../../models/leaflet-renderer-models.js";
+import type {LeafletVisualRuntimeOptions, LeafletVisualRuntimeResult} from "../../models/mapsurface/basemap-runtime-models.js";
+import type {CoreOverlayRenderResult} from "../../models/mapsurface/core-render-models.js";
+import type {OverlayRenderResult} from "../../models/mapsurface/leaflet-renderer-models.js";
 import {AppError} from "../../utils/app-error.js";
 import {renderCoreOverlay} from "../core-render/core-overlay-render.js";
 import {renderOverlay} from "./overlay-render.js";
-
-/** 共享 Visual runtime 的稳定输入；Interactive 专属配置不进入本层。 */
-export interface LeafletVisualRuntimeOptions {
-  /** 由 Browser Flow 创建并持有；本层只借用其中的 Leaflet map。 */
-  mapSurface: MapSurfaceHandle;
-  /** null 表示当前地图明确跳过 Overlay，而不是渲染失败。 */
-  overlay: Omit<OverlayRendererOptions, "map"> | null;
-  /** null 表示 Non-core/Basemap-only 或 Core GeoJSON 缺失，不创建 Core pane。 */
-  coreOverlay: Omit<CoreOverlayRendererOptions, "map"> | null;
-}
-
-/** 可选 Visual 的共同所有权句柄，不拥有 MapSurface。 */
-export interface LeafletVisualRuntimeResult {
-  /** 已完成首次 measurement 的 Visual；Basemap-only 时为 null。 */
-  visualResult: OverlayRenderResult | null;
-  /** 独立 Core result；未请求或 GeoJSON 校验跳过时为 null。 */
-  coreResult: CoreOverlayRenderResult | null;
-  /** 幂等执行普通 Overlay → Core 清理；不会清理借用的 MapSurface。 */
-  dispose(): void;
-}
 
 /**
  * 在已稳定的 MapSurface 上创建 Visual，并等待首次同步测量完成后返回。

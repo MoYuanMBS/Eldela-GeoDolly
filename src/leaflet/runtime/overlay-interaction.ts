@@ -6,8 +6,9 @@
  */
 
 import {CircleMarker, canvas, circleMarker, layerGroup, polygon, polyline, type Map as LeafletMap, type Path, type Renderer} from "leaflet";
-import type {LeafletConfigType} from "../../models/config-models.js";
+import type {LeafletConfigType} from "../../models/backend/config-models.js";
 import type {
+  AttachOverlayInteractionOptions,
   LeafletSpatialGeometry,
   OverlayFeatureLayerEntry,
   OverlayInteractionLayerEntry,
@@ -15,20 +16,10 @@ import type {
   OverlayInteractionResult,
   OverlayRenderResult,
   OverlayVisualMeasurement,
-} from "../../models/leaflet-renderer-models.js";
-import type {CanvasSpatialFeatureType} from "../../models/style/base-canvas-style.js";
+} from "../../models/mapsurface/leaflet-renderer-models.js";
+import type {CanvasSpatialFeatureType} from "../../models/mapsurface/style/base-canvas-style.js";
 import {AppError} from "../../utils/app-error.js";
 import {LEAFLET_INTERNAL_RENDER_CONFIG} from "../../utils/leaflet-internal-render-config.js";
-
-/** Interaction attach 只接收已有 Visual 结果和自己的命中容错配置。 */
-export interface AttachOverlayInteractionOptions {
-  /** 与 Visual 共用、且仍处于活动生命周期的 Leaflet map。 */
-  map: LeafletMap;
-  /** 已完成首次 measurement 的 Visual；本层不会重新解析 Feature。 */
-  visualResult: OverlayRenderResult;
-  /** 仅影响透明命中半径/宽度，不参与可见绘制。 */
-  config: LeafletConfigType["interaction"];
-}
 
 interface MutableOverlayInteractionLayerIndex {
   node: Record<string, OverlayInteractionLayerEntry>;

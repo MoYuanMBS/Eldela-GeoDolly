@@ -1,6 +1,6 @@
 /** 启动阶段交叉校验用户 CSS/rules；输出保持可序列化，不执行正式 tag 匹配。 */
 
-import type {SerializableUserStyle, UserCssSource, UserCssStyleRuleConfig} from "../../models/style/user-css-style-models.js";
+import type {SerializableUserStyle, UserCssSource, UserCssStyleRuleConfig} from "../../models/mapsurface/style/user-css-style-models.js";
 import {logger} from "../logger.js";
 
 /** exact/regex 类型参与签名；ID 与 priority 不属于最终绘制语义。 */

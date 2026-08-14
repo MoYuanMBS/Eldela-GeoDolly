@@ -12,7 +12,7 @@ import type {
   AiOutputRecordWithIdsType,
   IdentifiedOverlayFeatureWithDisplayIdType,
   IdentifiedOverlayGroupsWithDisplayIdType,
-} from "../models/map-data-models.js";
+} from "../models/backend/map-data-models.js";
 import {logger} from "../utils/logger.js";
 
 function addFeaturesToOsmIndex(index: Map<number, {feature_id: string; display_id: string}>, features: Array<IdentifiedOverlayFeatureWithDisplayIdType>, osmType: "node" | "way" | "relation"): void {

@@ -6,7 +6,7 @@
  * 保持一致：`{code, message, details}`，没有附加详情时 details 固定为 null。
  */
 
-import type {AppErrorType, JsonValueType} from "../models/bridge-models.js";
+import type {AppErrorType, JsonValueType} from "../models/backend/bridge-models.js";
 
 export class AppError extends Error {
   readonly code: string;

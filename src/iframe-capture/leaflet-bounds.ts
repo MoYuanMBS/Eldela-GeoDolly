@@ -3,7 +3,7 @@
  */
 
 import type {LatLngBoundsLiteral} from "leaflet";
-import type {BBoxType} from "../models/map-data-models.js";
+import type {BBoxType} from "../models/backend/map-data-models.js";
 import {getContinuousEastLongitude} from "./projection.js";
 
 /**

@@ -3,7 +3,7 @@
 import {existsSync, readFileSync, realpathSync, statSync} from "node:fs";
 import path from "node:path";
 import {transform, type Declaration, type ImportDependency, type Selector} from "lightningcss";
-import type {UserCssSource} from "../../models/style/user-css-style-models.js";
+import type {UserCssSource} from "../../models/mapsurface/style/user-css-style-models.js";
 import {AppError} from "../app-error.js";
 
 // 这些是加载边界而非用户配置，避免递归导入拖垮地图服务或占用无界内存。

@@ -11,8 +11,8 @@ import {
   type PyToolReqType,
   type PyToolReplyType,
   type ToolType,
-} from "../models/bridge-models.js";
-import type {ResolvedBasemapType} from "../models/basemap-models.js";
+} from "../models/backend/bridge-models.js";
+import type {ResolvedBasemapType} from "../models/common/basemap-models.js";
 import {addFeatureIdsToAiOutput} from "../map-data/ai-output.js";
 import {resolveBasemap} from "../map-data/basemap.js";
 import {addDisplayIds} from "../map-data/display-id.js";
@@ -23,20 +23,20 @@ import {
 import {generateCaptureSize} from "../iframe-capture/capture-generator.js";
 import {generateCaptureCenter} from "../iframe-capture/center-generator.js";
 import {toLeafletBounds} from "../iframe-capture/leaflet-bounds.js";
-import {leafletConfigSchema} from "../models/config-models.js";
+import {leafletConfigSchema} from "../models/backend/config-models.js";
 import {
   mapSurfacePayloadSchema,
   type CommonVisualMapPayloadType,
   type MapRenderModeType,
-} from "../models/map-payload-models.js";
-import type {EffectiveQueryModeType} from "../models/map-data-models.js";
-import {renderStylePayloadSchema, type RenderStylePayload} from "../models/style/user-css-style-models.js";
+} from "../models/mapsurface/map-payload-models.js";
+import type {EffectiveQueryModeType} from "../models/backend/map-data-models.js";
+import {renderStylePayloadSchema, type RenderStylePayload} from "../models/mapsurface/style/user-css-style-models.js";
 import type {
   CommonMapPayloadFields,
   MapModeSwitchInput,
   ProcessedToolReplyType,
   RunToolFlowResultType,
-} from "../models/tool-flow-models.js";
+} from "../models/backend/tool-flow-models.js";
 import {AppError} from "../utils/app-error.js";
 import {config} from "../utils/config-loader.js";
 import {PythonBridgeError, callBridge, exportToolsQueryForPython} from "../utils/python-bridge.js";
