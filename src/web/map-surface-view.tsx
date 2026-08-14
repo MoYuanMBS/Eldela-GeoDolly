@@ -3,6 +3,7 @@ import type {LatLngBoundsLiteral, LatLngTuple} from "leaflet";
 import {createInteractiveMapFlow} from "../browser-map-flow/interactive-map-flow.js";
 import type {LeafletConfigType} from "../models/backend/config-models.js";
 import type {IdentifiedOverlayGroupsWithDisplayIdType, RelationMemberFeaturesByRelationType} from "../models/backend/map-data-models.js";
+import type {ResolvedBasemapType} from "../models/common/basemap-models.js";
 import type {InteractiveMapFlowResult} from "../models/mapsurface/basemap-runtime-models.js";
 import type {CoreVisualPayloadType} from "../models/mapsurface/map-payload-models.js";
 import type {RuntimeStylePlan} from "../models/mapsurface/style/runtime-style-models.js";
@@ -14,6 +15,8 @@ interface MapSurfaceViewProps {
   /** 后端已处理日期变更线语义的初始中心与请求 bbox。 */
   center: LatLngTuple;
   leafletBounds: LatLngBoundsLiteral;
+  /** Node 已解析的底图 profile；Browser 不读取配置文件或裸 ID。 */
+  basemap: ResolvedBasemapType;
   /** 两者任一缺席都表示显式 Basemap-only，不能创建不完整 Overlay。 */
   overlayOutput: IdentifiedOverlayGroupsWithDisplayIdType | null;
   relationMemberFeaturesByRelation: RelationMemberFeaturesByRelationType | null;
@@ -28,7 +31,7 @@ interface MapSurfaceViewProps {
  * React 只负责提供真实 DOM 容器和 Interactive Flow 生命周期；初始视口仍由 MapSurface 完成。
  * 异步 Flow 的完成时间可能晚于组件卸载，因此 abort 与晚到结果的 dispose 必须共同守住清理边界。
  */
-export function MapSurfaceView({screenshotSize, center, leafletBounds, overlayOutput, relationMemberFeaturesByRelation, coreVisual, stylePlan, leafletConfig}: MapSurfaceViewProps) {
+export function MapSurfaceView({screenshotSize, center, leafletBounds, basemap, overlayOutput, relationMemberFeaturesByRelation, coreVisual, stylePlan, leafletConfig}: MapSurfaceViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -69,6 +72,7 @@ export function MapSurfaceView({screenshotSize, center, leafletBounds, overlayOu
         maxZoom: leafletConfig.viewport.max_zoom,
         padding: __GEOMCP_MAP_PADDING__,
       },
+      basemap,
       overlay,
       coreOverlay,
       interactionConfig: leafletConfig.interaction,
@@ -88,7 +92,7 @@ export function MapSurfaceView({screenshotSize, center, leafletBounds, overlayOu
       abortController.abort();
       flowResult?.dispose();
     };
-  }, [screenshotSize, center, leafletBounds, overlayOutput, relationMemberFeaturesByRelation, coreVisual, stylePlan, leafletConfig]);
+  }, [screenshotSize, center, leafletBounds, basemap, overlayOutput, relationMemberFeaturesByRelation, coreVisual, stylePlan, leafletConfig]);
 
   return <div ref={containerRef} className="map-surface" aria-label="Interactive map" />;
 }

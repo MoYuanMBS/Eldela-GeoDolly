@@ -80,6 +80,7 @@ export function MapPage({mapDataUrl}: MapPageProps) {
         screenshotSize={payload.screenshot_size}
         center={payload.center}
         leafletBounds={payload.leaflet_bbox}
+        basemap={payload.basemap}
         overlayOutput={payload.overlay_output}
         relationMemberFeaturesByRelation={payload.relation_member_features_by_relation}
         coreVisual={payload.core_visual}

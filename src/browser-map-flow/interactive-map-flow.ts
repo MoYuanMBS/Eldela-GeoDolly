@@ -1,18 +1,21 @@
-/** Interactive 入口在共享 Visual 首次测量完成后，再附加唯一透明命中层。 */
+/** Interactive 入口并发等待 Basemap 与 Visual，再附加唯一透明命中层。 */
 
 import type {
+  BasemapRuntimeStatus,
   InteractiveMapFlowOptions,
   InteractiveMapFlowResult,
   LeafletVisualRuntimeResult,
 } from "../models/mapsurface/basemap-runtime-models.js";
 import type {MapSurfaceHandle, OverlayInteractionResult} from "../models/mapsurface/leaflet-renderer-models.js";
 import {AppError} from "../utils/app-error.js";
+import {createBasemapRuntime} from "../basemap/basemap-runtime.js";
 import {attachOverlayInteraction} from "../leaflet/runtime/overlay-interaction.js";
 import {createMapSurface} from "../leaflet/runtime/map-surface.js";
 import {createLeafletVisualRuntime} from "../leaflet/runtime/leaflet-visual-runtime.js";
 
 /**
- * 先完成 Visual 的首次测量，再使用同一份投影 geometry 和 measurement 附加 Interaction。
+ * MapSurface 稳定后并发启动 Basemap 与 Visual；Visual 完成首次测量后，再使用同一份投影
+ * geometry 和 measurement 附加 Interaction。
  *
  * 这一顺序保证命中层创建时不需要重新执行样式、relation 或 geometry 计算；若附加过程失败，
  * 已创建的 Visual 与 MapSurface 也会在异常继续上抛前一并释放。
@@ -24,13 +27,17 @@ export async function createInteractiveMapFlow(options: InteractiveMapFlowOption
   } catch (error) {
     throw AppError.fromUnknown(error, "leaflet_init", "Leaflet map initialization failed");
   }
+  let basemapStatus: BasemapRuntimeStatus;
   let visualRuntime: LeafletVisualRuntimeResult;
   try {
-    visualRuntime = await createLeafletVisualRuntime({
-      mapSurface,
-      overlay: options.overlay,
-      coreOverlay: options.coreOverlay,
-    });
+    [basemapStatus, visualRuntime] = await Promise.all([
+      createBasemapRuntime({mapSurface, basemap: options.basemap}),
+      createLeafletVisualRuntime({
+        mapSurface,
+        overlay: options.overlay,
+        coreOverlay: options.coreOverlay,
+      }),
+    ]);
   } catch (error) {
     mapSurface.dispose();
     throw AppError.fromUnknown(error, "map_render", "Map visual rendering failed");
@@ -55,6 +62,7 @@ export async function createInteractiveMapFlow(options: InteractiveMapFlowOption
     };
     return Object.freeze({
       mapSurface,
+      basemapStatus,
       visualResult: visualRuntime.visualResult,
       coreResult: visualRuntime.coreResult,
       interactionResult,

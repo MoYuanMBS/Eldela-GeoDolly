@@ -52,6 +52,8 @@ export interface LeafletVisualRuntimeResult {
 export interface InteractiveMapFlowOptions extends Omit<LeafletVisualRuntimeOptions, "mapSurface"> {
   /** Browser Flow 用于创建唯一 MapSurface 的固定尺寸与初始视口输入。 */
   mapSurface: MapSurfaceOptions;
+  /** Node 已解析并写入 Browser payload 的底图 profile 快照。 */
+  basemap: ResolvedBasemapType;
   /** 仅供透明命中层使用；Visual runtime 不读取交互配置。 */
   interactionConfig: LeafletConfigType["interaction"];
 }
@@ -60,6 +62,8 @@ export interface InteractiveMapFlowOptions extends Omit<LeafletVisualRuntimeOpti
 export interface InteractiveMapFlowResult extends LeafletVisualRuntimeResult {
   /** Basemap、Visual 与 Interaction 共用的唯一 MapSurface。 */
   mapSurface: MapSurfaceHandle;
+  /** 初始视口瓦片自己的 ready/failed 终态；失败不转换成 AppError。 */
+  basemapStatus: BasemapRuntimeStatus;
   /** Basemap-only 或没有 Overlay 时为 null，不表示初始化失败。 */
   interactionResult: OverlayInteractionResult | null;
   /** 幂等执行 Interaction → Visual → MapSurface 清理。 */
@@ -70,11 +74,15 @@ export interface InteractiveMapFlowResult extends LeafletVisualRuntimeResult {
 export interface SnapshotMapFlowOptions extends Omit<LeafletVisualRuntimeOptions, "mapSurface"> {
   /** Browser Flow 用于创建唯一 MapSurface 的固定尺寸与初始视口输入。 */
   mapSurface: MapSurfaceOptions;
+  /** Node 已解析并写入 Browser payload 的底图 profile 快照。 */
+  basemap: ResolvedBasemapType;
 }
 
 /** Snapshot 返回自己持有的 MapSurface 与借助共享 runtime 创建的 Visual。 */
 export interface SnapshotMapFlowResult extends LeafletVisualRuntimeResult {
   mapSurface: MapSurfaceHandle;
+  /** 初始视口瓦片自己的 ready/failed 终态；失败不转换成 AppError。 */
+  basemapStatus: BasemapRuntimeStatus;
   /** 幂等执行 Visual → MapSurface 清理。 */
   dispose(): void;
 }
