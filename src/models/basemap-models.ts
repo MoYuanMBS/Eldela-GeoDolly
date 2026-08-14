@@ -43,6 +43,11 @@ export const basemapProfileConfigSchema = z.object({
   full_attribution: z.string().trim().min(1).nullish().transform((attribution) => attribution ?? null),
 }).strict();
 
+/** Node 已从部署 registry 解析完成、可以直接写入 Browser payload 的底图快照。 */
+export const resolvedBasemapSchema = basemapProfileConfigSchema.extend({
+  id: basemapProfileIdSchema,
+});
+
 export const basemapProfileRegistrySchema = z.record(basemapRegistryProfileIdSchema, basemapProfileConfigSchema).refine(
   (registry) => Object.keys(registry).length > 0,
   {message: "tiles.yaml must contain at least one basemap profile"},
@@ -51,3 +56,4 @@ export const basemapProfileRegistrySchema = z.record(basemapRegistryProfileIdSch
 export type BasemapProfileIdType = z.infer<typeof basemapProfileIdSchema>;
 export type BasemapProfileConfigType = z.infer<typeof basemapProfileConfigSchema>;
 export type BasemapProfileRegistryType = z.infer<typeof basemapProfileRegistrySchema>;
+export type ResolvedBasemapType = z.infer<typeof resolvedBasemapSchema>;

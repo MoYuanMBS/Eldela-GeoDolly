@@ -12,8 +12,9 @@ import {
   type PyToolReplyType,
   type ToolType,
 } from "../models/bridge-models.js";
-import type {BasemapProfileIdType} from "../models/basemap-models.js";
+import type {ResolvedBasemapType} from "../models/basemap-models.js";
 import {addFeatureIdsToAiOutput} from "../map-data/ai-output.js";
+import {resolveBasemap} from "../map-data/basemap.js";
 import {addDisplayIds} from "../map-data/display-id.js";
 import {
   buildRelationMemberFeaturesByRelation,
@@ -170,7 +171,7 @@ function buildRenderStylePayload(): RenderStylePayload {
 /** 把公共视口结果收窄为共享地图 schema 的固定 tuple，并附加调用方明确选择的底图。 */
 function buildCommonMapPayloadFields(
   processed: ProcessedToolReplyType,
-  basemap: BasemapProfileIdType,
+  basemap: ResolvedBasemapType,
 ): CommonMapPayloadFields {
   // Leaflet 的 LatLngBoundsLiteral 静态类型允许多种形态；跨进程 payload 只接受固定双角 tuple。
   const mapSurfacePayload = mapSurfacePayloadSchema.parse({
@@ -189,10 +190,12 @@ function buildCommonMapPayloadFields(
  * 组装可序列化数据，不启动 Browser、Leaflet、截图或发布流程。
  */
 export async function runToolFlow(tool: ToolType, cachedSelection: LocSearchReplyRawType, toolInput: AiToolInputReqType): Promise<RunToolFlowResultType> {
+  // profile 必须在重型 Python 调用前解析；无效 ID 不得进入 Python 或 Browser payload。
+  const basemap = resolveBasemap(toolInput.basemap);
   // 公共流程固定为：准备一次请求 → 调用 Python → 一次数据后处理 → 独立模式 switch。
   const pythonQuery = exportToolsQueryForPython(cachedSelection, toolInput);
   const processed = processToolReply(await callPythonTool(tool, pythonQuery));
-  const commonMapFields = buildCommonMapPayloadFields(processed, toolInput.basemap);
+  const commonMapFields = buildCommonMapPayloadFields(processed, basemap);
   const mapPayload = runMapModeFlow({
     requestedTool: tool,
     effectiveQueryMode: processed.effective_query_mode,
