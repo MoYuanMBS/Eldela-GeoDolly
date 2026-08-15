@@ -38,6 +38,13 @@ export interface MapSurfaceHandle {
   dispose(): void;
 }
 
+/** Leaflet 公制 Scale 算法的当前结果；只供 Browser UI 使用，不进入 ready summary。 */
+export interface LeafletMetricScaleResult {
+  label: string;
+  distanceMeters: number;
+  widthPx: number;
+}
+
 /** 每个 Feature 类型在 Base/Special pane 中各自保留 Canvas 与 SVG 两条绘制路径。 */
 export interface OverlayFeatureRenderers {
   /** Base pane 中执行 Canvas recipe 的 renderer。 */

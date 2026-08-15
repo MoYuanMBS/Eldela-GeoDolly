@@ -9,7 +9,7 @@ import path from "node:path";
 import type { ZodType } from "zod";
 import { parse } from "yaml";
 import {basemapProfileRegistrySchema, type BasemapProfileRegistryType} from "../models/common/basemap-models.js";
-import {featureIdDisplayConfigSchema, iframeAdaptiveConfigSchema, leafletConfigSchema, toolPromptsConfigSchema} from "../models/backend/config-models.js";
+import {browserMapConfigSchema, featureIdDisplayConfigSchema, iframeAdaptiveConfigSchema, leafletConfigSchema, toolPromptsConfigSchema} from "../models/backend/config-models.js";
 import {AppError} from "./app-error.js";
 
 /**
@@ -33,6 +33,7 @@ export class ConfigLoader {
     this.getAppSection("prompts", toolPromptsConfigSchema);
     this.getAppSection("feature_id", featureIdDisplayConfigSchema);
     this.getAppSection("iframe_adaptive", iframeAdaptiveConfigSchema);
+    this.getAppSection("browser_map", browserMapConfigSchema);
     this.getAppSection("leaflet", leafletConfigSchema);
     this.getAvailableExpertNames();
     this.getBasemapProfiles();

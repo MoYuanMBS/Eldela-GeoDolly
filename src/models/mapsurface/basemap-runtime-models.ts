@@ -1,11 +1,12 @@
 /** Browser Map Flow、Basemap 与共享 Visual runtime 的模型。 */
 
-import type {JsonValueType} from "../backend/bridge-models.js";
+import type {AppErrorType, JsonValueType} from "../backend/bridge-models.js";
 import type {LeafletConfigType} from "../backend/config-models.js";
 import type {ResolvedBasemapType} from "../common/basemap-models.js";
 import type {CoreOverlayRendererOptions, CoreOverlayRenderResult} from "./core-render-models.js";
 import type {
   MapSurfaceHandle,
+  LeafletMetricScaleResult,
   OverlayInteractionResult,
   OverlayRendererOptions,
   OverlayRenderResult,
@@ -23,6 +24,24 @@ export interface TileRuntimeFailure {
 export type BasemapRuntimeStatus =
   | {status: "ready"; error: null}
   | {status: "failed"; error: TileRuntimeFailure};
+
+export type MapFlowVisualStatus = "ready" | "skipped";
+
+/** Browser Flow 自己汇总的精简终态；后续 UI/Playwright 发布不属于本层。 */
+export interface MapFlowReadySummary {
+  status: "ready" | "degraded" | "failed";
+  error: AppErrorType | null;
+  initial_view: {
+    center: [number, number];
+    zoom: number;
+    bounds: [[number, number], [number, number]];
+  };
+  basemap: BasemapRuntimeStatus;
+  overlay: MapFlowVisualStatus;
+  core_overlay: MapFlowVisualStatus;
+  /** Reference UI 尚未实现；当前由空 UI 阶段发布 ready 占位。 */
+  reference_ui: "ready" | "failed";
+}
 
 export interface BasemapRuntimeOptions {
   mapSurface: MapSurfaceHandle;
@@ -54,6 +73,8 @@ export interface InteractiveMapFlowOptions extends Omit<LeafletVisualRuntimeOpti
   mapSurface: MapSurfaceOptions;
   /** Node 已解析并写入 Browser payload 的底图 profile 快照。 */
   basemap: ResolvedBasemapType;
+  /** app.yaml browser_map.ready_timeout_seconds 转换后的毫秒值。 */
+  readyTimeoutMs: number;
   /** 仅供透明命中层使用；Visual runtime 不读取交互配置。 */
   interactionConfig: LeafletConfigType["interaction"];
 }
@@ -64,6 +85,10 @@ export interface InteractiveMapFlowResult extends LeafletVisualRuntimeResult {
   mapSurface: MapSurfaceHandle;
   /** 初始视口瓦片自己的 ready/failed 终态；失败不转换成 AppError。 */
   basemapStatus: BasemapRuntimeStatus;
+  /** 不包含 Leaflet runtime 对象的当前 Flow 汇总。 */
+  readySummary: MapFlowReadySummary;
+  /** 仅交给 Browser UI 的初始公制 Scale 数据，不进入 readySummary。 */
+  metricScale: LeafletMetricScaleResult;
   /** Basemap-only 或没有 Overlay 时为 null，不表示初始化失败。 */
   interactionResult: OverlayInteractionResult | null;
   /** 幂等执行 Interaction → Visual → MapSurface 清理。 */
@@ -76,6 +101,8 @@ export interface SnapshotMapFlowOptions extends Omit<LeafletVisualRuntimeOptions
   mapSurface: MapSurfaceOptions;
   /** Node 已解析并写入 Browser payload 的底图 profile 快照。 */
   basemap: ResolvedBasemapType;
+  /** app.yaml browser_map.ready_timeout_seconds 转换后的毫秒值。 */
+  readyTimeoutMs: number;
 }
 
 /** Snapshot 返回自己持有的 MapSurface 与借助共享 runtime 创建的 Visual。 */
@@ -83,6 +110,10 @@ export interface SnapshotMapFlowResult extends LeafletVisualRuntimeResult {
   mapSurface: MapSurfaceHandle;
   /** 初始视口瓦片自己的 ready/failed 终态；失败不转换成 AppError。 */
   basemapStatus: BasemapRuntimeStatus;
+  /** 不包含 Leaflet runtime 对象的当前 Flow 汇总。 */
+  readySummary: MapFlowReadySummary;
+  /** 仅交给 Browser UI 的初始公制 Scale 数据，不进入 readySummary。 */
+  metricScale: LeafletMetricScaleResult;
   /** 幂等执行 Visual → MapSurface 清理。 */
   dispose(): void;
 }

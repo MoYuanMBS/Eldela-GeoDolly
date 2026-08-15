@@ -164,6 +164,10 @@ iframe_adaptive:
   min_map_display_width: 600
   min_map_display_height: 300
 
+# Browser Map Flow 等待初始瓦片与视觉子流程完成的统一上限。
+browser_map:
+  ready_timeout_seconds: 30
+
 # Leaflet 地图视口与 Overlay renderer 的可公开调节参数。
 # 这些值由 TypeScript 在进程启动时校验，并随每次地图 payload 传给浏览器；浏览器不直接读取 YAML。
 leaflet:

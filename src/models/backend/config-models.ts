@@ -222,6 +222,12 @@ export const iframeAdaptiveConfigSchema = z.object({
   }
 });
 
+//#########################browser map flow###############################
+
+export const browserMapConfigSchema = z.object({
+  ready_timeout_seconds: positiveFiniteNumberSchema,
+}).strict();
+
 //#########################leaflet renderer###############################
 
 export const leafletConfigSchema = z.object({
@@ -300,4 +306,5 @@ export type FeatureIdRenderConfigType = z.infer<typeof featureIdRenderConfigSche
 export type FeatureIdDisplayConfigType = z.infer<typeof featureIdDisplayConfigSchema>;
 export type IframePaddingConfigType = z.infer<typeof iframePaddingConfigSchema>;
 export type IframeAdaptiveConfigType = z.infer<typeof iframeAdaptiveConfigSchema>;
+export type BrowserMapConfigType = z.infer<typeof browserMapConfigSchema>;
 export type LeafletConfigType = z.infer<typeof leafletConfigSchema>;

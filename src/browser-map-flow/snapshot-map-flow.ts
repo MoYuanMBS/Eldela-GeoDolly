@@ -6,11 +6,13 @@ import type {
   SnapshotMapFlowOptions,
   SnapshotMapFlowResult,
 } from "../models/mapsurface/basemap-runtime-models.js";
-import type {MapSurfaceHandle} from "../models/mapsurface/leaflet-renderer-models.js";
+import type {LeafletMetricScaleResult, MapSurfaceHandle} from "../models/mapsurface/leaflet-renderer-models.js";
 import {AppError} from "../utils/app-error.js";
 import {createBasemapRuntime} from "../basemap/basemap-runtime.js";
 import {createMapSurface} from "../leaflet/runtime/map-surface.js";
+import {calculateLeafletMetricScale} from "../leaflet/runtime/metric-scale.js";
 import {createLeafletVisualRuntime} from "../leaflet/runtime/leaflet-visual-runtime.js";
+import {combineMapFlowAbortSignal, createMapFlowReadySummary, waitForMapFlowReady} from "./map-flow-ready.js";
 
 /**
  * 启动截图使用的共享地图流程。
@@ -25,18 +27,37 @@ export async function createSnapshotMapFlow(options: SnapshotMapFlowOptions): Pr
   } catch (error) {
     throw AppError.fromUnknown(error, "leaflet_init", "Leaflet map initialization failed");
   }
+  let metricScale: LeafletMetricScaleResult;
+  try {
+    metricScale = calculateLeafletMetricScale(mapSurface.map);
+  } catch (error) {
+    mapSurface.dispose();
+    throw AppError.fromUnknown(error, "metric_scale_failed", "Leaflet metric scale initialization failed");
+  }
+  const timeoutController = new AbortController();
   let basemapStatus: BasemapRuntimeStatus;
   let visualRuntime: LeafletVisualRuntimeResult;
+  const completedVisualRuntime: {value: LeafletVisualRuntimeResult | null} = {value: null};
   try {
-    [basemapStatus, visualRuntime] = await Promise.all([
+    [basemapStatus, visualRuntime] = await waitForMapFlowReady(Promise.all([
       createBasemapRuntime({mapSurface, basemap: options.basemap}),
       createLeafletVisualRuntime({
         mapSurface,
-        overlay: options.overlay,
-        coreOverlay: options.coreOverlay,
+        overlay: options.overlay === null ? null : {
+          ...options.overlay,
+          signal: combineMapFlowAbortSignal(options.overlay.signal, timeoutController.signal),
+        },
+        coreOverlay: options.coreOverlay === null ? null : {
+          ...options.coreOverlay,
+          signal: combineMapFlowAbortSignal(options.coreOverlay.signal, timeoutController.signal),
+        },
+      }).then((result) => {
+        completedVisualRuntime.value = result;
+        return result;
       }),
-    ]);
+    ]), options.readyTimeoutMs, timeoutController);
   } catch (error) {
+    completedVisualRuntime.value?.dispose();
     mapSurface.dispose();
     throw AppError.fromUnknown(error, "map_render", "Map visual rendering failed");
   }
@@ -47,9 +68,12 @@ export async function createSnapshotMapFlow(options: SnapshotMapFlowOptions): Pr
     visualRuntime.dispose();
     mapSurface.dispose();
   };
+  const readySummary = createMapFlowReadySummary(mapSurface, basemapStatus, visualRuntime.visualResult, visualRuntime.coreResult);
   return Object.freeze({
     mapSurface,
     basemapStatus,
+    readySummary,
+    metricScale,
     visualResult: visualRuntime.visualResult,
     coreResult: visualRuntime.coreResult,
     dispose,
