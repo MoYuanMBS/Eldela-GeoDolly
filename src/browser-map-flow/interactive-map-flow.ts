@@ -39,10 +39,18 @@ export async function createInteractiveMapFlow(options: InteractiveMapFlowOption
   const timeoutController = new AbortController();
   let basemapStatus: BasemapRuntimeStatus;
   let visualRuntime: LeafletVisualRuntimeResult;
+  // Promise.all 的另一分支失败时仍需保留已经完成的 Visual，才能按所有权顺序释放它。
   const completedVisualRuntime: {value: LeafletVisualRuntimeResult | null} = {value: null};
   try {
+    // Snapshot 始终使用在线 raster；只有 Interactive profile 显式配置 archive 时才按需加载 PMTiles chunk。
+    // 一旦部署方选择了 PMTiles，其读取或校验失败会进入 basemap failed 状态，不静默切回在线源掩盖配置错误。
+    const basemapPromise = options.basemap.interactive_pmtiles === null
+      ? createBasemapRuntime({mapSurface, basemap: options.basemap})
+      : import("../basemap/pmtiles-basemap-runtime.js").then(({createPmtilesBasemapRuntime}) =>
+          createPmtilesBasemapRuntime({mapSurface, basemap: options.basemap}));
+    // Basemap 与 Visual 只共享 MapSurface，不互相等待；统一 timeout 负责限制整个首次 ready 阶段。
     [basemapStatus, visualRuntime] = await waitForMapFlowReady(Promise.all([
-      createBasemapRuntime({mapSurface, basemap: options.basemap}),
+      basemapPromise,
       createLeafletVisualRuntime({
         mapSurface,
         overlay: options.overlay === null ? null : {
