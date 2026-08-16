@@ -16,9 +16,7 @@ if (rootElement === null) {
 }
 
 const mapDataUrl = document.querySelector<HTMLMetaElement>('meta[name="geomcp-map-data-url"]')?.content;
-// 正式 map service 可注入 session-scoped route；缺席时 Browser warning 仍会保留在 console。
-const warningReportUrl = document.querySelector<HTMLMetaElement>('meta[name="geomcp-warning-report-url"]')?.content.trim() || null;
 
 createRoot(rootElement).render(
-  <MapPage mapDataUrl={mapDataUrl ?? null} warningReportUrl={warningReportUrl} />,
+  <MapPage mapDataUrl={mapDataUrl ?? null} />,
 );

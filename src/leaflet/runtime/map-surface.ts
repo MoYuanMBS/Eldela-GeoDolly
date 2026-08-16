@@ -26,7 +26,6 @@ export function createMapSurface(options: MapSurfaceOptions): MapSurfaceHandle {
     screenshotSize: [width, height],
     center,
     requestedLeafletBounds,
-    minZoom,
     maxZoom,
     padding,
   } = options;
@@ -44,11 +43,10 @@ export function createMapSurface(options: MapSurfaceOptions): MapSurfaceHandle {
   const requestedBounds = latLngBounds(requestedLeafletBounds);
   // getBoundsZoom 接收的是横纵总 padding，而不是单边 padding。
   const totalPadding = point(padding.left + padding.right, padding.top + padding.bottom);
-  // 先取得未受 Map zoom 范围影响的 bbox zoom，再显式应用部署期视觉上下限。
+  // 先取得未受 Map maxZoom 影响的 bbox zoom，再显式应用部署期视觉上限。
   const rawMapZoom = leafletMap.getBoundsZoom(requestedBounds, false, totalPadding);
-  const mapZoom = Math.min(Math.max(rawMapZoom, minZoom), maxZoom);
-  // Map 本身使用同一范围，确保后续交互缩放也不能越过 viewport.min_zoom/max_zoom。
-  leafletMap.setMinZoom(minZoom);
+  const mapZoom = Math.min(rawMapZoom, maxZoom);
+  // Map 本身使用同一上限，确保后续交互缩放也不能越过 viewport.max_zoom。
   leafletMap.setMaxZoom(maxZoom);
   // bbox 只负责决定 zoom；跨日期变更线已经由上游展开，最终视口中心仍使用后端给出的 center。
   leafletMap.setView(center, mapZoom, {animate: false});

@@ -13,8 +13,6 @@ export interface MapSurfaceOptions {
   center: LatLngTuple;
   /** [[south, west], [north, east]]；跨日期变更线时 east 已展开。 */
   requestedLeafletBounds: LatLngBoundsLiteral;
-  /** 已由 leafletConfigSchema 校验的地图视觉 zoom 下限。 */
-  minZoom: number;
   /** 已由 leafletConfigSchema 校验的地图视觉 zoom 上限。 */
   maxZoom: number;
   /** 已由 iframeAdaptiveConfigSchema 校验的对称安全距离。 */

@@ -20,8 +20,6 @@ type MapLoadState =
 
 interface MapPageProps {
   mapDataUrl: string | null;
-  /** Node map service 提供的 session-scoped warning route；不属于地图 payload。 */
-  warningReportUrl: string | null;
 }
 
 interface MapPageStyle extends CSSProperties {
@@ -30,7 +28,7 @@ interface MapPageStyle extends CSSProperties {
   "--geomcp-toolbar-min-height": string;
 }
 
-export function MapPage({mapDataUrl, warningReportUrl}: MapPageProps) {
+export function MapPage({mapDataUrl}: MapPageProps) {
   const [loadState, setLoadState] = useState<MapLoadState>({status: "loading"});
 
   useEffect(() => {
@@ -88,7 +86,6 @@ export function MapPage({mapDataUrl, warningReportUrl}: MapPageProps) {
         coreVisual={payload.core_visual}
         stylePlan={stylePlan}
         leafletConfig={payload.leaflet}
-        warningReportUrl={warningReportUrl}
       />
       <footer className="map-toolbar" aria-label="Map toolbar">
         <span>GeoMCP</span>

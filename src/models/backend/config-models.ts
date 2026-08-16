@@ -151,7 +151,6 @@ export const featureIdDisplayConfigSchema = z
 // 参考面积和比例允许浮点数；所有 CSS 尺寸与像素预算都是正整数。
 const positiveFiniteNumberSchema = z.number().finite().positive();
 const positiveIntegerSchema = z.number().int().positive();
-const nonnegativeIntegerSchema = z.number().int().nonnegative();
 
 export const iframePaddingConfigSchema = z.object({
   top: positiveIntegerSchema,
@@ -240,7 +239,6 @@ export const uiConfigSchema = z.object({
 
 export const leafletConfigSchema = z.object({
   viewport: z.object({
-    min_zoom: nonnegativeIntegerSchema,
     max_zoom: positiveIntegerSchema,
   }).strict(),
   render_batch_size: positiveIntegerSchema,
@@ -273,10 +271,6 @@ export const leafletConfigSchema = z.object({
   }).strict(),
 }).strict().superRefine((leafletConfig, context) => {
   const {node_zoom: nodeZoom, relation_membership: relation, interaction, visual_limits: limits} = leafletConfig;
-
-  if (leafletConfig.viewport.min_zoom > leafletConfig.viewport.max_zoom) {
-    context.addIssue({code: "custom", message: "viewport min_zoom must not exceed max_zoom", path: ["viewport", "min_zoom"]});
-  }
 
   // 分段边界必须严格递增，否则同一 zoom 会命中相互矛盾的缩放等级。
   if (!(nodeZoom.hidden_max_zoom < nodeZoom.compact_max_zoom && nodeZoom.compact_max_zoom < nodeZoom.medium_max_zoom)) {

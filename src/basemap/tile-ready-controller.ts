@@ -1,20 +1,20 @@
-/** Leaflet raster GridLayer 初始视口 ready 控制器。 */
+/** Leaflet TileLayer 初始视口 ready 控制器。 */
 
-import type {GridLayer, Map as LeafletMap, TileErrorEvent} from "leaflet";
+import type {Map as LeafletMap, TileErrorEvent, TileLayer} from "leaflet";
 import type {BasemapRuntimeStatus} from "../models/mapsurface/basemap-runtime-models.js";
 
 /**
- * 在挂载 GridLayer 前绑定监听，并把第一次初始加载周期收敛为唯一终态。
+ * 在挂载 TileLayer 前绑定监听，并把第一次初始加载周期收敛为唯一终态。
  *
  * 第一个 `tileerror` 会立即失败；全部必要瓦片结束后发布的 `load` 则代表 ready。终态发布后立即移除
  * 本控制器的监听，后续拖动或缩放产生的瓦片事件不会反向修改已经发布的状态。本函数不拥有 Layer，
  * 因此不提供独立 dispose，也不会在失败时从 MapSurface 移除它。
  *
- * @param tileLayer 已完成来源和 zoom 配置、尚未挂载的 raster GridLayer。
+ * @param tileLayer 已完成来源和 zoom 配置、尚未挂载的在线 raster TileLayer。
  * @param map Browser Flow 创建并持有的唯一 Leaflet Map。
  * @returns 初始视口瓦片唯一的 ready/failed 状态。
  */
-export function mountTileLayerAndWaitForInitialReady(tileLayer: GridLayer, map: LeafletMap): Promise<BasemapRuntimeStatus> {
+export function mountTileLayerAndWaitForInitialReady(tileLayer: TileLayer, map: LeafletMap): Promise<BasemapRuntimeStatus> {
   return new Promise((resolve) => {
     let settled = false;
     // 本控制器只观察首次加载周期；终态之后由 Leaflet 自己继续管理交互产生的瓦片。
@@ -28,7 +28,7 @@ export function mountTileLayerAndWaitForInitialReady(tileLayer: GridLayer, map: 
       cleanup();
       resolve(status);
     };
-    // GridLayer 的 load 只在当前可见范围没有待加载瓦片时触发。
+    // TileLayer 的 load 只在当前可见范围没有待加载瓦片时触发。
     const handleLoad = (): void => {
       settle({status: "ready", error: null});
     };

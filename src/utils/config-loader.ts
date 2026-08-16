@@ -106,9 +106,7 @@ export class ConfigLoader {
     return filteredExpertNames;
   }
 
-  /**
-   * 读取、校验并缓存完整的 `config/tiles.yaml` profile registry。
-   */
+  /** 读取、校验并缓存完整的 `config/tiles.yaml` 在线 raster profile registry。 */
   getBasemapProfiles(): BasemapProfileRegistryType {
     if (this.cachedBasemapProfiles !== null) {
       return this.cachedBasemapProfiles;

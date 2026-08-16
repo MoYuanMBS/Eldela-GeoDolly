@@ -6,11 +6,11 @@ osm:
   max_native_zoom: 19
   crs: EPSG:3857
   attribution: "OpenStreetMap"
-  full_attribution: 
+  full_attribution:
 
 arcgis_satellite:
   name: ArcGIS Satellite
-  url: "https://ibasemaps-api.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}?token=..."
+  url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
   max_native_zoom: 22
   crs: EPSG:3857
   attribution: "Powered by Esri"
