@@ -27,7 +27,8 @@ function getRasterMimeType(tileType: TileType): string | null {
  * 创建并挂载 Interactive PMTiles layer，等待初始视口内全部必要 raster tiles 到达终态。
  *
  * 本 runtime 只读取 resolved profile，不读取 YAML、不处理 attribution，也不重新计算 center、bounds
- * 或 map zoom。创建的 GridLayer 交给唯一 MapSurface 持有并随其 dispose，不返回独立清理句柄。
+ * 或 map zoom。ready 的 GridLayer 交给唯一 MapSurface 持有并随其 dispose；failed 的尝试会在返回前
+ * 移除自身，保证 Interactive Flow 可以安全挂载在线 fallback，而不叠加两层底图。
  *
  * @param options 已创建的 MapSurface，以及 Node 侧解析完成的 basemap profile 快照。
  * @returns 初始视口瓦片的 ready/failed 状态；archive 或 tile 失败不会从本函数 throw AppError。
@@ -53,25 +54,30 @@ export async function createPmtilesBasemapRuntime(options: BasemapRuntimeOptions
   if (mimeType === null) {
     return createFailedStatus("pmtiles_tile_type", "Interactive PMTiles archive must contain raster tiles", {tile_type: header.tileType});
   }
-  // minZoom=0 保证任意初始世界视口都有概览层；header 还必须覆盖部署方声明的全部原生层级。
-  if (header.minZoom !== 0 || header.maxZoom < pmtilesConfig.max_native_zoom) {
+  // archive 必须覆盖 MapSurface 允许的最低层级，并覆盖 profile 声明的全部原生层级。
+  if (header.minZoom > options.mapSurface.map.getMinZoom() || header.maxZoom < pmtilesConfig.max_native_zoom) {
     return createFailedStatus("pmtiles_zoom_range", "Interactive PMTiles archive does not cover the configured native zoom range", {
       archive_min_zoom: header.minZoom,
       archive_max_zoom: header.maxZoom,
+      configured_min_zoom: options.mapSurface.map.getMinZoom(),
       configured_max_native_zoom: pmtilesConfig.max_native_zoom,
     });
   }
 
   try {
     const map = options.mapSurface.map;
-    // MapSurface 可继续 zoom 到 viewport.max_zoom；只有 archive 请求层级在 maxNativeZoom 截止并向上放大。
+    // MapSurface 使用 viewport zoom 范围；只有 archive 请求层级在 maxNativeZoom 截止并向上放大。
+    // tileSize 不显式传入，统一使用 Leaflet GridLayer 默认的 256px。
     const layer = new PmtilesRasterLayer(archive, mimeType, {
-      tileSize: pmtilesConfig.tile_size,
+      minZoom: map.getMinZoom(),
       maxZoom: map.getMaxZoom(),
       maxNativeZoom: pmtilesConfig.max_native_zoom,
     });
     // 与在线 TileLayer 共用首次 load/tileerror 契约，避免 Browser Flow 感知两种底图实现。
-    return await mountTileLayerAndWaitForInitialReady(layer, map);
+    const status = await mountTileLayerAndWaitForInitialReady(layer, map);
+    // failed layer 不属于最终 MapSurface 内容；先移除并触发 tileunload 清理，再允许 Flow 挂载在线 fallback。
+    if (status.status === "failed") layer.remove();
+    return status;
   } catch {
     // 构造或挂载的同步异常同样只终止 Basemap 分支，由 Flow 汇总最终地图状态。
     return createFailedStatus("pmtiles_layer_init", "Interactive PMTiles layer failed to initialize");

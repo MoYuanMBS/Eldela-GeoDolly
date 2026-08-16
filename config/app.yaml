@@ -168,11 +168,18 @@ iframe_adaptive:
 browser_map:
   ready_timeout_seconds: 30
 
+# Browser UI 可公开调节参数。
+ui:
+  # 公制 Scale 在当前视口中心纬度处用于换算距离的最大逻辑像素宽度。
+  max_scale_width_px: 100
+
 # Leaflet 地图视口与 Overlay renderer 的可公开调节参数。
 # 这些值由 TypeScript 在进程启动时校验，并随每次地图 payload 传给浏览器；浏览器不直接读取 YAML。
 leaflet:
-  # 地图视觉 zoom 上限；独立于底图 profile 的 max_native_zoom，高层级允许放大原生瓦片。
+  # 地图视觉 zoom 范围；独立于底图 profile 的 max_native_zoom，高层级允许放大原生瓦片。
   viewport:
+    # 地图初始与交互 zoom 下限；PMTiles archive 必须覆盖到该层级或更低。
+    min_zoom: 3
     max_zoom: 24
 
   # 单个类型连续渲染多少个 Feature 后，主动把执行权归还一次浏览器事件循环。

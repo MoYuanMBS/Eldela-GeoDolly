@@ -151,6 +151,7 @@ export const featureIdDisplayConfigSchema = z
 // 参考面积和比例允许浮点数；所有 CSS 尺寸与像素预算都是正整数。
 const positiveFiniteNumberSchema = z.number().finite().positive();
 const positiveIntegerSchema = z.number().int().positive();
+const nonnegativeIntegerSchema = z.number().int().nonnegative();
 
 export const iframePaddingConfigSchema = z.object({
   top: positiveIntegerSchema,
@@ -228,10 +229,18 @@ export const browserMapConfigSchema = z.object({
   ready_timeout_seconds: positiveFiniteNumberSchema,
 }).strict();
 
+//#########################browser UI###############################
+
+/** Browser UI 的部署配置；保持平铺，避免单字段 Scale 配置产生无意义层级。 */
+export const uiConfigSchema = z.object({
+  max_scale_width_px: positiveIntegerSchema,
+}).strict();
+
 //#########################leaflet renderer###############################
 
 export const leafletConfigSchema = z.object({
   viewport: z.object({
+    min_zoom: nonnegativeIntegerSchema,
     max_zoom: positiveIntegerSchema,
   }).strict(),
   render_batch_size: positiveIntegerSchema,
@@ -264,6 +273,10 @@ export const leafletConfigSchema = z.object({
   }).strict(),
 }).strict().superRefine((leafletConfig, context) => {
   const {node_zoom: nodeZoom, relation_membership: relation, interaction, visual_limits: limits} = leafletConfig;
+
+  if (leafletConfig.viewport.min_zoom > leafletConfig.viewport.max_zoom) {
+    context.addIssue({code: "custom", message: "viewport min_zoom must not exceed max_zoom", path: ["viewport", "min_zoom"]});
+  }
 
   // 分段边界必须严格递增，否则同一 zoom 会命中相互矛盾的缩放等级。
   if (!(nodeZoom.hidden_max_zoom < nodeZoom.compact_max_zoom && nodeZoom.compact_max_zoom < nodeZoom.medium_max_zoom)) {
@@ -307,4 +320,5 @@ export type FeatureIdDisplayConfigType = z.infer<typeof featureIdDisplayConfigSc
 export type IframePaddingConfigType = z.infer<typeof iframePaddingConfigSchema>;
 export type IframeAdaptiveConfigType = z.infer<typeof iframeAdaptiveConfigSchema>;
 export type BrowserMapConfigType = z.infer<typeof browserMapConfigSchema>;
+export type UiConfigType = z.infer<typeof uiConfigSchema>;
 export type LeafletConfigType = z.infer<typeof leafletConfigSchema>;

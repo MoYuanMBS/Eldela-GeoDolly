@@ -51,15 +51,13 @@ const interactivePmtilesUrlSchema = z.string().trim().min(1).superRefine((url, c
  * Interactive 使用的部署级 raster PMTiles archive。
  *
  * `max_native_zoom` 描述该 archive 实际包含的最高原生层级，不限制 MapSurface zoom；更高层级由
- * Leaflet 放大原生瓦片。首版固定 256px，避免 archive tile size 与 Leaflet 坐标换算产生歧义。
+ * Leaflet 放大原生瓦片。瓦片尺寸使用 Leaflet 默认的 256px，不在单个 profile 中重复配置。
  */
 export const interactivePmtilesConfigSchema = z.object({
   /** 浏览器直接进行 Range Request 的 archive URL。 */
   url: interactivePmtilesUrlSchema,
   /** PMTiles archive 的最高原生瓦片层级。 */
   max_native_zoom: z.number().int().positive(),
-  /** 首版仅支持标准 256px raster tile。 */
-  tile_size: z.literal(256),
 }).strict();
 
 /**

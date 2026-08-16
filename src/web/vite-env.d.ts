@@ -8,3 +8,4 @@ declare const __GEOMCP_MAP_PADDING__: {
 };
 
 declare const __GEOMCP_MAP_READY_TIMEOUT_MS__: number;
+declare const __GEOMCP_MAX_SCALE_WIDTH_PX__: number;

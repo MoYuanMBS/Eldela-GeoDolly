@@ -7,6 +7,7 @@ import type {
   LeafletVisualRuntimeResult,
 } from "../models/mapsurface/basemap-runtime-models.js";
 import type {LeafletMetricScaleResult, MapSurfaceHandle, OverlayInteractionResult} from "../models/mapsurface/leaflet-renderer-models.js";
+import {interactivePmtilesFallbackReasonSchema} from "../models/common/browser-warning-models.js";
 import {AppError} from "../utils/app-error.js";
 import {createBasemapRuntime} from "../basemap/basemap-runtime.js";
 import {attachOverlayInteraction} from "../leaflet/runtime/overlay-interaction.js";
@@ -14,6 +15,33 @@ import {createMapSurface} from "../leaflet/runtime/map-surface.js";
 import {calculateLeafletMetricScale} from "../leaflet/runtime/metric-scale.js";
 import {createLeafletVisualRuntime} from "../leaflet/runtime/leaflet-visual-runtime.js";
 import {combineMapFlowAbortSignal, createMapFlowReadySummary, waitForMapFlowReady} from "./map-flow-ready.js";
+
+/**
+ * 选择 Interactive 底图来源，并把可降级的 PMTiles 来源失败切换为在线 raster。
+ *
+ * PMTiles runtime 会在 failed 前移除自己的 GridLayer；warning 发布是尽力而为且不进入 ready summary，
+ * 因而在线 TileLayer 的最终 ready/failed 状态仍是 Basemap 对外唯一终态。
+ */
+async function createInteractiveBasemap(options: InteractiveMapFlowOptions, mapSurface: MapSurfaceHandle): Promise<BasemapRuntimeStatus> {
+  if (options.basemap.interactive_pmtiles === null) {
+    return createBasemapRuntime({mapSurface, basemap: options.basemap});
+  }
+
+  // 动态 import 让未配置 PMTiles 的 Interactive 页面和全部 Snapshot 都不主动加载 archive reader chunk。
+  const {createPmtilesBasemapRuntime} = await import("../basemap/pmtiles-basemap-runtime.js");
+  const pmtilesStatus = await createPmtilesBasemapRuntime({mapSurface, basemap: options.basemap});
+  if (pmtilesStatus.status === "ready") return pmtilesStatus;
+
+  // 只有来源/内容失败允许回退；初始化编程错误继续保留 failed，避免在线源掩盖实现缺陷。
+  const fallbackReason = interactivePmtilesFallbackReasonSchema.safeParse(pmtilesStatus.error.code);
+  if (!fallbackReason.success) return pmtilesStatus;
+
+  options.warningReporter({
+    event: "interactive_pmtiles_fallback",
+    details: {profile_id: options.basemap.id, reason_code: fallbackReason.data},
+  });
+  return createBasemapRuntime({mapSurface, basemap: options.basemap});
+}
 
 /**
  * MapSurface 稳定后并发启动 Basemap 与 Visual；Visual 完成首次测量后，再使用同一份投影
@@ -31,7 +59,7 @@ export async function createInteractiveMapFlow(options: InteractiveMapFlowOption
   }
   let metricScale: LeafletMetricScaleResult;
   try {
-    metricScale = calculateLeafletMetricScale(mapSurface.map);
+    metricScale = calculateLeafletMetricScale(mapSurface.map, options.metricScaleMaxWidthPx);
   } catch (error) {
     mapSurface.dispose();
     throw AppError.fromUnknown(error, "metric_scale_failed", "Leaflet metric scale initialization failed");
@@ -42,12 +70,7 @@ export async function createInteractiveMapFlow(options: InteractiveMapFlowOption
   // Promise.all 的另一分支失败时仍需保留已经完成的 Visual，才能按所有权顺序释放它。
   const completedVisualRuntime: {value: LeafletVisualRuntimeResult | null} = {value: null};
   try {
-    // Snapshot 始终使用在线 raster；只有 Interactive profile 显式配置 archive 时才按需加载 PMTiles chunk。
-    // 一旦部署方选择了 PMTiles，其读取或校验失败会进入 basemap failed 状态，不静默切回在线源掩盖配置错误。
-    const basemapPromise = options.basemap.interactive_pmtiles === null
-      ? createBasemapRuntime({mapSurface, basemap: options.basemap})
-      : import("../basemap/pmtiles-basemap-runtime.js").then(({createPmtilesBasemapRuntime}) =>
-          createPmtilesBasemapRuntime({mapSurface, basemap: options.basemap}));
+    const basemapPromise = createInteractiveBasemap(options, mapSurface);
     // Basemap 与 Visual 只共享 MapSurface，不互相等待；统一 timeout 负责限制整个首次 ready 阶段。
     [basemapStatus, visualRuntime] = await waitForMapFlowReady(Promise.all([
       basemapPromise,

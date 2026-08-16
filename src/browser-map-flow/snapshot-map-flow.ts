@@ -29,7 +29,7 @@ export async function createSnapshotMapFlow(options: SnapshotMapFlowOptions): Pr
   }
   let metricScale: LeafletMetricScaleResult;
   try {
-    metricScale = calculateLeafletMetricScale(mapSurface.map);
+    metricScale = calculateLeafletMetricScale(mapSurface.map, options.metricScaleMaxWidthPx);
   } catch (error) {
     mapSurface.dispose();
     throw AppError.fromUnknown(error, "metric_scale_failed", "Leaflet metric scale initialization failed");

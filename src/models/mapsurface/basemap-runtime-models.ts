@@ -3,6 +3,7 @@
 import type {AppErrorType, JsonValueType} from "../backend/bridge-models.js";
 import type {LeafletConfigType} from "../backend/config-models.js";
 import type {ResolvedBasemapType} from "../common/basemap-models.js";
+import type {BrowserWarningReporterType} from "../common/browser-warning-models.js";
 import type {CoreOverlayRendererOptions, CoreOverlayRenderResult} from "./core-render-models.js";
 import type {
   MapSurfaceHandle,
@@ -75,6 +76,10 @@ export interface InteractiveMapFlowOptions extends Omit<LeafletVisualRuntimeOpti
   basemap: ResolvedBasemapType;
   /** app.yaml browser_map.ready_timeout_seconds 转换后的毫秒值。 */
   readyTimeoutMs: number;
+  /** app.yaml ui.max_scale_width_px；只参与返回给 UI 的公制 Scale 计算。 */
+  metricScaleMaxWidthPx: number;
+  /** Interactive 降级 warning 的 Browser 发布与 Node 回传入口。 */
+  warningReporter: BrowserWarningReporterType;
   /** 仅供透明命中层使用；Visual runtime 不读取交互配置。 */
   interactionConfig: LeafletConfigType["interaction"];
 }
@@ -103,6 +108,8 @@ export interface SnapshotMapFlowOptions extends Omit<LeafletVisualRuntimeOptions
   basemap: ResolvedBasemapType;
   /** app.yaml browser_map.ready_timeout_seconds 转换后的毫秒值。 */
   readyTimeoutMs: number;
+  /** app.yaml ui.max_scale_width_px；只参与返回给 UI 的公制 Scale 计算。 */
+  metricScaleMaxWidthPx: number;
 }
 
 /** Snapshot 返回自己持有的 MapSurface 与借助共享 runtime 创建的 Visual。 */

@@ -7,6 +7,7 @@ import type {ResolvedBasemapType} from "../models/common/basemap-models.js";
 import type {InteractiveMapFlowResult} from "../models/mapsurface/basemap-runtime-models.js";
 import type {CoreVisualPayloadType} from "../models/mapsurface/map-payload-models.js";
 import type {RuntimeStylePlan} from "../models/mapsurface/style/runtime-style-models.js";
+import {createBrowserWarningReporter} from "./browser-warning-reporter.js";
 
 /** Web 入口收到的仍是完整 Leaflet payload；组件只在边界处分配 Visual/Interaction 配置。 */
 interface MapSurfaceViewProps {
@@ -25,13 +26,15 @@ interface MapSurfaceViewProps {
   /** 浏览器初始化阶段已经准备好的统一运行时样式计划。 */
   stylePlan: RuntimeStylePlan | null;
   leafletConfig: LeafletConfigType;
+  /** Node map service 注入的 warning route；null 时只记录 Browser console。 */
+  warningReportUrl: string | null;
 }
 
 /**
  * React 只负责提供真实 DOM 容器和 Interactive Flow 生命周期；初始视口仍由 MapSurface 完成。
  * 异步 Flow 的完成时间可能晚于组件卸载，因此 abort 与晚到结果的 dispose 必须共同守住清理边界。
  */
-export function MapSurfaceView({screenshotSize, center, leafletBounds, basemap, overlayOutput, relationMemberFeaturesByRelation, coreVisual, stylePlan, leafletConfig}: MapSurfaceViewProps) {
+export function MapSurfaceView({screenshotSize, center, leafletBounds, basemap, overlayOutput, relationMemberFeaturesByRelation, coreVisual, stylePlan, leafletConfig, warningReportUrl}: MapSurfaceViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -40,6 +43,8 @@ export function MapSurfaceView({screenshotSize, center, leafletBounds, basemap, 
     // signal 中断分批 Visual 渲染；flowResult 则负责清理由 Leaflet 持有的同步资源。
     const abortController = new AbortController();
     let flowResult: InteractiveMapFlowResult | null = null;
+    // reporter 的去重范围与当前 Map 页面生命周期一致；POST 失败不会进入 Flow Promise。
+    const warningReporter = createBrowserWarningReporter(warningReportUrl);
     const overlay = overlayOutput !== null && relationMemberFeaturesByRelation !== null && stylePlan !== null
       ? {
           overlayOutput,
@@ -69,11 +74,14 @@ export function MapSurfaceView({screenshotSize, center, leafletBounds, basemap, 
         screenshotSize,
         center,
         requestedLeafletBounds: leafletBounds,
+        minZoom: leafletConfig.viewport.min_zoom,
         maxZoom: leafletConfig.viewport.max_zoom,
         padding: __GEOMCP_MAP_PADDING__,
       },
       basemap,
       readyTimeoutMs: __GEOMCP_MAP_READY_TIMEOUT_MS__,
+      metricScaleMaxWidthPx: __GEOMCP_MAX_SCALE_WIDTH_PX__,
+      warningReporter,
       overlay,
       coreOverlay,
       interactionConfig: leafletConfig.interaction,
@@ -93,7 +101,7 @@ export function MapSurfaceView({screenshotSize, center, leafletBounds, basemap, 
       abortController.abort();
       flowResult?.dispose();
     };
-  }, [screenshotSize, center, leafletBounds, basemap, overlayOutput, relationMemberFeaturesByRelation, coreVisual, stylePlan, leafletConfig]);
+  }, [screenshotSize, center, leafletBounds, basemap, overlayOutput, relationMemberFeaturesByRelation, coreVisual, stylePlan, leafletConfig, warningReportUrl]);
 
   return <div ref={containerRef} className="map-surface" aria-label="Interactive map" />;
 }
