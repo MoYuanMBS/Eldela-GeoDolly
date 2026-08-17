@@ -235,6 +235,45 @@ export const uiConfigSchema = z.object({
   max_scale_width_px: positiveIntegerSchema,
 }).strict();
 
+//#########################basemap proxy###############################
+
+const basemapProxyUrlSchema = z.string().trim().min(1).superRefine((proxyUrl, context) => {
+  try {
+    const parsedUrl = new URL(proxyUrl);
+    if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
+      context.addIssue({code: "custom", message: "basemap proxy_url must use HTTP or HTTPS"});
+    }
+  } catch {
+    context.addIssue({code: "custom", message: "basemap proxy_url must be a valid URL"});
+  }
+});
+
+/** 可选透明代理 base URL；省略、YAML null 或空字符串均表示直接使用 profile 原始 URL。 */
+export const basemapConfigSchema = z.object({
+  proxy_url: z.preprocess(
+    (proxyUrl) => typeof proxyUrl === "string" && proxyUrl.trim() === "" ? null : proxyUrl,
+    basemapProxyUrlSchema.nullish(),
+  ).transform((proxyUrl) => proxyUrl ?? null),
+}).strict();
+
+//#########################shared HTTP services###############################
+
+/** 独立 web.yaml；当前只配置全局共享的 Browser warning HTTP service。 */
+export const webConfigSchema = z.object({
+  http: z.object({
+    /** 后续 HTTP services 共用的内部 listener host，部署时可以覆盖。 */
+    listen_host: z.string().trim().min(1),
+    warning: z.object({
+      port: positiveIntegerSchema.max(65535),
+      /** 在 JSON 解析前拒绝过大的 warning 请求，避免诊断通道消耗无界内存。 */
+      max_body_bytes: positiveIntegerSchema,
+      /** 全局限流只限制恶意/异常洪泛；Browser 仍按页面生命周期独立去重。 */
+      rate_limit_window_seconds: positiveIntegerSchema,
+      max_requests_per_window: positiveIntegerSchema,
+    }).strict(),
+  }).strict(),
+}).strict();
+
 //#########################leaflet renderer###############################
 
 export const leafletConfigSchema = z.object({
@@ -315,4 +354,6 @@ export type IframePaddingConfigType = z.infer<typeof iframePaddingConfigSchema>;
 export type IframeAdaptiveConfigType = z.infer<typeof iframeAdaptiveConfigSchema>;
 export type BrowserMapConfigType = z.infer<typeof browserMapConfigSchema>;
 export type UiConfigType = z.infer<typeof uiConfigSchema>;
+export type BasemapConfigType = z.infer<typeof basemapConfigSchema>;
+export type WebConfigType = z.infer<typeof webConfigSchema>;
 export type LeafletConfigType = z.infer<typeof leafletConfigSchema>;

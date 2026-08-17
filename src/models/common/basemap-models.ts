@@ -2,29 +2,55 @@
 
 import {z} from "zod";
 
-/** Tool Input 使用的动态 basemap profile ID。 */
-export const basemapProfileIdSchema = z.string().trim().min(1);
+const basemapProfileIdValueSchema = z.string().min(1).regex(
+  /^[a-z0-9](?:[a-z0-9_-]*[a-z0-9])?$/,
+  "basemap profile ID must start and end with a lowercase letter or digit and contain only lowercase letters, digits, _ or -",
+);
 
-/** `tiles.yaml` 顶层 key；配置中的首尾空白属于错误，不按 Tool Input 规则自动修剪。 */
-const basemapRegistryProfileIdSchema = z.string().min(1).refine((profileId) => profileId.trim() === profileId, {
-  message: "basemap profile ID must not contain leading or trailing whitespace",
-});
+/** Tool Input 使用的动态 basemap profile ID。 */
+export const basemapProfileIdSchema = z.string().trim().pipe(basemapProfileIdValueSchema);
+
+/** `tiles.yaml` 顶层 key 不自动修剪，必须直接满足安全的单路径段约束。 */
+const basemapRegistryProfileIdSchema = basemapProfileIdValueSchema;
+
+const REQUIRED_TILE_URL_PLACEHOLDERS = ["{z}", "{x}", "{y}"] as const;
+const ALLOWED_TILE_URL_PLACEHOLDER_REPLACEMENTS = new Map<string, string>([
+  ["{z}", "0"],
+  ["{x}", "0"],
+  ["{y}", "0"],
+  ["{s}", "a"],
+  ["{r}", ""],
+]);
+const TILE_URL_PLACEHOLDER_PATTERN = /\{[^{}]*\}/g;
 
 /** Leaflet 在线 raster URL 模板；首版要求标准 XYZ 坐标变量并只允许浏览器可访问的 HTTP(S)。 */
 const tileUrlTemplateSchema = z.string().trim().min(1).superRefine((template, context) => {
-  for (const placeholder of ["{z}", "{x}", "{y}"]) {
+  // 必需变量只检查是否存在，不限制它们位于 path/query 的位置或出现顺序。
+  for (const placeholder of REQUIRED_TILE_URL_PLACEHOLDERS) {
     if (!template.includes(placeholder)) {
       context.addIssue({code: "custom", message: `tile URL template must contain ${placeholder}`});
     }
   }
 
-  // URL() 不认识 Leaflet placeholder；先替换内置变量，再校验协议与 URL 结构。
-  const validationUrl = template
-    .replaceAll("{z}", "0")
-    .replaceAll("{x}", "0")
-    .replaceAll("{y}", "0")
-    .replaceAll("{s}", "a")
-    .replaceAll("{r}", "");
+  let hasInvalidPlaceholder = false;
+  for (const placeholder of template.match(TILE_URL_PLACEHOLDER_PATTERN) ?? []) {
+    if (!ALLOWED_TILE_URL_PLACEHOLDER_REPLACEMENTS.has(placeholder)) {
+      hasInvalidPlaceholder = true;
+      context.addIssue({code: "custom", message: `tile URL template contains unknown placeholder ${placeholder}`});
+    }
+  }
+  const templateWithoutMatchedPlaceholders = template.replace(TILE_URL_PLACEHOLDER_PATTERN, "");
+  if (templateWithoutMatchedPlaceholders.includes("{") || templateWithoutMatchedPlaceholders.includes("}")) {
+    hasInvalidPlaceholder = true;
+    context.addIssue({code: "custom", message: "tile URL template contains a malformed placeholder"});
+  }
+  if (hasInvalidPlaceholder) return;
+
+  // URL() 不认识 Leaflet placeholder；允许的可选变量只在 validation 副本中替换。
+  let validationUrl = template;
+  for (const [placeholder, replacement] of ALLOWED_TILE_URL_PLACEHOLDER_REPLACEMENTS) {
+    validationUrl = validationUrl.replaceAll(placeholder, replacement);
+  }
   try {
     const parsedUrl = new URL(validationUrl);
     if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {

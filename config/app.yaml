@@ -168,6 +168,11 @@ iframe_adaptive:
 browser_map:
   ready_timeout_seconds: 30
 
+# Basemap runtime 可选透明代理；null/空值表示直接使用 tiles.yaml 中的原始 URL。
+basemap:
+  # 部署方可以配置 HTTP(S) proxy base URL；GeoMCP 会在运行时追加固定 namespace、profile ID 与 XYZ。
+  proxy_url:
+
 # Browser UI 可公开调节参数。
 ui:
   # 公制 Scale 在当前视口中心纬度处用于换算距离的最大逻辑像素宽度。

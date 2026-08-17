@@ -9,7 +9,7 @@ import path from "node:path";
 import type { ZodType } from "zod";
 import { parse } from "yaml";
 import {basemapProfileRegistrySchema, type BasemapProfileRegistryType} from "../models/common/basemap-models.js";
-import {browserMapConfigSchema, featureIdDisplayConfigSchema, iframeAdaptiveConfigSchema, leafletConfigSchema, toolPromptsConfigSchema, uiConfigSchema} from "../models/backend/config-models.js";
+import {basemapConfigSchema, browserMapConfigSchema, featureIdDisplayConfigSchema, iframeAdaptiveConfigSchema, leafletConfigSchema, toolPromptsConfigSchema, uiConfigSchema, webConfigSchema, type WebConfigType} from "../models/backend/config-models.js";
 import {AppError} from "./app-error.js";
 
 /**
@@ -24,6 +24,7 @@ export class ConfigLoader {
   private readonly cachedConfigSections = new Map<string, unknown>();
   private cachedAvailableExpertNames: Set<string> | null = null;
   private cachedBasemapProfiles: BasemapProfileRegistryType | null = null;
+  private cachedWebConfig: WebConfigType | null = null;
 
   /**
    * 在 MCP Server 注册工具前预载当前 TypeScript 会消费的全部配置。
@@ -35,7 +36,9 @@ export class ConfigLoader {
     this.getAppSection("iframe_adaptive", iframeAdaptiveConfigSchema);
     this.getAppSection("browser_map", browserMapConfigSchema);
     this.getAppSection("ui", uiConfigSchema);
+    this.getAppSection("basemap", basemapConfigSchema);
     this.getAppSection("leaflet", leafletConfigSchema);
+    this.getWebConfig();
     this.getAvailableExpertNames();
     this.getBasemapProfiles();
   }
@@ -124,12 +127,31 @@ export class ConfigLoader {
     }
   }
 
+  /** 读取、校验并缓存独立 `config/web.yaml` 中的共享 HTTP service 配置。 */
+  getWebConfig(): WebConfigType {
+    if (this.cachedWebConfig !== null) {
+      return this.cachedWebConfig;
+    }
+
+    const webConfigPath = path.join(this.configDirPath, "web.yaml");
+    if (!existsSync(webConfigPath)) {
+      throw new AppError("config_not_found", `config file not found: ${webConfigPath}`);
+    }
+    try {
+      this.cachedWebConfig = webConfigSchema.parse(loadYamlFile(webConfigPath));
+      return this.cachedWebConfig;
+    } catch (error) {
+      throw AppError.fromUnknown(error, "invalid_config", `Failed to load web config from ${webConfigPath}`);
+    }
+  }
+
   /**
    * 清空当前实例持有的配置缓存。
    */
   resetCache(): void {
     this.cachedAvailableExpertNames = null;
     this.cachedBasemapProfiles = null;
+    this.cachedWebConfig = null;
     this.cachedConfigSections.clear();
   }
 }
