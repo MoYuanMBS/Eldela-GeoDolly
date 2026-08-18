@@ -8,9 +8,11 @@
   "scripts": {
     "dev": "tsx src/index.ts",
     "dev:web": "node --import tsx test/web/dev-map-service.ts",
+    "dev:warning-http": "node --import tsx src/http/browser-warning-service-main.ts",
     "build": "tsc -p tsconfig.json",
     "build:web": "vite build",
     "start": "node dist/index.js",
+    "start:warning-http": "node dist/http/browser-warning-service-main.js",
     "test:local": "bash local_test/run_local_tests.sh",
     "test:py-local": ".venv/bin/python -m unittest discover -s local_test/py -p \"test_*.py\"",
     "test:ts-local": "node --import tsx --test local_test/ts/**/*.test.ts local_test/src/**/*.test.ts",

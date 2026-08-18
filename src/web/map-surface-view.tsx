@@ -7,6 +7,7 @@ import type {ResolvedBasemapType} from "../models/common/basemap-models.js";
 import type {InteractiveMapFlowResult} from "../models/mapsurface/basemap-runtime-models.js";
 import type {CoreVisualPayloadType} from "../models/mapsurface/map-payload-models.js";
 import type {RuntimeStylePlan} from "../models/mapsurface/style/runtime-style-models.js";
+import {createBrowserWarningReporter} from "./browser-warning-reporter.js";
 
 /** Web 入口收到的仍是完整 Leaflet payload；组件只在边界处分配 Visual/Interaction 配置。 */
 interface MapSurfaceViewProps {
@@ -39,6 +40,8 @@ export function MapSurfaceView({screenshotSize, center, leafletBounds, basemap, 
     if (container === null) return;
     // signal 中断分批 Visual 渲染；flowResult 则负责清理由 Leaflet 持有的同步资源。
     const abortController = new AbortController();
+    // reporter 的去重集合与当前 React/MapSurface 生命周期一致，后续平移缩放仍复用同一通道。
+    const warningReporter = createBrowserWarningReporter();
     let flowResult: InteractiveMapFlowResult | null = null;
     const overlay = overlayOutput !== null && relationMemberFeaturesByRelation !== null && stylePlan !== null
       ? {
@@ -78,6 +81,7 @@ export function MapSurfaceView({screenshotSize, center, leafletBounds, basemap, 
       overlay,
       coreOverlay,
       interactionConfig: leafletConfig.interaction,
+      warningReporter,
     }).then((result) => {
       // Promise 可能在 React cleanup 之后才完成，此时结果从未交给组件，必须立即自行释放。
       if (abortController.signal.aborted) {

@@ -237,6 +237,7 @@ export const uiConfigSchema = z.object({
 
 //#########################basemap proxy###############################
 
+/** 只校验可拼接的 HTTP(S) URL 结构；部署可用性留给 Browser runtime 的 fallback 处理。 */
 const basemapProxyUrlSchema = z.string().trim().min(1).superRefine((proxyUrl, context) => {
   try {
     const parsedUrl = new URL(proxyUrl);

@@ -3,6 +3,8 @@
  * 日志只写 stderr，避免污染 MCP / Bridge 使用的 stdout。
  */
 
+import {browserWarningReportSchema} from "../models/common/browser-warning-models.js";
+
 function formatTimestamp(date: Date): string {
   const pad = (value: number): string => String(value).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
@@ -36,3 +38,20 @@ export const logger = {
     writeLog("WARNING", "geomcp.warning", event, details);
   },
 };
+
+/**
+ * 校验 Browser warning 白名单并写入 Node 现有结构化 warning logger。
+ *
+ * 无效 HTTP payload 返回 false 交给 route 响应 400，不 throw、不记录第二条 warning，也不会影响
+ * 已经运行的 Browser Map Flow。Browser console 的人类可读格式不属于这个 Node 日志协议。
+ */
+export function recordBrowserWarning(payload: unknown): boolean {
+  const parsedWarning = browserWarningReportSchema.safeParse(payload);
+  if (!parsedWarning.success) return false;
+  const warning = parsedWarning.data;
+  logger.warning(warning.event, {
+    source: "browser",
+    ...warning.details,
+  });
+  return true;
+}

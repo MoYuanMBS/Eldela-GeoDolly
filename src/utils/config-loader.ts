@@ -2,7 +2,7 @@
  * TypeScript 消费的部署配置加载器。
  *
  * 当前使用 `yaml` 包解析 YAML，
- * 但 TypeScript 只校验并缓存自己实际使用的 app section 与 basemap registry。
+ * 但 TypeScript 只校验并缓存自己实际使用的 app section、web service 配置与 basemap registry。
  */
 import { readFileSync, existsSync, readdirSync } from "node:fs";
 import path from "node:path";
@@ -127,7 +127,10 @@ export class ConfigLoader {
     }
   }
 
-  /** 读取、校验并缓存独立 `config/web.yaml` 中的共享 HTTP service 配置。 */
+  /**
+   * 读取、校验并缓存独立 `config/web.yaml` 中的共享 HTTP service 配置。
+   * warning 独立进程可以只调用此 getter，不会连带初始化 MCP Tool 与地图渲染配置。
+   */
   getWebConfig(): WebConfigType {
     if (this.cachedWebConfig !== null) {
       return this.cachedWebConfig;

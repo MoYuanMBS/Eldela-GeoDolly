@@ -3,6 +3,7 @@
 import type {AppErrorType, JsonValueType} from "../backend/bridge-models.js";
 import type {LeafletConfigType} from "../backend/config-models.js";
 import type {ResolvedBasemapType} from "../common/basemap-models.js";
+import type {BrowserWarningReporterType} from "../common/browser-warning-models.js";
 import type {CoreOverlayRendererOptions, CoreOverlayRenderResult} from "./core-render-models.js";
 import type {
   MapSurfaceHandle,
@@ -46,6 +47,8 @@ export interface MapFlowReadySummary {
 export interface BasemapRuntimeOptions {
   mapSurface: MapSurfaceHandle;
   basemap: ResolvedBasemapType;
+  /** 长期 warning sink 与一次性 ready status 分离；Snapshot 或未接通通道时可以省略。 */
+  warningReporter?: BrowserWarningReporterType;
 }
 
 /** 共享 Visual runtime 的稳定输入；Interactive 专属配置不进入本层。 */
@@ -79,6 +82,8 @@ export interface InteractiveMapFlowOptions extends Omit<LeafletVisualRuntimeOpti
   metricScaleMaxWidthPx: number;
   /** 仅供透明命中层使用；Visual runtime 不读取交互配置。 */
   interactionConfig: LeafletConfigType["interaction"];
+  /** 页面生命周期级 warning sink；不参与 ready summary 或 AppError throw。 */
+  warningReporter?: BrowserWarningReporterType;
 }
 
 /** Interactive 入口持有共享 Visual 结果，以及后挂载的透明命中层。 */
