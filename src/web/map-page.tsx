@@ -5,6 +5,7 @@ import {commonVisualMapPayloadSchema, type CommonVisualMapPayloadType} from "../
 import type {RuntimeStylePlan} from "../models/mapsurface/style/runtime-style-models.js";
 import {renderStylePayloadSchema} from "../models/mapsurface/style/user-css-style-models.js";
 import {AppError} from "../utils/app-error.js";
+import {GEOMCP_NAME} from "../utils/leaflet-internal-render-config.js";
 import {UI_BUILT_IN_CONFIG} from "./built-in-config.js";
 import {MapSurfaceView} from "./map-surface-view.js";
 
@@ -88,7 +89,7 @@ export function MapPage({mapDataUrl}: MapPageProps) {
         leafletConfig={payload.leaflet}
       />
       <footer className="map-toolbar" aria-label="Map toolbar">
-        <span>GeoMCP</span>
+        <span>{GEOMCP_NAME}</span>
         <span>Map preview</span>
       </footer>
     </main>

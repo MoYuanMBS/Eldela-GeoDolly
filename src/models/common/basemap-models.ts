@@ -80,6 +80,8 @@ export const basemapProfileConfigSchema = z.object({
 /** Node 已从部署 registry 解析完成、带稳定 ID 且可直接序列化进 Browser payload 的底图快照。 */
 export const resolvedBasemapSchema = basemapProfileConfigSchema.extend({
   id: basemapProfileIdSchema,
+  /** null 表示直接使用原始 URL；非 null 时 Browser 优先尝试规范 XYZ Proxy template。 */
+  proxy_tile_url: tileUrlTemplateSchema.nullable(),
 });
 
 /** 完整 profile registry；空 registry 无法为 Tool Input 提供任何可用底图。 */

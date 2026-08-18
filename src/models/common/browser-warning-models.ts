@@ -25,7 +25,7 @@ export const basemapOriginTileUnavailableWarningSchema = z.object({
   details: z.object({
     profile_id: basemapProfileIdSchema,
     phase: z.literal("runtime"),
-    reason_code: z.literal("tile_load_failed"),
+    reason_code: basemapTileFailureReasonSchema,
   }).strict(),
 }).strict();
 
