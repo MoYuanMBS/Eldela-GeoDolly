@@ -2,7 +2,10 @@
 
 import {tileLayer, Util, type Map as LeafletMap, type TileLayer} from "leaflet";
 import type {BasemapRuntimeOptions, BasemapRuntimeStatus} from "../models/mapsurface/basemap-runtime-models.js";
-import {mountTileLayerAndWaitForInitialReady} from "./tile-ready-controller.js";
+import {attachTileRequestTimeoutMonitor, mountTileLayerAndWaitForInitialReady} from "./tile-ready-controller.js";
+
+type TileFailureReason = "tile_layer_init" | "tile_load_failed" | "tile_load_timeout";
+type RuntimeProxyFallbackState = "proxy_active" | "fallback_scheduled" | "origin_active" | "disposed";
 
 /** `{r}` 只参与部署模板兼容校验；实际请求固定清空，确保 DPR 不改变瓦片来源。 */
 function prepareTileUrlForLeaflet(tileUrl: string): string {
@@ -11,7 +14,9 @@ function prepareTileUrlForLeaflet(tileUrl: string): string {
 
 /** Map zoom 与原生瓦片 zoom 保持独立；失败图片统一替换为 Leaflet 内置透明空图。 */
 function createRasterTileLayer(tileUrl: string, map: LeafletMap, maxNativeZoom: number): TileLayer {
-  return tileLayer(prepareTileUrlForLeaflet(tileUrl), {
+  // 保留 payload 中的原始模板，只在这个 Leaflet 调用边界清空 `{r}`。
+  const leafletTileUrl = prepareTileUrlForLeaflet(tileUrl);
+  return tileLayer(leafletTileUrl, {
     maxZoom: map.getMaxZoom(),
     maxNativeZoom,
     detectRetina: false,
@@ -23,8 +28,9 @@ function removeTileLayerIfMounted(layer: TileLayer, map: LeafletMap): void {
   if (map.hasLayer(layer)) map.removeLayer(layer);
 }
 
-function getFailureReason(status: Extract<BasemapRuntimeStatus, {status: "failed"}>): "tile_layer_init" | "tile_load_failed" {
-  return status.error.code === "tile_load_failed" ? "tile_load_failed" : "tile_layer_init";
+function getFailureReason(status: Extract<BasemapRuntimeStatus, {status: "failed"}>): TileFailureReason {
+  if (status.error.code === "tile_load_failed" || status.error.code === "tile_load_timeout") return status.error.code;
+  return "tile_layer_init";
 }
 
 /**
@@ -48,25 +54,36 @@ function attachOriginRuntimeWarning(layer: TileLayer, options: BasemapRuntimeOpt
  */
 function attachRuntimeProxyFallback(proxyLayer: TileLayer, options: BasemapRuntimeOptions): void {
   const map = options.mapSurface.map;
-  let stopped = false;
-  let mapUnloaded = false;
-  const handleMapUnload = (): void => {
-    stopped = true;
-    mapUnloaded = true;
+  let state: RuntimeProxyFallbackState = "proxy_active";
+  let detachTileTimeout = (): void => {};
+
+  // 失败观察者与状态分离清理：触发方先同步改状态，再解绑，才能抵御同一批瓦片的并发回调。
+  const detachProxyFailureObservers = (): void => {
     proxyLayer.off("tileerror", handleProxyTileError);
+    detachTileTimeout();
   };
-  const handleProxyTileError = (): void => {
-    if (stopped) return;
-    stopped = true;
-    proxyLayer.off("tileerror", handleProxyTileError);
+  const handleMapUnload = (): void => {
+    if (state === "disposed") return;
+    state = "disposed";
+    detachProxyFailureObservers();
+    map.off("unload", handleMapUnload);
+  };
+
+  const triggerFallback = (reasonCode: Exclude<TileFailureReason, "tile_layer_init">): void => {
+    if (state !== "proxy_active") return;
+    // 必须在任何 await/microtask 之前完成唯一状态转换，使同时到达的 error/timeout 只能调度一次。
+    state = "fallback_scheduled";
+    detachProxyFailureObservers();
     // Leaflet 在 `_tileReady()` 中途同步触发 tileerror；延后一拍切层，避免事件返回后访问已移除 Layer。
     queueMicrotask(() => {
+      if (state !== "fallback_scheduled") return;
       map.off("unload", handleMapUnload);
-      if (mapUnloaded) return;
+      // 进入终态后即使 reporter 或 Leaflet 同步抛错，也不会重新启动第二次 fallback。
+      state = "origin_active";
       removeTileLayerIfMounted(proxyLayer, map);
       options.warningReporter?.({
         event: "basemap_proxy_fallback",
-        details: {profile_id: options.basemap.id, phase: "runtime", reason_code: "tile_load_failed"},
+        details: {profile_id: options.basemap.id, phase: "runtime", reason_code: reasonCode},
       });
 
       let originLayer: TileLayer | null = null;
@@ -88,8 +105,14 @@ function attachRuntimeProxyFallback(proxyLayer: TileLayer, options: BasemapRunti
       }
     });
   };
+  const handleProxyTileError = (): void => {
+    triggerFallback("tile_load_failed");
+  };
 
   proxyLayer.on("tileerror", handleProxyTileError);
+  detachTileTimeout = attachTileRequestTimeoutMonitor(proxyLayer, options.proxyTileTimeoutMs, () => {
+    triggerFallback("tile_load_timeout");
+  });
   // MapSurface.dispose() 最终触发 unload；先解绑长期监听，避免销毁期间误启动 fallback。
   map.once("unload", handleMapUnload);
 }
@@ -134,7 +157,7 @@ export async function createBasemapRuntime(options: BasemapRuntimeOptions): Prom
     return mountOriginForInitialReady(options);
   }
 
-  const proxyStatus = await mountTileLayerAndWaitForInitialReady(proxyLayer, map);
+  const proxyStatus = await mountTileLayerAndWaitForInitialReady(proxyLayer, map, options.proxyTileTimeoutMs);
   if (proxyStatus.status === "ready") {
     attachRuntimeProxyFallback(proxyLayer, options);
     return proxyStatus;

@@ -164,9 +164,13 @@ iframe_adaptive:
   min_map_display_width: 600
   min_map_display_height: 300
 
-# Browser Map Flow 等待初始瓦片与视觉子流程完成的统一上限。
+# Browser Map Flow 的初始 ready 与 Proxy 瓦片超时配置。
 browser_map:
+  # 等待初始瓦片与视觉子流程全部完成的统一上限。
   ready_timeout_seconds: 30
+  # 单块 Proxy 瓦片从发起请求到 load/error 的最长等待时间。
+  # 该值必须小于 ready_timeout_seconds，以便 Proxy 挂起时仍有时间回退到原始瓦片源。
+  proxy_tile_timeout_seconds: 8
 
 # Basemap runtime 可选透明代理；null/空值表示直接使用 tiles.yaml 中的原始 URL。
 basemap:

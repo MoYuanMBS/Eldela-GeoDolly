@@ -44,7 +44,12 @@ export async function createInteractiveMapFlow(options: InteractiveMapFlowOption
   try {
     // Basemap 与 Visual 只共享 MapSurface，不互相等待；统一 timeout 负责限制整个首次 ready 阶段。
     [basemapStatus, visualRuntime] = await waitForMapFlowReady(Promise.all([
-      createBasemapRuntime({mapSurface, basemap: options.basemap, warningReporter: options.warningReporter}),
+      createBasemapRuntime({
+        mapSurface,
+        basemap: options.basemap,
+        proxyTileTimeoutMs: options.proxyTileTimeoutMs,
+        warningReporter: options.warningReporter,
+      }),
       createLeafletVisualRuntime({
         mapSurface,
         overlay: options.overlay === null ? null : {

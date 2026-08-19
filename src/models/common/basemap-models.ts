@@ -14,10 +14,13 @@ export const basemapProfileIdSchema = z.string().trim().pipe(basemapProfileIdVal
 const basemapRegistryProfileIdSchema = basemapProfileIdValueSchema;
 
 const REQUIRED_TILE_URL_PLACEHOLDERS = ["{z}", "{x}", "{y}"] as const;
+const REQUIRED_TILE_URL_PLACEHOLDER_MARKERS = new Map<string, string>([
+  ["{z}", "geomcp-z-placeholder"],
+  ["{x}", "geomcp-x-placeholder"],
+  ["{y}", "geomcp-y-placeholder"],
+]);
 const ALLOWED_TILE_URL_PLACEHOLDER_REPLACEMENTS = new Map<string, string>([
-  ["{z}", "0"],
-  ["{x}", "0"],
-  ["{y}", "0"],
+  ...REQUIRED_TILE_URL_PLACEHOLDER_MARKERS,
   ["{s}", "a"],
   ["{r}", ""],
 ]);
@@ -25,13 +28,6 @@ const TILE_URL_PLACEHOLDER_PATTERN = /\{[^{}]*\}/g;
 
 /** Leaflet 在线 raster URL 模板；首版要求标准 XYZ 坐标变量并只允许浏览器可访问的 HTTP(S)。 */
 const tileUrlTemplateSchema = z.string().trim().min(1).superRefine((template, context) => {
-  // 必需变量只检查是否存在，不限制它们位于 path/query 的位置或出现顺序。
-  for (const placeholder of REQUIRED_TILE_URL_PLACEHOLDERS) {
-    if (!template.includes(placeholder)) {
-      context.addIssue({code: "custom", message: `tile URL template must contain ${placeholder}`});
-    }
-  }
-
   let hasInvalidPlaceholder = false;
   for (const placeholder of template.match(TILE_URL_PLACEHOLDER_PATTERN) ?? []) {
     if (!ALLOWED_TILE_URL_PLACEHOLDER_REPLACEMENTS.has(placeholder)) {
@@ -55,6 +51,16 @@ const tileUrlTemplateSchema = z.string().trim().min(1).superRefine((template, co
     const parsedUrl = new URL(validationUrl);
     if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
       context.addIssue({code: "custom", message: "tile URL template must use HTTP or HTTPS"});
+      return;
+    }
+    // Fragment 不会被发送给 tile provider；XYZ 若只出现在 fragment/host/userinfo，看似完整却会让
+    // 每块瓦片命中同一请求。唯一有效的请求定位边界是 pathname + search。
+    const requestTarget = `${parsedUrl.pathname}${parsedUrl.search}`;
+    for (const placeholder of REQUIRED_TILE_URL_PLACEHOLDERS) {
+      const marker = REQUIRED_TILE_URL_PLACEHOLDER_MARKERS.get(placeholder);
+      if (marker !== undefined && !requestTarget.includes(marker)) {
+        context.addIssue({code: "custom", message: `tile URL template must contain ${placeholder} in its path or query`});
+      }
     }
   } catch {
     context.addIssue({code: "custom", message: "tile URL template must be a valid URL"});

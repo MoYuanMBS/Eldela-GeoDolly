@@ -40,7 +40,7 @@ export async function createSnapshotMapFlow(options: SnapshotMapFlowOptions): Pr
   const completedVisualRuntime: {value: LeafletVisualRuntimeResult | null} = {value: null};
   try {
     [basemapStatus, visualRuntime] = await waitForMapFlowReady(Promise.all([
-      createBasemapRuntime({mapSurface, basemap: options.basemap}),
+      createBasemapRuntime({mapSurface, basemap: options.basemap, proxyTileTimeoutMs: options.proxyTileTimeoutMs}),
       createLeafletVisualRuntime({
         mapSurface,
         overlay: options.overlay === null ? null : {

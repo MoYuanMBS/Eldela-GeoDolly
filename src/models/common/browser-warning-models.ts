@@ -8,6 +8,8 @@ export const BROWSER_WARNING_ROUTE = "/browser-warnings";
 
 const basemapWarningPhaseSchema = z.enum(["initial", "runtime"]);
 const basemapTileFailureReasonSchema = z.enum(["tile_layer_init", "tile_load_failed"]);
+// 只有 Proxy 请求有独立单瓦片超时；原始来源仍由全局 ready timeout 兜底。
+const basemapProxyFailureReasonSchema = z.union([basemapTileFailureReasonSchema, z.literal("tile_load_timeout")]);
 
 /** Proxy 失效但已经切换至 profile 原始 URL，因此 warning 不进入 Basemap failed 状态。 */
 export const basemapProxyFallbackWarningSchema = z.object({
@@ -15,7 +17,7 @@ export const basemapProxyFallbackWarningSchema = z.object({
   details: z.object({
     profile_id: basemapProfileIdSchema,
     phase: basemapWarningPhaseSchema,
-    reason_code: basemapTileFailureReasonSchema,
+    reason_code: basemapProxyFailureReasonSchema,
   }).strict(),
 }).strict();
 

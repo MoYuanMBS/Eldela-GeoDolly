@@ -226,7 +226,17 @@ export const iframeAdaptiveConfigSchema = z.object({
 
 export const browserMapConfigSchema = z.object({
   ready_timeout_seconds: positiveFiniteNumberSchema,
-}).strict();
+  proxy_tile_timeout_seconds: positiveFiniteNumberSchema,
+}).strict().superRefine((browserMapConfig, context) => {
+  // Proxy 超时后还要用剩余的 ready 时间创建并等待原始 TileLayer。
+  if (browserMapConfig.proxy_tile_timeout_seconds >= browserMapConfig.ready_timeout_seconds) {
+    context.addIssue({
+      code: "custom",
+      message: "proxy_tile_timeout_seconds must be less than ready_timeout_seconds",
+      path: ["proxy_tile_timeout_seconds"],
+    });
+  }
+});
 
 //#########################browser UI###############################
 
