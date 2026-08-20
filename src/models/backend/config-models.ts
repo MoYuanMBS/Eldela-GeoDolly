@@ -168,7 +168,7 @@ export const iframePaddingConfigSchema = z.object({
 });
 
 // TypeScript 对同一个 iframe_adaptive section 只使用这一份完整 schema；Python 专用权重由 Zod 剥离。
-export const iframeAdaptiveConfigSchema = z.object({
+const iframeAdaptiveRawConfigSchema = z.object({
   // MapSurface 四条硬尺寸边界。
   min_screenshot_width: positiveIntegerSchema,
   max_screenshot_width: positiveIntegerSchema,
@@ -182,44 +182,80 @@ export const iframeAdaptiveConfigSchema = z.object({
   min_aspect_ratio: positiveFiniteNumberSchema,
   max_aspect_ratio: positiveFiniteNumberSchema,
   padding: iframePaddingConfigSchema,
-  min_map_display_width: positiveIntegerSchema.transform((minimumWidth) => {
-    if (minimumWidth < UI_BUILT_IN_CONFIG.toolbar.minWidth) {logger.warning("min_map_display_width_clamped", {configured_width: minimumWidth, toolbar_min_width: UI_BUILT_IN_CONFIG.toolbar.minWidth,});
-      return UI_BUILT_IN_CONFIG.toolbar.minWidth;
-    }
-    return minimumWidth;
-  }),
+  min_map_display_width: positiveIntegerSchema,
   min_map_display_height: positiveIntegerSchema,
-}).superRefine((adaptiveConfig, context) => {
-  // 单字段类型合法仍不足以保证配置组合可解，因此集中校验跨字段关系。
-  if (adaptiveConfig.min_screenshot_width > adaptiveConfig.max_screenshot_width) {
-    context.addIssue({code: "custom", message: "min_screenshot_width must not exceed max_screenshot_width", path: ["min_screenshot_width"]});
+});
+
+type IframeAdaptiveRawConfigType = z.infer<typeof iframeAdaptiveRawConfigSchema>;
+
+function normalizeIframeAdaptiveConfig(adaptiveConfig: IframeAdaptiveRawConfigType): IframeAdaptiveRawConfigType {
+  const minMapDisplayWidth = Math.max(adaptiveConfig.min_map_display_width, UI_BUILT_IN_CONFIG.toolbar.minWidth);
+  const minScreenshotWidth = Math.max(adaptiveConfig.min_screenshot_width, minMapDisplayWidth);
+  const minScreenshotHeight = Math.max(adaptiveConfig.min_screenshot_height, adaptiveConfig.min_map_display_height);
+  let maxScreenshotWidth = Math.max(adaptiveConfig.max_screenshot_width, minScreenshotWidth);
+  let maxScreenshotHeight = Math.max(adaptiveConfig.max_screenshot_height, minScreenshotHeight);
+  let maxScreenshotPixels = Math.max(adaptiveConfig.max_screenshot_pixels, Math.ceil(adaptiveConfig.reference_screenshot_area));
+
+  // 比例范围端点必须能容纳整数 MapSurface；相关 max 约束不足时统一上调，不让可恢复配置阻止启动。
+  for (const aspectRatio of [adaptiveConfig.min_aspect_ratio, adaptiveConfig.max_aspect_ratio]) {
+    const requiredHeight = Math.ceil(Math.max(minScreenshotHeight, minScreenshotWidth / aspectRatio));
+    const requiredWidth = Math.ceil(requiredHeight * aspectRatio);
+    maxScreenshotWidth = Math.max(maxScreenshotWidth, requiredWidth);
+    maxScreenshotHeight = Math.max(maxScreenshotHeight, requiredHeight);
+    maxScreenshotPixels = Math.max(maxScreenshotPixels, requiredWidth * requiredHeight);
   }
-  if (adaptiveConfig.min_screenshot_height > adaptiveConfig.max_screenshot_height) {
-    context.addIssue({code: "custom", message: "min_screenshot_height must not exceed max_screenshot_height", path: ["min_screenshot_height"]});
-  }
+
+  return {
+    ...adaptiveConfig,
+    min_map_display_width: minMapDisplayWidth,
+    min_screenshot_width: minScreenshotWidth,
+    min_screenshot_height: minScreenshotHeight,
+    max_screenshot_width: maxScreenshotWidth,
+    max_screenshot_height: maxScreenshotHeight,
+    max_screenshot_pixels: maxScreenshotPixels,
+  };
+}
+
+export const iframeAdaptiveConfigSchema = iframeAdaptiveRawConfigSchema.superRefine((adaptiveConfig, context) => {
   if (adaptiveConfig.min_aspect_ratio > adaptiveConfig.max_aspect_ratio) {
     context.addIssue({code: "custom", message: "min_aspect_ratio must not exceed max_aspect_ratio", path: ["min_aspect_ratio"]});
+    return;
   }
-  if (adaptiveConfig.reference_screenshot_area > adaptiveConfig.max_screenshot_pixels) {
-    context.addIssue({code: "custom", message: "reference_screenshot_area must not exceed max_screenshot_pixels", path: ["reference_screenshot_area"]});
-  }
-  if (adaptiveConfig.padding.left + adaptiveConfig.padding.right >= adaptiveConfig.min_screenshot_width) {
+
+  const normalizedConfig = normalizeIframeAdaptiveConfig(adaptiveConfig);
+  if (normalizedConfig.padding.left + normalizedConfig.padding.right >= normalizedConfig.min_screenshot_width) {
     context.addIssue({code: "custom", message: "horizontal padding must leave positive MapSurface width", path: ["padding"]});
   }
-  if (adaptiveConfig.padding.top + adaptiveConfig.padding.bottom >= adaptiveConfig.min_screenshot_height) {
+  if (normalizedConfig.padding.top + normalizedConfig.padding.bottom >= normalizedConfig.min_screenshot_height) {
     context.addIssue({code: "custom", message: "vertical padding must leave positive MapSurface height", path: ["padding"]});
   }
 
-  // 比例范围两端都必须能在 min/max box 与像素预算内生成合法尺寸。
-  for (const [path, aspectRatio] of [["min_aspect_ratio", adaptiveConfig.min_aspect_ratio], ["max_aspect_ratio", adaptiveConfig.max_aspect_ratio]] as const) {
-    const requiredHeight = Math.max(adaptiveConfig.min_screenshot_height, adaptiveConfig.min_screenshot_width / aspectRatio);
-    const requiredWidth = requiredHeight * aspectRatio;
-    if (requiredWidth > adaptiveConfig.max_screenshot_width || requiredHeight > adaptiveConfig.max_screenshot_height) {
-      context.addIssue({code: "custom", message: `${path} cannot satisfy the configured min/max screenshot dimensions`, path: [path]});
-    } else if (requiredWidth * requiredHeight > adaptiveConfig.max_screenshot_pixels) {
-      context.addIssue({code: "custom", message: `${path} cannot satisfy max_screenshot_pixels at the minimum dimensions`, path: [path]});
+  for (const field of ["min_map_display_width", "min_screenshot_width", "min_screenshot_height", "max_screenshot_width", "max_screenshot_height", "max_screenshot_pixels"] as const) {
+    if (!Number.isSafeInteger(normalizedConfig[field])) {
+      context.addIssue({code: "custom", message: `${field} exceeds the safe integer range after normalization`, path: [field]});
     }
   }
+}).transform((adaptiveConfig) => {
+  const normalizedConfig = normalizeIframeAdaptiveConfig(adaptiveConfig);
+  if (normalizedConfig.min_map_display_width !== adaptiveConfig.min_map_display_width) {
+    logger.warning("min_map_display_width_clamped", {configured_width: adaptiveConfig.min_map_display_width, toolbar_min_width: UI_BUILT_IN_CONFIG.toolbar.minWidth});
+  }
+  if (normalizedConfig.min_screenshot_width !== adaptiveConfig.min_screenshot_width) {
+    logger.warning("min_screenshot_width_raised", {configured_width: adaptiveConfig.min_screenshot_width, effective_width: normalizedConfig.min_screenshot_width});
+  }
+  if (normalizedConfig.min_screenshot_height !== adaptiveConfig.min_screenshot_height) {
+    logger.warning("min_screenshot_height_raised", {configured_height: adaptiveConfig.min_screenshot_height, effective_height: normalizedConfig.min_screenshot_height});
+  }
+  if (normalizedConfig.max_screenshot_width !== adaptiveConfig.max_screenshot_width) {
+    logger.warning("max_screenshot_width_raised", {configured_width: adaptiveConfig.max_screenshot_width, effective_width: normalizedConfig.max_screenshot_width});
+  }
+  if (normalizedConfig.max_screenshot_height !== adaptiveConfig.max_screenshot_height) {
+    logger.warning("max_screenshot_height_raised", {configured_height: adaptiveConfig.max_screenshot_height, effective_height: normalizedConfig.max_screenshot_height});
+  }
+  if (normalizedConfig.max_screenshot_pixels !== adaptiveConfig.max_screenshot_pixels) {
+    logger.warning("max_screenshot_pixels_raised", {configured_pixels: adaptiveConfig.max_screenshot_pixels, effective_pixels: normalizedConfig.max_screenshot_pixels});
+  }
+  return normalizedConfig;
 });
 
 //#########################browser map flow###############################

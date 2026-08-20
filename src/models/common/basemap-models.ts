@@ -26,6 +26,18 @@ const ALLOWED_TILE_URL_PLACEHOLDER_REPLACEMENTS = new Map<string, string>([
 ]);
 const TILE_URL_PLACEHOLDER_PATTERN = /\{[^{}]*\}/g;
 
+/** Attribution 的公开版权页面；Reference UI 仅允许浏览器可直接访问的 HTTP(S)。 */
+const attributionUrlSchema = z.string().trim().min(1).superRefine((url, context) => {
+  try {
+    const parsedUrl = new URL(url);
+    if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
+      context.addIssue({code: "custom", message: "attribution URL must use HTTP or HTTPS"});
+    }
+  } catch {
+    context.addIssue({code: "custom", message: "attribution URL must be a valid URL"});
+  }
+});
+
 /** Leaflet 在线 raster URL 模板；首版要求标准 XYZ 坐标变量并只允许浏览器可访问的 HTTP(S)。 */
 const tileUrlTemplateSchema = z.string().trim().min(1).superRefine((template, context) => {
   let hasInvalidPlaceholder = false;
@@ -79,6 +91,8 @@ export const basemapProfileConfigSchema = z.object({
   crs: z.literal("EPSG:3857"),
   /** 紧凑 attribution，由后续 UI 层消费，Basemap runtime 不读取。 */
   attribution: z.string().trim().min(1),
+  /** 紧凑 attribution 对应的公开版权页面。 */
+  attribution_url: attributionUrlSchema,
   /** 完整 attribution 可省略或留空；消费者统一读取 string | null。 */
   full_attribution: z.string().trim().min(1).nullish().transform((attribution) => attribution ?? null),
 }).strict();

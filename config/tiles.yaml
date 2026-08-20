@@ -10,7 +10,7 @@
 # - url：Browser 可以直接访问的原始在线 raster URL，Proxy 未配置或失败时也使用它；
 # - max_native_zoom：provider 的最高原生瓦片层级，只对应 Leaflet maxNativeZoom；
 # - crs：首版固定为 EPSG:3857；
-# - attribution：紧凑 UI 文案；full_attribution 是可空的完整文案。
+# - attribution：紧凑 UI 文案；attribution_url 是其 HTTP(S) 版权链接；full_attribution 是可空的完整文案。
 #
 # url 必须是 HTTP(S) 模板并包含 `{z}`、`{x}`、`{y}`，三者顺序不受限制。
 # 只额外允许可选 `{s}`、`{r}`；未知或畸形 placeholder 会使启动配置校验失败。
@@ -26,6 +26,7 @@ osm:
   crs: EPSG:3857
   # 紧凑文案用于空间有限的 Reference UI。
   attribution: "OpenStreetMap"
+  attribution_url: "https://www.openstreetmap.org/copyright"
   # 可省略或留空；截图/展开 UI 后续优先使用完整文案。
   full_attribution:
 
@@ -36,4 +37,5 @@ arcgis_satellite:
   max_native_zoom: 22
   crs: EPSG:3857
   attribution: "Powered by Esri"
+  attribution_url: "https://www.esri.com/en-us/legal/terms/data-attributions"
   full_attribution: "Esri, Vantor, Earthstar Geographics, GIS User Community"
