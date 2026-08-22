@@ -1,10 +1,12 @@
 import {useEffect, useRef} from "react";
 import type {LatLngBoundsLiteral, LatLngTuple} from "leaflet";
 import {createInteractiveMapFlow} from "../browser-map-flow/interactive-map-flow.js";
+import {calculateLeafletMetricScale} from "../leaflet/runtime/metric-scale.js";
 import type {LeafletConfigType} from "../models/backend/config-models.js";
 import type {IdentifiedOverlayGroupsWithDisplayIdType, RelationMemberFeaturesByRelationType} from "../models/backend/map-data-models.js";
 import type {ResolvedBasemapType} from "../models/common/basemap-models.js";
-import type {InteractiveMapFlowResult} from "../models/mapsurface/basemap-runtime-models.js";
+import type {InteractiveMapFlowResult, MapFlowReadySummary} from "../models/mapsurface/basemap-runtime-models.js";
+import type {LeafletMetricScaleResult} from "../models/mapsurface/leaflet-renderer-models.js";
 import type {CoreVisualPayloadType} from "../models/mapsurface/map-payload-models.js";
 import type {RuntimeStylePlan} from "../models/mapsurface/style/runtime-style-models.js";
 import {createBrowserWarningReporter} from "./browser-warning-reporter.js";
@@ -26,13 +28,20 @@ interface MapSurfaceViewProps {
   /** 浏览器初始化阶段已经准备好的统一运行时样式计划。 */
   stylePlan: RuntimeStylePlan | null;
   leafletConfig: LeafletConfigType;
+  onMetricScaleChange(metricScale: LeafletMetricScaleResult): void;
+  onMapRuntimeReady(readySummary: MapFlowReadySummary): void;
+  onMapRuntimeError(message: string): void;
+}
+
+function isSameMetricScale(left: LeafletMetricScaleResult, right: LeafletMetricScaleResult): boolean {
+  return left.label === right.label && left.distanceMeters === right.distanceMeters && left.widthPx === right.widthPx;
 }
 
 /**
  * React 只负责提供真实 DOM 容器和 Interactive Flow 生命周期；初始视口仍由 MapSurface 完成。
  * 异步 Flow 的完成时间可能晚于组件卸载，因此 abort 与晚到结果的 dispose 必须共同守住清理边界。
  */
-export function MapSurfaceView({screenshotSize, center, leafletBounds, basemap, overlayOutput, relationMemberFeaturesByRelation, coreVisual, stylePlan, leafletConfig}: MapSurfaceViewProps) {
+export function MapSurfaceView({screenshotSize, center, leafletBounds, basemap, overlayOutput, relationMemberFeaturesByRelation, coreVisual, stylePlan, leafletConfig, onMetricScaleChange, onMapRuntimeReady, onMapRuntimeError}: MapSurfaceViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -43,6 +52,7 @@ export function MapSurfaceView({screenshotSize, center, leafletBounds, basemap, 
     // reporter 的去重集合与当前 React/MapSurface 生命周期一致，后续平移缩放仍复用同一通道。
     const warningReporter = createBrowserWarningReporter();
     let flowResult: InteractiveMapFlowResult | null = null;
+    let disposeMetricScaleListener: (() => void) | null = null;
     const overlay = overlayOutput !== null && relationMemberFeaturesByRelation !== null && stylePlan !== null
       ? {
           overlayOutput,
@@ -90,16 +100,49 @@ export function MapSurfaceView({screenshotSize, center, leafletBounds, basemap, 
         return;
       }
       flowResult = result;
+      let currentMetricScale = result.metricScale;
+      let metricScaleFrameId: number | null = null;
+      let updateFailureReported = false;
+      const updateMetricScale = (): void => {
+        metricScaleFrameId = null;
+        try {
+          const nextMetricScale = calculateLeafletMetricScale(result.mapSurface.map, __GEOMCP_MAX_SCALE_WIDTH_PX__);
+          updateFailureReported = false;
+          if (isSameMetricScale(currentMetricScale, nextMetricScale)) return;
+          currentMetricScale = nextMetricScale;
+          onMetricScaleChange(nextMetricScale);
+        } catch (error) {
+          if (updateFailureReported) return;
+          updateFailureReported = true;
+          console.warn("[GeoMCP] Metric scale could not be updated after the map view changed.", error);
+        }
+      };
+      const scheduleMetricScaleUpdate = (): void => {
+        if (metricScaleFrameId !== null) return;
+        metricScaleFrameId = requestAnimationFrame(updateMetricScale);
+      };
+      result.mapSurface.map.on("zoomend moveend", scheduleMetricScaleUpdate);
+      disposeMetricScaleListener = () => {
+        result.mapSurface.map.off("zoomend moveend", scheduleMetricScaleUpdate);
+        if (metricScaleFrameId !== null) cancelAnimationFrame(metricScaleFrameId);
+      };
+      onMetricScaleChange(currentMetricScale);
+      onMapRuntimeReady(result.readySummary);
     }).catch((error: unknown) => {
       // 主动卸载产生的 AbortError 属于正常生命周期；其余初始化失败才进入浏览器诊断日志。
-      if (!abortController.signal.aborted) console.error("interactive_map_flow_failed", error);
+      if (!abortController.signal.aborted) {
+        const message = error instanceof Error ? error.message : String(error);
+        onMapRuntimeError(message);
+        console.error("interactive_map_flow_failed", error);
+      }
     });
     return () => {
-      // 先阻止异步批次继续，再按 Interactive Flow 内部定义的顺序释放已完成资源。
+      // 先停止 UI 订阅和异步批次，再按 Interactive Flow 内部定义的顺序释放已完成资源。
+      disposeMetricScaleListener?.();
       abortController.abort();
       flowResult?.dispose();
     };
-  }, [screenshotSize, center, leafletBounds, basemap, overlayOutput, relationMemberFeaturesByRelation, coreVisual, stylePlan, leafletConfig]);
+  }, [screenshotSize, center, leafletBounds, basemap, overlayOutput, relationMemberFeaturesByRelation, coreVisual, stylePlan, leafletConfig, onMetricScaleChange, onMapRuntimeReady, onMapRuntimeError]);
 
   return <div ref={containerRef} className="map-surface" aria-label="Interactive map" />;
 }

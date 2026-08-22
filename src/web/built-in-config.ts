@@ -5,6 +5,10 @@
  */
 
 export const UI_BUILT_IN_CONFIG = {
+  referenceUi: {
+    minWidth: 600,
+    minHeight: 50,
+  },
   toolbar: {
     minWidth: 600,
     minHeight: 50,

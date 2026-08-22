@@ -28,7 +28,7 @@ export type BasemapRuntimeStatus =
 
 export type MapFlowVisualStatus = "ready" | "skipped";
 
-/** Browser Flow 自己汇总的精简终态；后续 UI/Playwright 发布不属于本层。 */
+/** Leaflet Map Flow 汇总的精简终态；页面级 UI/Playwright 发布不属于本层。 */
 export interface MapFlowReadySummary {
   status: "ready" | "degraded" | "failed";
   error: AppErrorType | null;
@@ -40,8 +40,12 @@ export interface MapFlowReadySummary {
   basemap: BasemapRuntimeStatus;
   overlay: MapFlowVisualStatus;
   core_overlay: MapFlowVisualStatus;
-  /** Reference UI 尚未实现；当前由空 UI 阶段发布 ready 占位。 */
-  reference_ui: "ready" | "failed";
+}
+
+/** 页面级 Browser Flow 在地图 runtime 与 Reference UI 都完成后发布的可序列化终态。 */
+export interface BrowserFlowReadySummary extends MapFlowReadySummary {
+  reference_ui: "ready";
+  measured_reference_ui_height: number;
 }
 
 export interface BasemapRuntimeOptions {

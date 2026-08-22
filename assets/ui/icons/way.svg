@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="way" xmlns="http://www.w3.org/2000/svg" width="32.4089" height="22.3471" viewBox="0 0 32.4089 22.3471">
+  <g id="_图层_1" data-name=" 图层 1">
+    <g id="way-2" data-name="way">
+      <g id="way-wool-cloud-details">
+        <path d="M3.3044,21.0879c-1.8846-1.0398-3.0544-3.0544-3.0544-5.264,0-3.1844,2.5345-5.8489,5.7839-5.9789.6499-2.7295,3.1194-4.7441,5.9789-4.7441s2.4695.3249,3.4443,1.0398c1.2998-2.2746,3.7043-3.8343,6.4988-3.8343s7.0187,2.9894,7.3436,6.7587c1.7547,1.1698,2.8595,3.1844,2.8595,5.524,0,3.6393-2.9894,6.6287-6.6287,6.6287H3.1744l.13-.13Z" style="fill: #fff8ed; stroke: #2f2f31; stroke-width: .5px;"/>
+        <path d="M5.8389,11.5347c2.0146-1.1698,4.0292-1.2998,6.1088-.4549M18.7065,7.8304c2.0796-1.3647,4.2892-1.4297,6.4988-.3249" style="fill: none; stroke: #f2e6d5; stroke-linecap: round; stroke-width: 2.1px;"/>
+      </g>
+      <g>
+        <path d="M6.2289,16.9937l5.524-5.459,6.2388,3.9642,7.0187-6.9537" style="fill: none; stroke: #3e4553; stroke-linecap: round; stroke-linejoin: round;"/>
+        <g id="way-coral-active-node-accents">
+          <circle cx="6.2289" cy="16.9937" r="2.3396" style="fill: #f06b61; stroke: #3e4553;"/>
+          <circle cx="11.8178" cy="11.5347" r="2.3396" style="fill: #f06b61; stroke: #3e4553;"/>
+          <circle cx="18.0566" cy="15.499" r="2.3396" style="fill: #f06b61; stroke: #3e4553;"/>
+          <circle cx="25.0103" cy="8.5453" r="2.3396" style="fill: #f06b61; stroke: #3e4553;"/>
+        </g>
+      </g>
+      <g id="way-optional-sparkles">
+        <path d="M29.4295.8768v3.1844M27.8698,2.5015h3.1844" style="fill: none; stroke: #f06b61; stroke-linecap: round;"/>
+      </g>
+    </g>
+  </g>
+</svg>

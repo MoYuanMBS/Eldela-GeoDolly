@@ -189,7 +189,7 @@ const iframeAdaptiveRawConfigSchema = z.object({
 type IframeAdaptiveRawConfigType = z.infer<typeof iframeAdaptiveRawConfigSchema>;
 
 function normalizeIframeAdaptiveConfig(adaptiveConfig: IframeAdaptiveRawConfigType): IframeAdaptiveRawConfigType {
-  const minMapDisplayWidth = Math.max(adaptiveConfig.min_map_display_width, UI_BUILT_IN_CONFIG.toolbar.minWidth);
+  const minMapDisplayWidth = Math.max(adaptiveConfig.min_map_display_width, UI_BUILT_IN_CONFIG.referenceUi.minWidth);
   const minScreenshotWidth = Math.max(adaptiveConfig.min_screenshot_width, minMapDisplayWidth);
   const minScreenshotHeight = Math.max(adaptiveConfig.min_screenshot_height, adaptiveConfig.min_map_display_height);
   let maxScreenshotWidth = Math.max(adaptiveConfig.max_screenshot_width, minScreenshotWidth);
@@ -238,7 +238,7 @@ export const iframeAdaptiveConfigSchema = iframeAdaptiveRawConfigSchema.superRef
 }).transform((adaptiveConfig) => {
   const normalizedConfig = normalizeIframeAdaptiveConfig(adaptiveConfig);
   if (normalizedConfig.min_map_display_width !== adaptiveConfig.min_map_display_width) {
-    logger.warning("min_map_display_width_clamped", {configured_width: adaptiveConfig.min_map_display_width, toolbar_min_width: UI_BUILT_IN_CONFIG.toolbar.minWidth});
+    logger.warning("min_map_display_width_clamped", {configured_width: adaptiveConfig.min_map_display_width, reference_ui_min_width: UI_BUILT_IN_CONFIG.referenceUi.minWidth});
   }
   if (normalizedConfig.min_screenshot_width !== adaptiveConfig.min_screenshot_width) {
     logger.warning("min_screenshot_width_raised", {configured_width: adaptiveConfig.min_screenshot_width, effective_width: normalizedConfig.min_screenshot_width});

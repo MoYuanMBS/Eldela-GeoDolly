@@ -32,7 +32,7 @@ export function waitForMapFlowReady<T>(promise: Promise<T>, timeoutMs: number, t
   });
 }
 
-/** 汇总当前 Flow 已完成的必要子流程；Reference UI 暂时是无内容的 ready 占位。 */
+/** 汇总当前 Leaflet Flow 已完成的必要子流程；页面级 Reference UI 由外层 Browser Flow 汇总。 */
 export function createMapFlowReadySummary(
   mapSurface: MapSurfaceHandle,
   basemapStatus: BasemapRuntimeStatus,
@@ -53,6 +53,5 @@ export function createMapFlowReadySummary(
     basemap: basemapStatus,
     overlay: visualResult === null ? "skipped" : "ready",
     core_overlay: coreResult === null ? "skipped" : "ready",
-    reference_ui: "ready",
   });
 }

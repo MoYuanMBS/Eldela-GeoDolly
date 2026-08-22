@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="left_up" data-name="left up" xmlns="http://www.w3.org/2000/svg" width="78.6465" height="124.0041" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 78.6465 124.0041">
+  <defs>
+    <linearGradient id="_未命名的渐变_24" data-name="未命名的渐变 24" x1="27.2328" y1="-380.8775" x2="42.0565" y2="-391.6052" gradientTransform="translate(130.5942 400.2067) rotate(-23.3796) scale(1.3338 .9065)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f4f0e9" stop-opacity=".96"/>
+      <stop offset=".55" stop-color="#d9d3cb" stop-opacity=".82"/>
+      <stop offset="1" stop-color="#aaa6a3" stop-opacity=".42"/>
+    </linearGradient>
+  </defs>
+  <g>
+    <rect x="29.498" y="57.4088" width="27.6406" height="4.1182" style="fill: none; stroke: #dba5a5; stroke-miterlimit: 10; stroke-width: .25px;"/>
+    <line x1="30.2458" y1="59.156" x2="30.2458" y2="61.527" style="fill: none; stroke: #dba5a5; stroke-miterlimit: 10; stroke-width: .25px;"/>
+    <line x1="31.6246" y1="60.1591" x2="31.6246" y2="61.527" style="fill: none; stroke: #dba5a5; stroke-miterlimit: 10; stroke-width: .25px;"/>
+    <line x1="33.0034" y1="60.1591" x2="33.0034" y2="61.527" style="fill: none; stroke: #dba5a5; stroke-miterlimit: 10; stroke-width: .25px;"/>
+    <line x1="34.3822" y1="60.1591" x2="34.3822" y2="61.527" style="fill: none; stroke: #dba5a5; stroke-miterlimit: 10; stroke-width: .25px;"/>
+    <line x1="38.5187" y1="60.1591" x2="38.5187" y2="61.527" style="fill: none; stroke: #dba5a5; stroke-miterlimit: 10; stroke-width: .25px;"/>
+    <line x1="39.8975" y1="60.1591" x2="39.8975" y2="61.527" style="fill: none; stroke: #dba5a5; stroke-miterlimit: 10; stroke-width: .25px;"/>
+    <line x1="41.2763" y1="60.1591" x2="41.2763" y2="61.527" style="fill: none; stroke: #dba5a5; stroke-miterlimit: 10; stroke-width: .25px;"/>
+    <line x1="42.6551" y1="60.1591" x2="42.6551" y2="61.527" style="fill: none; stroke: #dba5a5; stroke-miterlimit: 10; stroke-width: .25px;"/>
+    <line x1="44.0339" y1="59.156" x2="44.0339" y2="61.527" style="fill: none; stroke: #dba5a5; stroke-miterlimit: 10; stroke-width: .25px;"/>
+    <line x1="45.4128" y1="60.1591" x2="45.4128" y2="61.527" style="fill: none; stroke: #dba5a5; stroke-miterlimit: 10; stroke-width: .25px;"/>
+    <line x1="46.7916" y1="60.1591" x2="46.7916" y2="61.527" style="fill: none; stroke: #dba5a5; stroke-miterlimit: 10; stroke-width: .25px;"/>
+    <line x1="48.1704" y1="60.1591" x2="48.1704" y2="61.527" style="fill: none; stroke: #dba5a5; stroke-miterlimit: 10; stroke-width: .25px;"/>
+    <line x1="49.5492" y1="60.1591" x2="49.5492" y2="61.527" style="fill: none; stroke: #dba5a5; stroke-miterlimit: 10; stroke-width: .25px;"/>
+    <line x1="50.928" y1="60.1591" x2="50.928" y2="61.527" style="fill: none; stroke: #dba5a5; stroke-miterlimit: 10; stroke-width: .25px;"/>
+    <line x1="52.3068" y1="60.1591" x2="52.3068" y2="61.527" style="fill: none; stroke: #dba5a5; stroke-miterlimit: 10; stroke-width: .25px;"/>
+    <line x1="53.6856" y1="60.1591" x2="53.6856" y2="61.527" style="fill: none; stroke: #dba5a5; stroke-miterlimit: 10; stroke-width: .25px;"/>
+    <line x1="55.0645" y1="60.1591" x2="55.0645" y2="61.527" style="fill: none; stroke: #dba5a5; stroke-miterlimit: 10; stroke-width: .25px;"/>
+    <line x1="56.4433" y1="59.156" x2="56.4433" y2="61.527" style="fill: none; stroke: #dba5a5; stroke-miterlimit: 10; stroke-width: .25px;"/>
+    <rect x="34.3822" y="57.4088" width="4.1364" height="18.6724" style="fill: none; stroke: #dba5a5; stroke-miterlimit: 10; stroke-width: .25px;"/>
+    <line x1="36.1477" y1="75.3334" x2="38.5187" y2="75.3334" style="fill: none; stroke: #dba5a5; stroke-miterlimit: 10; stroke-width: .25px;"/>
+    <line x1="37.1508" y1="73.9546" x2="38.5187" y2="73.9546" style="fill: none; stroke: #dba5a5; stroke-miterlimit: 10; stroke-width: .25px;"/>
+    <line x1="37.1508" y1="72.5758" x2="38.5187" y2="72.5758" style="fill: none; stroke: #dba5a5; stroke-miterlimit: 10; stroke-width: .25px;"/>
+    <line x1="37.1508" y1="71.197" x2="38.5187" y2="71.197" style="fill: none; stroke: #dba5a5; stroke-miterlimit: 10; stroke-width: .25px;"/>
+    <line x1="37.1508" y1="69.8182" x2="38.5187" y2="69.8182" style="fill: none; stroke: #dba5a5; stroke-miterlimit: 10; stroke-width: .25px;"/>
+    <line x1="37.1508" y1="68.4393" x2="38.5187" y2="68.4393" style="fill: none; stroke: #dba5a5; stroke-miterlimit: 10; stroke-width: .25px;"/>
+    <line x1="37.1508" y1="67.0605" x2="38.5187" y2="67.0605" style="fill: none; stroke: #dba5a5; stroke-miterlimit: 10; stroke-width: .25px;"/>
+    <line x1="37.1508" y1="65.6817" x2="38.5187" y2="65.6817" style="fill: none; stroke: #dba5a5; stroke-miterlimit: 10; stroke-width: .25px;"/>
+    <line x1="37.1508" y1="64.3029" x2="38.5187" y2="64.3029" style="fill: none; stroke: #dba5a5; stroke-miterlimit: 10; stroke-width: .25px;"/>
+    <line x1="37.1508" y1="62.9241" x2="38.5187" y2="62.9241" style="fill: none; stroke: #dba5a5; stroke-miterlimit: 10; stroke-width: .25px;"/>
+    <line x1="36.321" y1="57.4088" x2="36.321" y2="59.7798" style="fill: none; stroke: #dba5a5; stroke-miterlimit: 10; stroke-width: .25px;"/>
+    <line x1="37.1508" y1="57.4088" x2="38.5187" y2="57.4088" style="fill: none; stroke: #dba5a5; stroke-miterlimit: 10; stroke-width: .25px;"/>
+  </g>
+  <g id="fragments">
+    <path id="fragment_1" data-name="fragment 1" d="M21.8304,61.9452l2.627-.9466-.1416,2.1091-1.675.6503-.8105-1.8128Z" style="fill: #292a31;"/>
+    <path id="fragment_1-2" data-name="fragment 1" d="M30.7726,59.427l-2.2901-1.5978,1.8035-1.1027,1.4983.9917-1.0117,1.7087Z" style="fill: #44464f;"/>
+    <path id="fragment_2" data-name="fragment 2" d="M23.9376,57.0655l2.3495.3484-.8514,1.6377-1.498-1.9861Z" style="fill: rgba(69, 70, 78, .88);"/>
+    <path id="fragment_3" data-name="fragment 3" d="M22.9598,52.9327l1.4158,1.3763-2.1452.5184.7294-1.8947Z" style="fill: rgba(30, 32, 38, .8);"/>
+    <path id="fragment_4" data-name="fragment 4" d="M21.2828,66.6329l1.4793-.2609-.244,1.7421-1.2353-1.4812Z" style="fill: rgba(98, 97, 105, .7);"/>
+    <path id="fragment_5" data-name="fragment 5" d="M29.0088,53.1192l1.6294.7572-1.5413.7646-.0881-1.5218Z" style="fill: rgba(45, 47, 54, .64);"/>
+    <path id="fragment_5-2" data-name="fragment 5" d="M28.0136,60.161l1.463,1.0431-1.6554.469.1924-1.5121Z" style="fill: rgba(41, 42, 49, .64);"/>
+  </g>
+  <g id="wool_light" data-name="wool light" style="opacity: .27;">
+    <g>
+      <path id="wool_light_back" data-name="wool light back" d="M35.6857,53.706c3.5475-1.6827,7.5954-1.9171,10.8055-.9068,2.5989.7945,2.7762,2.0038.3475,2.9707,1.6312.929.1566,2.5094-2.7784,3.7331.4447,1.4524-2.1278,4.038-4.6668,4.2794-.4875,2.3821-4.123,5.5278-6.3194,4.2318-1.1971,2.778-4.3666,4.1693-5.5495,1.7373-2.3717,1.6593-4.6212-.1469-3.9476-3.2039-2.0217-.6244-2.5196-3.2368-.7061-5.2215,3.023-4.2855,7.8893-7.2348,12.8149-7.6203Z" style="fill: url(#_未命名的渐变_24);"/>
+      <g id="wool_light_puff_left" data-name="wool light puff left">
+        <path d="M31.6871,58.3153c2.0158-.3577,3.2596,1.5291,1.894,3.0987,1.1055.9971.1885,3.0801-1.646,3.693.1928,1.8502-2.1034,3.8586-3.5816,2.8434-1.3599,1.5945-3.2684.8585-3.3728-1.1245-1.5977.488-2.7747-1.3727-2.1068-3.1092,1.8127-2.7685,5.1989-4.9706,8.8131-5.4015Z" style="fill: #f8f4ec; opacity: .74;"/>
+      </g>
+      <g id="wool_light_puff_top" data-name="wool light puff top">
+        <path d="M31.189,62.4194c4.356-1.3994,7.9246-4.2117,11.1298-5.9029,1.4672.4454,1.5059,1.7396.0189,2.8402.9009,1.0119-.7638,3.0333-2.7922,3.6587-.1428,1.8303-2.8612,4.0453-4.3848,3.1363-1.364,2.0245-3.9324,2.3074-4.3332.279-.7168-1.0257-.5002-2.5521.3615-4.0113Z" style="fill: #eeeae4; opacity: .66;"/>
+      </g>
+    </g>
+  </g>
+  <g id="layer-tiny-glints">
+    <g id="tiny-glint-set-01">
+      <path id="tiny-glint-01" d="M42.4025,58.0025c-1.9805-1.2702-3.0732-1.2156-4.917.2459,1.2702-1.9805,1.2156-3.0732-.2459-4.917,1.9805,1.2702,3.0732,1.2156,4.917-.2459-1.2702,1.9805-1.2156,3.0732.2459,4.917Z" style="fill: #f4d6d6; stroke: #5b5659; stroke-width: .1px;"/>
+      <path id="tiny-glint-03" d="M27.0547,68.8226c-1.2862-2.6289-2.5098-3.2396-5.3839-2.6872,2.6289-1.2862,3.2396-2.5098,2.6872-5.3839,1.2862,2.6289,2.5098,3.2396,5.3839,2.6872-2.6289,1.2862-3.2396,2.5098-2.6872,5.3839Z" style="fill: #d8797c;"/>
+      <circle id="tiny-glint-dot-01" cx="25.7064" cy="55.6669" r=".7736" style="fill: #d47779;"/>
+      <g>
+        <path id="tiny-glint-04" d="M38.1428,59.5264c-1.7637,1.2509-2.1371,2.2793-1.5871,4.3704-1.2509-1.7637-2.2793-2.1371-4.3704-1.5871,1.7637-1.2509,2.1371-2.2793,1.5871-4.3704,1.2509,1.7637,2.2793,2.1371,4.3704,1.5871Z" style="fill: #4b484c;"/>
+        <circle id="tiny-glint-dot-02" cx="28.7125" cy="56.2473" r=".5802" style="fill: #a49b9d;"/>
+      </g>
+    </g>
+  </g>
+</svg>
