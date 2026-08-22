@@ -2,6 +2,7 @@ import {createRoot} from "react-dom/client";
 import "leaflet/dist/leaflet.css";
 import "../leaflet/styles/leaflet-font.css";
 import "../leaflet/styles/built-in/built-in-css.css";
+import "../../styles/ui-palette.css";
 import "../../styles/web.css";
 import "../../styles/reference-bar.css";
 import {initializeBuiltInStyle} from "../leaflet/styles/built-in-style-loader.js";

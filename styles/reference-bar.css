@@ -1,87 +1,138 @@
 .reference-bar {
+  position: relative;
   width: 100%;
   min-width: var(--geomcp-reference-ui-min-width);
   min-height: var(--geomcp-reference-ui-min-height);
-  padding: 8px 14px;
-  border-top: 1px solid #c3cec5;
-  color: #31463a;
-  background:
-    linear-gradient(90deg, rgb(82 117 93 / 8%), transparent 24%, transparent 76%, rgb(82 117 93 / 8%)),
-    #f7faf7;
+  padding: 7px 40px;
+  border-top: 1px solid var(--geomcp-ui-highlight);
+  border-bottom: 1px solid var(--geomcp-ui-highlight);
+  color: var(--geomcp-ui-text);
+  background: var(--geomcp-ui-surface);
   font-family: "GeoMCP Source Han Sans", sans-serif;
   font-size: 13px;
   line-height: 1.4;
 }
 
 .reference-bar-content {
+  position: relative;
+  z-index: 1;
   display: grid;
-  min-height: calc(var(--geomcp-reference-ui-min-height) - 16px);
-  grid-template-columns: calc(var(--geomcp-scale-max-width) + 72px) minmax(0, 1fr);
+  min-height: calc(var(--geomcp-reference-ui-min-height) - 14px);
+  grid-template-columns: calc(var(--geomcp-scale-max-width) + 8px) 32px minmax(0, 1fr);
   align-items: center;
-  gap: 18px;
+  gap: 12px;
 }
 
 .reference-scale {
-  display: grid;
-  width: calc(var(--geomcp-scale-max-width) + 72px);
-  grid-template-columns: var(--geomcp-scale-max-width) 62px;
-  align-items: end;
-  gap: 10px;
+  position: relative;
+  width: var(--geomcp-scale-max-width);
+  height: 30px;
   white-space: nowrap;
 }
 
 .reference-scale-label {
-  grid-column: 2;
-  grid-row: 1;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: max(var(--geomcp-metric-scale-width), 44px);
   overflow: hidden;
-  color: #26392e;
+  color: var(--geomcp-ui-text);
+  font-size: 10px;
   font-variant-numeric: tabular-nums;
+  line-height: 14px;
+  text-align: center;
   text-overflow: ellipsis;
 }
 
 .reference-scale-rule {
   position: relative;
   display: block;
+  top: 18px;
   width: var(--geomcp-metric-scale-width);
-  height: 8px;
-  grid-column: 1;
-  grid-row: 1;
-  border-right: 1px solid #26392e;
-  border-bottom: 1px solid #26392e;
-  border-left: 1px solid #26392e;
+  height: 6px;
+  border-right: 1px solid var(--geomcp-ui-text);
+  border-bottom: 1px solid var(--geomcp-ui-text);
+  border-left: 1px solid var(--geomcp-ui-text);
+}
+
+.reference-bar-divider {
+  position: relative;
+  align-self: stretch;
+  width: 32px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.reference-bar-end {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  bottom: 0;
+  width: 40px;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+}
+
+.reference-bar-divider img,
+.reference-bar-end img {
+  position: absolute;
+  top: 50%;
+  width: auto;
+  height: 124px;
+  pointer-events: none;
+  user-select: none;
+}
+
+.reference-bar-divider img {
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.reference-bar-end-left {
+  left: 0;
+}
+
+.reference-bar-end-left img {
+  left: 0;
+  transform: translateY(-50%);
+}
+
+.reference-bar-end-right {
+  right: 0;
+}
+
+.reference-bar-end-right img {
+  right: 0;
+  transform: translateY(-50%);
 }
 
 .reference-attribution {
   min-width: 0;
   overflow-wrap: anywhere;
+  font-size: 11px;
+  line-height: 1.35;
   text-align: right;
 }
 
-.reference-attribution-label {
-  margin-right: 8px;
-  color: #758278;
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
 .reference-attribution a {
-  color: #315e43;
-  text-decoration-color: rgb(49 94 67 / 45%);
-  text-underline-offset: 2px;
+  color: var(--geomcp-ui-text);
+  text-decoration: none;
 }
 
 .reference-attribution a:hover,
 .reference-attribution a:focus-visible {
-  color: #183e28;
-  text-decoration-color: currentColor;
+  color: var(--geomcp-ui-text);
+  text-decoration: underline;
+  text-decoration-color: var(--geomcp-ui-bar-end);
+  text-underline-offset: 2px;
 }
 
 .reference-bar[data-reference-ui-status="waiting-scale"],
 .reference-bar[data-reference-ui-status="measuring"] {
-  color: #6e7a72;
+  color: color-mix(in srgb, var(--geomcp-ui-text) 64%, var(--geomcp-ui-surface));
 }
 
 .reference-bar[data-reference-ui-status="failed"] {
-  border-top-color: #d7aaaa;
+  border-top-color: var(--geomcp-ui-bar-end);
 }

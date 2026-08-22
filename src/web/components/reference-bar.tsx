@@ -1,4 +1,7 @@
 import {useEffect, useRef, type CSSProperties} from "react";
+import leftEndDecorationUrl from "../../../assets/ui/decorations/left-up.svg";
+import referenceBarDividerUrl from "../../../assets/ui/decorations/reference-bar-divider.svg";
+import rightEndDecorationUrl from "../../../assets/ui/decorations/right-up.svg";
 import type {LeafletMetricScaleResult} from "../../models/mapsurface/leaflet-renderer-models.js";
 import {AppError} from "../../utils/app-error.js";
 
@@ -179,13 +182,21 @@ export function ReferenceBar({logicalWidth, attributionText, attributionUrl, att
   };
   return (
     <footer ref={elementRef} className="reference-bar" aria-label="Map reference information">
+      <span className="reference-bar-end reference-bar-end-left" aria-hidden="true">
+        <img src={leftEndDecorationUrl} alt="" draggable={false} />
+      </span>
+      <span className="reference-bar-end reference-bar-end-right" aria-hidden="true">
+        <img src={rightEndDecorationUrl} alt="" draggable={false} />
+      </span>
       <div ref={contentRef} className="reference-bar-content">
-        <section className="reference-scale" aria-label={metricScale === null ? "Map scale loading" : `Map scale ${metricScale.label}`}>
+        <section className="reference-scale" style={scaleStyle} aria-label={metricScale === null ? "Map scale loading" : `Map scale ${metricScale.label}`}>
           <span className="reference-scale-label">{metricScale?.label ?? "Scale"}</span>
-          <span className="reference-scale-rule" style={scaleStyle} aria-hidden="true" />
+          <span className="reference-scale-rule" aria-hidden="true" />
         </section>
+        <span className="reference-bar-divider" aria-hidden="true">
+          <img src={referenceBarDividerUrl} alt="" draggable={false} />
+        </span>
         <div className="reference-attribution">
-          <span className="reference-attribution-label">Attribution</span>
           <a href={attributionUrl} target="_blank" rel="noreferrer" title={attributionDescription}>{attributionText}</a>
         </div>
       </div>

@@ -1,6 +1,6 @@
 :root {
-  color: #15211a;
-  background: #e9eee9;
+  color: var(--geomcp-ui-text);
+  background: var(--geomcp-background-color);
   font-family: "GeoMCP Source Han Sans", sans-serif;
 }
 
@@ -31,13 +31,15 @@ body {
   min-width: var(--geomcp-reference-ui-min-width);
   overflow: hidden;
   border-radius: 8px;
-  background: #f7faf7;
-  box-shadow: 0 0 0 1px #b9c5bb, 0 12px 36px rgb(31 49 37 / 14%);
+  background: var(--geomcp-ui-surface);
+  box-shadow:
+    0 0 0 1px var(--geomcp-ui-highlight),
+    0 12px 36px color-mix(in srgb, var(--geomcp-ui-text) 14%, transparent);
 }
 
 .map-surface {
   position: relative;
-  background: #dfe7e1;
+  background: var(--geomcp-background-color);
 }
 
 .map-ready-error {
@@ -47,11 +49,11 @@ body {
   left: 50%;
   max-width: calc(100% - 24px);
   padding: 7px 10px;
-  border: 1px solid #d7aaaa;
+  border: 1px solid var(--geomcp-ui-bar-end);
   border-radius: 4px;
-  color: #8f2525;
-  background: rgb(255 247 247 / 94%);
-  box-shadow: 0 3px 12px rgb(82 31 31 / 14%);
+  color: var(--geomcp-ui-text);
+  background: color-mix(in srgb, var(--geomcp-ui-surface) 94%, transparent);
+  box-shadow: 0 3px 12px color-mix(in srgb, var(--geomcp-ui-text) 14%, transparent);
   font-size: 12px;
   transform: translateX(-50%);
 }
@@ -59,13 +61,12 @@ body {
 .map-page-state {
   max-width: 560px;
   padding: 20px 24px;
-  border: 1px solid #c5cec6;
+  border: 1px solid var(--geomcp-ui-highlight);
   border-radius: 8px;
-  background: #f7faf7;
+  background: var(--geomcp-ui-surface);
 }
 
 .map-page-error {
-  color: #8f2525;
-  border-color: #d7aaaa;
-  background: #fff7f7;
+  color: var(--geomcp-ui-text);
+  border-color: var(--geomcp-ui-bar-end);
 }
