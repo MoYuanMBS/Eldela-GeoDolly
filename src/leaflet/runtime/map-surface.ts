@@ -37,6 +37,7 @@ export function createMapSurface(options: MapSurfaceOptions): MapSurfaceHandle {
   const leafletMap = createLeafletMap(container, {
     preferCanvas: true,
     attributionControl: false,
+    zoomControl: false,
     zoomSnap: 1,
   });
 

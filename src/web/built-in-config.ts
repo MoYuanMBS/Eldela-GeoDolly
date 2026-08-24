@@ -8,6 +8,12 @@ export const UI_BUILT_IN_CONFIG = {
   referenceUi: {
     minWidth: 600,
     minHeight: 50,
+    endBlockRatio: 0.065,
+    liveFeatureMinWidth: 160,
+    dividerWidth: 32,
+  },
+  featureBar: {
+    gapPx: 6,
   },
   toolbar: {
     minWidth: 600,

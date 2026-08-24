@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useMemo, useState, type CSSProperties} from "react";
+import {useCallback, useEffect, useMemo, useRef, useState, type CSSProperties} from "react";
 import {z} from "zod";
 import {initializeRuntimeStyle} from "../leaflet/styles/runtime-style-initializer.js";
 import {commonVisualMapPayloadSchema, type CommonVisualMapPayloadType} from "../models/mapsurface/map-payload-models.js";
@@ -6,10 +6,14 @@ import type {BrowserFlowReadySummary, MapFlowReadySummary} from "../models/mapsu
 import type {LeafletMetricScaleResult} from "../models/mapsurface/leaflet-renderer-models.js";
 import type {RuntimeStylePlan} from "../models/mapsurface/style/runtime-style-models.js";
 import {renderStylePayloadSchema} from "../models/mapsurface/style/user-css-style-models.js";
+import type {DrawingUiModeType} from "../models/web/interactive-ui-models.js";
 import {AppError} from "../utils/app-error.js";
 import {UI_BUILT_IN_CONFIG} from "./built-in-config.js";
+import {DrawingToolbar} from "./components/drawing-toolbar.js";
+import {FeatureBar} from "./components/feature-bar.js";
+import {MeasurementHUD} from "./components/measurement-hud.js";
 import {ReferenceBar} from "./components/reference-bar.js";
-import {MapSurfaceView} from "./map-surface-view.js";
+import {MapSurfaceView, type MapSurfaceZoomCommands} from "./map-surface-view.js";
 
 const publishedMapPayloadSchema = z.object({
   map_payload: commonVisualMapPayloadSchema,
@@ -29,6 +33,10 @@ interface MapPageStyle extends CSSProperties {
   "--geomcp-map-width": string;
   "--geomcp-reference-ui-min-width": string;
   "--geomcp-reference-ui-min-height": string;
+  "--geomcp-reference-ui-end-block-width": string;
+  "--geomcp-reference-ui-live-feature-min-width": string;
+  "--geomcp-reference-ui-divider-width": string;
+  "--geomcp-feature-bar-gap": string;
   "--geomcp-scale-max-width": string;
 }
 
@@ -47,11 +55,15 @@ export function MapPage({mapDataUrl}: MapPageProps) {
   const [metricScale, setMetricScale] = useState<LeafletMetricScaleResult | null>(null);
   const [mapRuntimeState, setMapRuntimeState] = useState<MapRuntimeState>({status: "pending"});
   const [referenceUiState, setReferenceUiState] = useState<ReferenceUiState>({status: "pending"});
+  const [drawingMode, setDrawingMode] = useState<DrawingUiModeType>("idle");
+  const zoomCommandsRef = useRef<MapSurfaceZoomCommands | null>(null);
 
   useEffect(() => {
     setMetricScale(null);
     setMapRuntimeState({status: "pending"});
     setReferenceUiState({status: "pending"});
+    setDrawingMode("idle");
+    zoomCommandsRef.current = null;
     if (mapDataUrl === null) {
       setLoadState({status: "error", message: "Map data URL is missing"});
       return;
@@ -83,6 +95,15 @@ export function MapPage({mapDataUrl}: MapPageProps) {
 
   const handleMetricScaleChange = useCallback((nextMetricScale: LeafletMetricScaleResult): void => {
     setMetricScale(nextMetricScale);
+  }, []);
+  const handleZoomCommandsChange = useCallback((commands: MapSurfaceZoomCommands | null): void => {
+    zoomCommandsRef.current = commands;
+  }, []);
+  const handleZoomIn = useCallback((): void => {
+    zoomCommandsRef.current?.zoomIn();
+  }, []);
+  const handleZoomOut = useCallback((): void => {
+    zoomCommandsRef.current?.zoomOut();
   }, []);
   const handleMapRuntimeReady = useCallback((summary: MapFlowReadySummary): void => {
     setMapRuntimeState({status: "ready", summary});
@@ -118,6 +139,10 @@ export function MapPage({mapDataUrl}: MapPageProps) {
     "--geomcp-map-width": `${payload.screenshot_size[0]}px`,
     "--geomcp-reference-ui-min-width": `${UI_BUILT_IN_CONFIG.referenceUi.minWidth}px`,
     "--geomcp-reference-ui-min-height": `${UI_BUILT_IN_CONFIG.referenceUi.minHeight}px`,
+    "--geomcp-reference-ui-end-block-width": `${UI_BUILT_IN_CONFIG.referenceUi.endBlockRatio * 100}%`,
+    "--geomcp-reference-ui-live-feature-min-width": `${UI_BUILT_IN_CONFIG.referenceUi.liveFeatureMinWidth}px`,
+    "--geomcp-reference-ui-divider-width": `${UI_BUILT_IN_CONFIG.referenceUi.dividerWidth}px`,
+    "--geomcp-feature-bar-gap": `${UI_BUILT_IN_CONFIG.featureBar.gapPx}px`,
     "--geomcp-scale-max-width": `${__GEOMCP_MAX_SCALE_WIDTH_PX__}px`,
   };
   const failureMessage = mapRuntimeState.status === "failed"
@@ -134,30 +159,47 @@ export function MapPage({mapDataUrl}: MapPageProps) {
       data-geomcp-reference-ui-height={referenceUiState.status === "ready" ? referenceUiState.measuredHeight : undefined}
       data-geomcp-final-logical-height={referenceUiState.status === "ready" ? payload.screenshot_size[1] + referenceUiState.measuredHeight : undefined}
     >
-      <MapSurfaceView
-        screenshotSize={payload.screenshot_size}
-        center={payload.center}
-        leafletBounds={payload.leaflet_bbox}
-        basemap={payload.basemap}
-        overlayOutput={payload.overlay_output}
-        relationMemberFeaturesByRelation={payload.relation_member_features_by_relation}
-        coreVisual={payload.core_visual}
-        stylePlan={stylePlan}
-        leafletConfig={payload.leaflet}
-        onMetricScaleChange={handleMetricScaleChange}
-        onMapRuntimeReady={handleMapRuntimeReady}
-        onMapRuntimeError={handleMapRuntimeError}
-      />
-      <ReferenceBar
-        logicalWidth={payload.screenshot_size[0]}
-        attributionText={payload.basemap.attribution}
-        attributionUrl={payload.basemap.attribution_url}
-        attributionDescription={payload.basemap.full_attribution ?? payload.basemap.attribution}
-        metricScale={metricScale}
-        onReady={handleReferenceUiReady}
-        onError={handleReferenceUiError}
-      />
-      {failureMessage === null ? null : <span className="map-ready-error" role="alert">{failureMessage}</span>}
+      <div className="map-capture-frame">
+        <div className="interactive-map-frame">
+          <MapSurfaceView
+            screenshotSize={payload.screenshot_size}
+            center={payload.center}
+            leafletBounds={payload.leaflet_bbox}
+            basemap={payload.basemap}
+            overlayOutput={payload.overlay_output}
+            relationMemberFeaturesByRelation={payload.relation_member_features_by_relation}
+            coreVisual={payload.core_visual}
+            stylePlan={stylePlan}
+            leafletConfig={payload.leaflet}
+            onMetricScaleChange={handleMetricScaleChange}
+            onZoomCommandsChange={handleZoomCommandsChange}
+            onMapRuntimeReady={handleMapRuntimeReady}
+            onMapRuntimeError={handleMapRuntimeError}
+          />
+          <div className="interactive-ui-root">
+            <DrawingToolbar
+              mode={drawingMode}
+              disabled={mapRuntimeState.status !== "ready"}
+              onZoomIn={handleZoomIn}
+              onZoomOut={handleZoomOut}
+              onModeChange={setDrawingMode}
+            />
+            <MeasurementHUD mode={drawingMode} rows={[]} />
+          </div>
+        </div>
+        <ReferenceBar
+          logicalWidth={payload.screenshot_size[0]}
+          attributionText={payload.basemap.attribution}
+          attributionUrl={payload.basemap.attribution_url}
+          attributionDescription={payload.basemap.full_attribution ?? payload.basemap.attribution}
+          metricScale={metricScale}
+          feature={null}
+          onReady={handleReferenceUiReady}
+          onError={handleReferenceUiError}
+        />
+        {failureMessage === null ? null : <span className="map-ready-error" role="alert">{failureMessage}</span>}
+      </div>
+      <FeatureBar feature={null} />
     </main>
   );
 }

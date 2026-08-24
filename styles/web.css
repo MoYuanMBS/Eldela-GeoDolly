@@ -29,6 +29,10 @@ body {
   position: relative;
   width: var(--geomcp-map-width);
   min-width: var(--geomcp-reference-ui-min-width);
+}
+
+.map-capture-frame {
+  position: relative;
   overflow: hidden;
   border-radius: 8px;
   background: var(--geomcp-ui-surface);

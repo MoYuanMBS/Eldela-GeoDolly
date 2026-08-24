@@ -1,8 +1,12 @@
-import {useEffect, useRef, type CSSProperties} from "react";
+import {useEffect, useRef, useState, type CSSProperties} from "react";
 import leftEndDecorationUrl from "../../../assets/ui/decorations/left-up.svg";
 import referenceBarDividerUrl from "../../../assets/ui/decorations/reference-bar-divider.svg";
 import rightEndDecorationUrl from "../../../assets/ui/decorations/right-up.svg";
+import nodeIconUrl from "../../../assets/ui/icons/node.svg";
+import polygonIconUrl from "../../../assets/ui/icons/polygon.svg";
+import wayIconUrl from "../../../assets/ui/icons/way.svg";
 import type {LeafletMetricScaleResult} from "../../models/mapsurface/leaflet-renderer-models.js";
+import type {InteractiveFeatureSummaryType} from "../../models/web/interactive-ui-models.js";
 import {AppError} from "../../utils/app-error.js";
 
 interface ReferenceBarProps {
@@ -11,12 +15,29 @@ interface ReferenceBarProps {
   attributionUrl: string;
   attributionDescription: string;
   metricScale: LeafletMetricScaleResult | null;
+  feature: InteractiveFeatureSummaryType | null;
   onReady(measuredHeight: number): void;
   onError(message: string): void;
 }
 
 interface MetricScaleStyle extends CSSProperties {
   "--geomcp-metric-scale-width": string;
+}
+
+const FEATURE_TYPE_ICONS = {
+  node: nodeIconUrl,
+  way: wayIconUrl,
+  area: polygonIconUrl,
+} as const;
+
+type ReferenceUiStatus = "pending" | "waiting-scale" | "measuring" | "locked" | "ready" | "failed";
+
+function ReferenceBarDivider({position}: {position: "scale-feature" | "feature-attribution"}) {
+  return (
+    <span className={`reference-bar-divider reference-bar-divider-${position}`} aria-hidden="true">
+      <img className="reference-bar-divider-decoration" src={referenceBarDividerUrl} alt="" draggable={false} />
+    </span>
+  );
 }
 
 function waitForAnimationFrame(signal: AbortSignal): Promise<void> {
@@ -94,10 +115,11 @@ function hasLayoutOverflow(element: HTMLElement): boolean {
   return element.scrollWidth > element.clientWidth || element.scrollHeight > element.clientHeight;
 }
 
-/** MapSurface 外部唯一的 Scale / Attribution UI，并负责发布本 generation 的锁定高度。 */
-export function ReferenceBar({logicalWidth, attributionText, attributionUrl, attributionDescription, metricScale, onReady, onError}: ReferenceBarProps) {
+/** Interactive MapSurface 外部的 Scale / Feature / Attribution UI，并负责发布锁定高度。 */
+export function ReferenceBar({logicalWidth, attributionText, attributionUrl, attributionDescription, metricScale, feature, onReady, onError}: ReferenceBarProps) {
   const elementRef = useRef<HTMLElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const [layoutStatus, setLayoutStatus] = useState<ReferenceUiStatus>("pending");
   const hasInitialScale = metricScale !== null;
 
   useEffect(() => {
@@ -106,7 +128,7 @@ export function ReferenceBar({logicalWidth, attributionText, attributionUrl, att
     if (element === null || content === null) return;
     element.style.removeProperty("height");
     delete element.dataset.lockedHeight;
-    element.dataset.referenceUiStatus = hasInitialScale ? "measuring" : "waiting-scale";
+    setLayoutStatus(hasInitialScale ? "measuring" : "waiting-scale");
     if (!hasInitialScale) return;
 
     const abortController = new AbortController();
@@ -155,17 +177,17 @@ export function ReferenceBar({logicalWidth, attributionText, attributionUrl, att
         }
         element.style.height = `${lockedHeight}px`;
         element.dataset.lockedHeight = String(lockedHeight);
-        element.dataset.referenceUiStatus = "locked";
+        setLayoutStatus("locked");
         await waitForAnimationFrame(signal);
         if (Math.ceil(element.getBoundingClientRect().height) !== lockedHeight || hasLayoutOverflow(element)) {
           throw new AppError("reference_ui_overflow", "Reference UI content overflowed after its height was locked");
         }
         readyPublished = true;
-        element.dataset.referenceUiStatus = "ready";
+        setLayoutStatus("ready");
         onReady(lockedHeight);
       } catch (error) {
         if (signal.aborted) return;
-        element.dataset.referenceUiStatus = "failed";
+        setLayoutStatus("failed");
         onError(AppError.fromUnknown(error, "reference_ui_layout_failed", "Reference UI could not complete layout").message);
       }
     })();
@@ -180,25 +202,39 @@ export function ReferenceBar({logicalWidth, attributionText, attributionUrl, att
   const scaleStyle: MetricScaleStyle = {
     "--geomcp-metric-scale-width": `${metricScale?.widthPx ?? 0}px`,
   };
+  const featureTypeClass = feature === null ? "reference-bar-feature-empty" : `reference-bar-feature-${feature.featureType}`;
   return (
-    <footer ref={elementRef} className="reference-bar" aria-label="Map reference information">
-      <span className="reference-bar-end reference-bar-end-left" aria-hidden="true">
-        <img src={leftEndDecorationUrl} alt="" draggable={false} />
-      </span>
-      <span className="reference-bar-end reference-bar-end-right" aria-hidden="true">
-        <img src={rightEndDecorationUrl} alt="" draggable={false} />
-      </span>
+    <footer ref={elementRef} className={`reference-bar reference-bar-status-${layoutStatus} ${featureTypeClass}`} aria-label="Map reference information" data-reference-ui-status={layoutStatus}>
       <div ref={contentRef} className="reference-bar-content">
-        <section className="reference-scale" style={scaleStyle} aria-label={metricScale === null ? "Map scale loading" : `Map scale ${metricScale.label}`}>
+        <span className="reference-bar-block reference-bar-block-end reference-bar-block-end-left" aria-hidden="true">
+          <img className="reference-bar-end-decoration reference-bar-end-decoration-left" src={leftEndDecorationUrl} alt="" draggable={false} />
+        </span>
+        <section className="reference-bar-block reference-bar-block-scale reference-scale" style={scaleStyle} aria-label={metricScale === null ? "Map scale loading" : `Map scale ${metricScale.label}`}>
           <span className="reference-scale-label">{metricScale?.label ?? "Scale"}</span>
           <span className="reference-scale-rule" aria-hidden="true" />
         </section>
-        <span className="reference-bar-divider" aria-hidden="true">
-          <img src={referenceBarDividerUrl} alt="" draggable={false} />
-        </span>
-        <div className="reference-attribution">
-          <a href={attributionUrl} target="_blank" rel="noreferrer" title={attributionDescription}>{attributionText}</a>
+        <ReferenceBarDivider position="scale-feature" />
+        <div
+          className={`reference-bar-block reference-bar-block-feature reference-live-feature ${feature === null ? "reference-live-feature-empty" : `reference-live-feature-${feature.featureType}`}`}
+          aria-label={feature === null ? "No current feature" : `Current ${feature.featureType} feature ${feature.displayId}${feature.name === null ? "" : `, ${feature.name}`}`}
+          aria-live="polite"
+          data-feature-state={feature === null ? "empty" : "ready"}
+        >
+          {feature === null ? null : (
+            <>
+              <img className={`reference-live-feature-icon reference-live-feature-icon-${feature.featureType}`} src={FEATURE_TYPE_ICONS[feature.featureType]} alt="" draggable={false} aria-hidden="true" />
+              <span className="reference-live-feature-id">{feature.displayId}</span>
+              {feature.name === null ? null : <span className="reference-live-feature-name">{feature.name}</span>}
+            </>
+          )}
         </div>
+        <ReferenceBarDivider position="feature-attribution" />
+        <div className="reference-bar-block reference-bar-block-attribution reference-attribution">
+          <a className="reference-attribution-link" href={attributionUrl} target="_blank" rel="noreferrer" title={attributionDescription}>{attributionText}</a>
+        </div>
+        <span className="reference-bar-block reference-bar-block-end reference-bar-block-end-right" aria-hidden="true">
+          <img className="reference-bar-end-decoration reference-bar-end-decoration-right" src={rightEndDecorationUrl} alt="" draggable={false} />
+        </span>
       </div>
     </footer>
   );

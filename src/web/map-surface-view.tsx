@@ -11,6 +11,11 @@ import type {CoreVisualPayloadType} from "../models/mapsurface/map-payload-model
 import type {RuntimeStylePlan} from "../models/mapsurface/style/runtime-style-models.js";
 import {createBrowserWarningReporter} from "./browser-warning-reporter.js";
 
+export interface MapSurfaceZoomCommands {
+  zoomIn(): void;
+  zoomOut(): void;
+}
+
 /** Web 入口收到的仍是完整 Leaflet payload；组件只在边界处分配 Visual/Interaction 配置。 */
 interface MapSurfaceViewProps {
   /** MapSurface 的 CSS 逻辑像素尺寸，不包含外部 Reference UI。 */
@@ -29,6 +34,7 @@ interface MapSurfaceViewProps {
   stylePlan: RuntimeStylePlan | null;
   leafletConfig: LeafletConfigType;
   onMetricScaleChange(metricScale: LeafletMetricScaleResult): void;
+  onZoomCommandsChange(commands: MapSurfaceZoomCommands | null): void;
   onMapRuntimeReady(readySummary: MapFlowReadySummary): void;
   onMapRuntimeError(message: string): void;
 }
@@ -41,7 +47,7 @@ function isSameMetricScale(left: LeafletMetricScaleResult, right: LeafletMetricS
  * React 只负责提供真实 DOM 容器和 Interactive Flow 生命周期；初始视口仍由 MapSurface 完成。
  * 异步 Flow 的完成时间可能晚于组件卸载，因此 abort 与晚到结果的 dispose 必须共同守住清理边界。
  */
-export function MapSurfaceView({screenshotSize, center, leafletBounds, basemap, overlayOutput, relationMemberFeaturesByRelation, coreVisual, stylePlan, leafletConfig, onMetricScaleChange, onMapRuntimeReady, onMapRuntimeError}: MapSurfaceViewProps) {
+export function MapSurfaceView({screenshotSize, center, leafletBounds, basemap, overlayOutput, relationMemberFeaturesByRelation, coreVisual, stylePlan, leafletConfig, onMetricScaleChange, onZoomCommandsChange, onMapRuntimeReady, onMapRuntimeError}: MapSurfaceViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -126,6 +132,10 @@ export function MapSurfaceView({screenshotSize, center, leafletBounds, basemap, 
         result.mapSurface.map.off("zoomend moveend", scheduleMetricScaleUpdate);
         if (metricScaleFrameId !== null) cancelAnimationFrame(metricScaleFrameId);
       };
+      onZoomCommandsChange(Object.freeze({
+        zoomIn: () => result.mapSurface.map.zoomIn(),
+        zoomOut: () => result.mapSurface.map.zoomOut(),
+      }));
       onMetricScaleChange(currentMetricScale);
       onMapRuntimeReady(result.readySummary);
     }).catch((error: unknown) => {
@@ -139,10 +149,11 @@ export function MapSurfaceView({screenshotSize, center, leafletBounds, basemap, 
     return () => {
       // 先停止 UI 订阅和异步批次，再按 Interactive Flow 内部定义的顺序释放已完成资源。
       disposeMetricScaleListener?.();
+      onZoomCommandsChange(null);
       abortController.abort();
       flowResult?.dispose();
     };
-  }, [screenshotSize, center, leafletBounds, basemap, overlayOutput, relationMemberFeaturesByRelation, coreVisual, stylePlan, leafletConfig, onMetricScaleChange, onMapRuntimeReady, onMapRuntimeError]);
+  }, [screenshotSize, center, leafletBounds, basemap, overlayOutput, relationMemberFeaturesByRelation, coreVisual, stylePlan, leafletConfig, onMetricScaleChange, onZoomCommandsChange, onMapRuntimeReady, onMapRuntimeError]);
 
   return <div ref={containerRef} className="map-surface" aria-label="Interactive map" />;
 }
