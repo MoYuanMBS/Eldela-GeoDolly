@@ -1,7 +1,7 @@
 /** Polygon 内侧色带共用 Canvas renderer。 */
 
 import {Canvas, Path} from "leaflet";
-import {LEAFLET_INTERNAL_RENDER_CONFIG} from "../../utils/leaflet-internal-render-config.js";
+import {LEAFLET_INTERNAL_RENDER_CONFIG} from "../../built-in-config/leaflet.js";
 
 /**
  * Leaflet 没有在公开类型中暴露 Canvas renderer 的重绘状态，但自定义 renderer 必须在

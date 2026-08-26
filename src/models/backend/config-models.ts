@@ -6,7 +6,7 @@
 
 import { z } from "zod";
 import {logger} from "../../utils/logger.js";
-import {UI_BUILT_IN_CONFIG} from "../../web/built-in-config.js";
+import {UI_BUILT_IN_CONFIG} from "../../built-in-config/ui.js";
 
 // MCP Tool 的展示文案；这里只接受当前三个固定工具，避免配置拼写错误被静默忽略。
 export const toolPromptConfigSchema = z.object({

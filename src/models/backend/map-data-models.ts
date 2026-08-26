@@ -162,6 +162,14 @@ export const identifiedOverlayGroupsWithDisplayIdSchema = z.object({
   relation: z.array(identifiedOverlayRelationFeatureWithDisplayIdSchema),
 }).strict();
 
+// display_id 只用于展示；运行时身份仍使用 feature_type + canonical feature_id。
+export const displayIdByFeatureIdSchema = z.object({
+  node: z.record(z.string(), z.string()),
+  way: z.record(z.string(), z.string()),
+  area: z.record(z.string(), z.string()),
+  relation: z.record(z.string(), z.string()),
+}).strict();
+
 // Relation 成员只保留后续渲染需要的 canonical feature_id 与 role。
 export const relationMemberFeatureSchema = z.object({feature_id: z.string(), role: z.string()}).strict();
 
@@ -217,6 +225,23 @@ export type AiOutputRecordWithIdsType = z.infer<typeof aiOutputRecordWithIdsSche
 export type AiOutputGroupsWithIdsType = z.infer<typeof aiOutputGroupsWithIdsSchema>;
 export type IdentifiedOverlayGroupsType = z.infer<typeof identifiedOverlayGroupsSchema>;
 export type IdentifiedOverlayGroupsWithDisplayIdType = z.infer<typeof identifiedOverlayGroupsWithDisplayIdSchema>;
+export type DisplayIdByFeatureIdType = z.infer<typeof displayIdByFeatureIdSchema>;
+
+/**
+ * 单个 feature_type 完成 display_id enrichment 后的内部结果。
+ * features 与索引必须在同一次遍历中生成，避免展示字典与 Overlay 输出发生漂移。
+ */
+export interface DisplayIdGroupResult<TFeature extends IdentifiedOverlayFeatureType> {
+  features: Array<TFeature & {display_id: string}>;
+  displayIdByFeatureId: Record<string, string>;
+}
+
+/** 后端 map-data 阶段对外发布的完整 display_id enrichment 结果。 */
+export interface DisplayIdEnrichmentResultType {
+  overlayOutput: IdentifiedOverlayGroupsWithDisplayIdType;
+  displayIdByFeatureId: DisplayIdByFeatureIdType;
+}
+
 export type RelationMemberFeatureType = z.infer<typeof relationMemberFeatureSchema>;
 export type RelationMemberFeaturesType = z.infer<typeof relationMemberFeaturesSchema>;
 export type RelationMemberFeaturesByRelationType = z.infer<typeof relationMemberFeaturesByRelationSchema>;

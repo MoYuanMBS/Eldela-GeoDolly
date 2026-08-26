@@ -25,6 +25,8 @@
     "src/web/**/*.ts",
     "src/web/**/*.tsx",
     "src/web/**/*.d.ts",
+    "src/ui/**/*.ts",
+    "src/ui/**/*.tsx",
     "src/browser-map-flow/**/*.ts",
     "src/leaflet/**/*.ts"
   ],

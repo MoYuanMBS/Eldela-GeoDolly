@@ -84,12 +84,15 @@ export function processToolReply(toolReply: PyToolReplyType): ProcessedToolReply
   const leafletConfig = config.getAppSection("leaflet", leafletConfigSchema);
   let aiOutput = null;
   let overlayOutput = null;
+  let displayIdByFeatureId = null;
   let relationMemberFeaturesByRelation = null;
   let relationMembershipByFeatureId = null;
 
   // basemap-only 没有地图数据；其他模式统一完成 display ID、AI Output enrichment 与 relation 成员索引。
   if (output !== null) {
-    overlayOutput = addDisplayIds(output.overlay_output);
+    const displayIdEnrichment = addDisplayIds(output.overlay_output);
+    overlayOutput = displayIdEnrichment.overlayOutput;
+    displayIdByFeatureId = displayIdEnrichment.displayIdByFeatureId;
     aiOutput = addFeatureIdsToAiOutput(output.ai_output, overlayOutput);
     relationMemberFeaturesByRelation = buildRelationMemberFeaturesByRelation(overlayOutput);
     relationMembershipByFeatureId = buildRelationMembershipByFeatureId(relationMemberFeaturesByRelation);
@@ -105,6 +108,7 @@ export function processToolReply(toolReply: PyToolReplyType): ProcessedToolReply
     "effective_query_mode": effectiveQueryMode,
     "ai_output": aiOutput,
     "overlay_output": overlayOutput,
+    "display_id_by_feature_id": displayIdByFeatureId,
     "relation_member_features_by_relation": relationMemberFeaturesByRelation,
     "relation_membership_by_feature_id": relationMembershipByFeatureId,
     "screenshot_size": screenshotSize,
@@ -211,6 +215,7 @@ export async function runToolFlow(tool: ToolType, cachedSelection: LocSearchRepl
     session_id: processed.session_id,
     effective_query_mode: processed.effective_query_mode,
     ai_output: processed.ai_output,
+    display_id_by_feature_id: processed.display_id_by_feature_id,
     relation_membership_by_feature_id: processed.relation_membership_by_feature_id,
     // Feature UI 只使用候选的精确 name，不以 display_name 代替。
     selected_location_name: pythonQuery.selected_candidate.name ?? null,

@@ -1,5 +1,5 @@
 /**
- * Leaflet renderer 的内部视觉常量。
+ * Leaflet renderer 的内建视觉常量。
  *
  * 这里集中保存不准备作为部署选项公开、但调试视觉结果时需要统一查看的稳定值。它们属于
  * renderer 实现契约，修改时应同时核对 pane 覆盖顺序、标签碰撞和 CSS geometry seed 的语义。

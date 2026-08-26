@@ -6,7 +6,7 @@
  */
 
 import {type FeatureIdDisplayConfigType, featureIdDisplayConfigSchema} from "../models/backend/config-models.js";
-import type {IdentifiedOverlayFeatureType, IdentifiedOverlayGroupsType, IdentifiedOverlayGroupsWithDisplayIdType} from "../models/backend/map-data-models.js";
+import type {DisplayIdEnrichmentResultType, DisplayIdGroupResult, IdentifiedOverlayFeatureType, IdentifiedOverlayGroupsType} from "../models/backend/map-data-models.js";
 import {AppError} from "../utils/app-error.js";
 import { config } from "../utils/config-loader.js";
 
@@ -16,14 +16,22 @@ const CANONICAL_DIGITS = "0123456789";
  * 对一个 feature_type 命名空间直接添加 display_id，并在返回前完成冲突检查。
  * ref 保留原值且不应用 skin；只有回退到 canonical feature_id 时才做字符替换。
  */
-function addDisplayIdsToGroup<TFeature extends IdentifiedOverlayFeatureType>(features: Array<TFeature>, featureIdConfig: FeatureIdDisplayConfigType): Array<TFeature & {display_id: string}> {
+function addDisplayIdsToGroup<TFeature extends IdentifiedOverlayFeatureType>(features: Array<TFeature>, featureIdConfig: FeatureIdDisplayConfigType): DisplayIdGroupResult<TFeature> {
   const activeAlphabetSkin = featureIdConfig.render.skins.alphabet[featureIdConfig.render.active_skins.alphabet];
   const activeDigitsSkin = featureIdConfig.render.skins.digits[featureIdConfig.render.active_skins.digits];
   const alphabetPool = Array.from(featureIdConfig.alphabet_pool);
   const alphabetSkin = activeAlphabetSkin === undefined ? null : Array.from(activeAlphabetSkin);
   const digitsSkin = activeDigitsSkin === undefined ? null : Array.from(activeDigitsSkin);
   const canonicalIdByDisplayId = new Map<string, string>();
-  return features.map((feature) => {
+  const displayIdByFeatureId = new Map<string, string>();
+  const enrichedFeatures = features.map((feature) => {
+    if (displayIdByFeatureId.has(feature.feature_id)) {
+      throw new AppError(
+        "duplicate_overlay_feature",
+        `Duplicate ${feature.feature_type} feature_id "${feature.feature_id}" while building display ID index`,
+        {feature_type: feature.feature_type, feature_id: feature.feature_id},
+      );
+    }
     const refs = (feature.properties.ref ?? []).filter((ref) => ref.trim().length > 0);
     let displayId: string;
     if (refs.length > 0) {
@@ -54,20 +62,29 @@ function addDisplayIdsToGroup<TFeature extends IdentifiedOverlayFeatureType>(fea
       );
     }
     canonicalIdByDisplayId.set(displayId, feature.feature_id);
+    displayIdByFeatureId.set(feature.feature_id, displayId);
     return {...feature, display_id: displayId};
   });
+  return {features: enrichedFeatures, displayIdByFeatureId: Object.fromEntries(displayIdByFeatureId)};
 }
 
 /**
  * 非原地为全部 Identified Overlay records 添加 display_id。
  * 四种 feature_type 分别检查冲突，跨类型同名保持合法。
  */
-export function addDisplayIds(overlayOutput: IdentifiedOverlayGroupsType): IdentifiedOverlayGroupsWithDisplayIdType {
+export function addDisplayIds(overlayOutput: IdentifiedOverlayGroupsType): DisplayIdEnrichmentResultType {
   const featureIdConfig = config.getAppSection("feature_id", featureIdDisplayConfigSchema);
+  const node = addDisplayIdsToGroup(overlayOutput.node, featureIdConfig);
+  const way = addDisplayIdsToGroup(overlayOutput.way, featureIdConfig);
+  const area = addDisplayIdsToGroup(overlayOutput.area, featureIdConfig);
+  const relation = addDisplayIdsToGroup(overlayOutput.relation, featureIdConfig);
   return {
-    node: addDisplayIdsToGroup(overlayOutput.node, featureIdConfig),
-    way: addDisplayIdsToGroup(overlayOutput.way, featureIdConfig),
-    area: addDisplayIdsToGroup(overlayOutput.area, featureIdConfig),
-    relation: addDisplayIdsToGroup(overlayOutput.relation, featureIdConfig),
+    overlayOutput: {node: node.features, way: way.features, area: area.features, relation: relation.features},
+    displayIdByFeatureId: {
+      node: node.displayIdByFeatureId,
+      way: way.displayIdByFeatureId,
+      area: area.displayIdByFeatureId,
+      relation: relation.displayIdByFeatureId,
+    },
   };
 }

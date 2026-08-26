@@ -1,26 +1,31 @@
 import {useCallback, useEffect, useMemo, useRef, useState, type CSSProperties} from "react";
-import {initializeRuntimeStyle} from "../leaflet/styles/runtime-style-initializer.js";
-import type {MapFlowReadySummary} from "../models/mapsurface/basemap-runtime-models.js";
-import type {LeafletMetricScaleResult, OverlayInteractionTarget} from "../models/mapsurface/leaflet-renderer-models.js";
-import type {RuntimeStylePlan} from "../models/mapsurface/style/runtime-style-models.js";
 import {interactiveMapDataSchema, type DrawingUiModeType, type InteractiveMapDataType} from "../models/web/interactive-ui-models.js";
 import {AppError} from "../utils/app-error.js";
-import {UI_BUILT_IN_CONFIG} from "./built-in-config.js";
-import {DrawingToolbar} from "./components/drawing-toolbar.js";
-import {FeatureBar} from "./components/feature-bar.js";
-import {MeasurementHUD} from "./components/measurement-hud.js";
-import {OsmTagsPopup} from "./components/osm-tags-popup.js";
-import {StandardBar} from "./components/standard-bar.js";
+import {UI_BUILT_IN_CONFIG} from "../built-in-config/ui.js";
+import {DrawingToolbar} from "../ui/drawing-toolbar.js";
+import {FeatureBar} from "../ui/feature-bar.js";
+import {MeasurementHUD} from "../ui/measurement-hud.js";
+import {OsmTagsPopup} from "../ui/osm-tags-popup.js";
+import {StandardBar} from "../ui/standard-bar.js";
 import {resolveInteractiveFeatureDetails} from "./interactive-feature-details.js";
-import {MapSurfaceView, type MapSurfaceInteractionCommands, type MapSurfaceZoomCommands} from "./map-surface-view.js";
+import type {
+  InteractiveFeatureTargetType,
+  MapRuntimeStatusType,
+  MapSurfaceInteractionCommands,
+  MapSurfacePortComponentType,
+  MapSurfaceZoomCommands,
+  MetricScaleViewType,
+} from "./map-surface-port.js";
 
 type MapLoadState =
   | {status: "loading"}
-  | {status: "ready"; data: InteractiveMapDataType; stylePlan: RuntimeStylePlan | null}
+  | {status: "ready"; data: InteractiveMapDataType}
   | {status: "error"; message: string};
 
 interface MapPageProps {
   mapDataUrl: string | null;
+  /** 由 composition root 注入的地图实现；页面本身不导入 Leaflet adapter。 */
+  MapSurfaceComponent: MapSurfacePortComponentType;
 }
 
 interface MapPageStyle extends CSSProperties {
@@ -36,7 +41,7 @@ interface MapPageStyle extends CSSProperties {
 
 type MapRuntimeState =
   | {status: "pending"}
-  | {status: "ready"; summary: MapFlowReadySummary}
+  | {status: "ready"; runtimeStatus: MapRuntimeStatusType}
   | {status: "failed"; message: string};
 
 type StandardUiState =
@@ -44,13 +49,13 @@ type StandardUiState =
   | {status: "ready"; measuredHeight: number}
   | {status: "failed"; message: string};
 
-export function MapPage({mapDataUrl}: MapPageProps) {
+export function MapPage({mapDataUrl, MapSurfaceComponent}: MapPageProps) {
   const [loadState, setLoadState] = useState<MapLoadState>({status: "loading"});
-  const [metricScale, setMetricScale] = useState<LeafletMetricScaleResult | null>(null);
+  const [metricScale, setMetricScale] = useState<MetricScaleViewType | null>(null);
   const [mapRuntimeState, setMapRuntimeState] = useState<MapRuntimeState>({status: "pending"});
   const [standardUiState, setStandardUiState] = useState<StandardUiState>({status: "pending"});
-  const [hoveredFeature, setHoveredFeature] = useState<OverlayInteractionTarget | null>(null);
-  const [selectedFeature, setSelectedFeature] = useState<OverlayInteractionTarget | null>(null);
+  const [hoveredFeature, setHoveredFeature] = useState<InteractiveFeatureTargetType | null>(null);
+  const [selectedFeature, setSelectedFeature] = useState<InteractiveFeatureTargetType | null>(null);
   const [drawingMode, setDrawingMode] = useState<DrawingUiModeType>("idle");
   const zoomCommandsRef = useRef<MapSurfaceZoomCommands | null>(null);
   const interactionCommandsRef = useRef<MapSurfaceInteractionCommands | null>(null);
@@ -78,12 +83,8 @@ export function MapPage({mapDataUrl}: MapPageProps) {
           throw new AppError("map_data_request", `Map data request failed with HTTP ${response.status}`);
         }
         const data = interactiveMapDataSchema.parse(await response.json());
-        const payload = data.map_payload;
-        // Basemap-only 不初始化 RuntimeStylePlan；其他模式必须在创建 Leaflet 前完成样式准备。
-        const stylePlan = payload.render_mode === "basemap_only"
-          ? null
-          : initializeRuntimeStyle(data.style_payload, payload.leaflet);
-        setLoadState({status: "ready", data, stylePlan});
+        // UI 只校验并保存传输数据；运行时样式与地图对象均由注入的 MapSurface adapter 创建。
+        setLoadState({status: "ready", data});
       } catch (error) {
         if (abortController.signal.aborted) return;
         setLoadState({status: "error", message: error instanceof Error ? error.message : String(error)});
@@ -93,7 +94,7 @@ export function MapPage({mapDataUrl}: MapPageProps) {
     return () => abortController.abort();
   }, [mapDataUrl]);
 
-  const handleMetricScaleChange = useCallback((nextMetricScale: LeafletMetricScaleResult): void => {
+  const handleMetricScaleChange = useCallback((nextMetricScale: MetricScaleViewType): void => {
     setMetricScale(nextMetricScale);
   }, []);
   const handleZoomCommandsChange = useCallback((commands: MapSurfaceZoomCommands | null): void => {
@@ -108,8 +109,8 @@ export function MapPage({mapDataUrl}: MapPageProps) {
   const handleZoomOut = useCallback((): void => {
     zoomCommandsRef.current?.zoomOut();
   }, []);
-  const handleMapRuntimeReady = useCallback((summary: MapFlowReadySummary): void => {
-    setMapRuntimeState({status: "ready", summary});
+  const handleMapRuntimeReady = useCallback((runtimeStatus: MapRuntimeStatusType): void => {
+    setMapRuntimeState({status: "ready", runtimeStatus});
   }, []);
   const handleMapRuntimeError = useCallback((message: string): void => {
     setMapRuntimeState({status: "failed", message});
@@ -132,6 +133,7 @@ export function MapPage({mapDataUrl}: MapPageProps) {
       selectedFeature ?? hoveredFeature,
       loadState.data.ai_output,
       payload.overlay_output,
+      loadState.data.display_id_by_feature_id,
       payload.relation_member_features_by_relation,
       loadState.data.relation_membership_by_feature_id,
     );
@@ -143,6 +145,7 @@ export function MapPage({mapDataUrl}: MapPageProps) {
       selectedFeature,
       loadState.data.ai_output,
       payload.overlay_output,
+      loadState.data.display_id_by_feature_id,
       payload.relation_member_features_by_relation,
       loadState.data.relation_membership_by_feature_id,
     );
@@ -155,7 +158,7 @@ export function MapPage({mapDataUrl}: MapPageProps) {
     return <main className="map-page-state map-page-error" role="alert">{loadState.message}</main>;
   }
 
-  const {data, stylePlan} = loadState;
+  const {data} = loadState;
   const payload = data.map_payload;
   const pageStyle: MapPageStyle = {
     "--geomcp-map-width": `${payload.screenshot_size[0]}px`,
@@ -172,7 +175,7 @@ export function MapPage({mapDataUrl}: MapPageProps) {
     : standardUiState.status === "failed" ? standardUiState.message : null;
   const browserReadyStatus = failureMessage !== null
     ? "failed"
-    : mapRuntimeState.status === "ready" && standardUiState.status === "ready" ? mapRuntimeState.summary.status : "pending";
+    : mapRuntimeState.status === "ready" && standardUiState.status === "ready" ? mapRuntimeState.runtimeStatus : "pending";
   return (
     <main
       className="map-page"
@@ -185,16 +188,9 @@ export function MapPage({mapDataUrl}: MapPageProps) {
     >
       <div className="map-capture-frame">
         <div className="interactive-map-frame">
-          <MapSurfaceView
-            screenshotSize={payload.screenshot_size}
-            center={payload.center}
-            leafletBounds={payload.leaflet_bbox}
-            basemap={payload.basemap}
-            overlayOutput={payload.overlay_output}
-            relationMemberFeaturesByRelation={payload.relation_member_features_by_relation}
-            coreVisual={payload.core_visual}
-            stylePlan={stylePlan}
-            leafletConfig={payload.leaflet}
+          <MapSurfaceComponent
+            mapPayload={payload}
+            stylePayload={data.style_payload}
             onMetricScaleChange={handleMetricScaleChange}
             onZoomCommandsChange={handleZoomCommandsChange}
             onInteractionCommandsChange={handleInteractionCommandsChange}

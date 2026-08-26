@@ -1,8 +1,8 @@
-import nodeIconUrl from "../../../assets/ui/icons/node.svg";
-import polygonIconUrl from "../../../assets/ui/icons/polygon.svg";
-import tagIconUrl from "../../../assets/ui/icons/tag.svg";
-import wayIconUrl from "../../../assets/ui/icons/way.svg";
-import type {InteractiveFeatureDetailsType, InteractiveOsmTagGroupType} from "../../models/web/interactive-ui-models.js";
+import nodeIconUrl from "../../assets/ui/icons/node.svg";
+import polygonIconUrl from "../../assets/ui/icons/polygon.svg";
+import tagIconUrl from "../../assets/ui/icons/tag.svg";
+import wayIconUrl from "../../assets/ui/icons/way.svg";
+import type {InteractiveFeatureDetailsType, InteractiveOsmTagGroupType} from "../models/web/interactive-ui-models.js";
 
 interface OsmTagsPopupProps {
   details: InteractiveFeatureDetailsType;

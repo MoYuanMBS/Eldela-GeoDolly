@@ -1,20 +1,20 @@
 import {useEffect, useRef, useState, type CSSProperties} from "react";
-import leftEndDecorationUrl from "../../../assets/ui/decorations/left-up.svg";
-import standardBarDividerUrl from "../../../assets/ui/decorations/reference-bar-divider.svg";
-import rightEndDecorationUrl from "../../../assets/ui/decorations/right-up.svg";
-import nodeIconUrl from "../../../assets/ui/icons/node.svg";
-import polygonIconUrl from "../../../assets/ui/icons/polygon.svg";
-import wayIconUrl from "../../../assets/ui/icons/way.svg";
-import type {LeafletMetricScaleResult} from "../../models/mapsurface/leaflet-renderer-models.js";
-import type {InteractiveFeatureSummaryType} from "../../models/web/interactive-ui-models.js";
-import {AppError} from "../../utils/app-error.js";
+import leftEndDecorationUrl from "../../assets/ui/decorations/left-up.svg";
+import standardBarDividerUrl from "../../assets/ui/decorations/reference-bar-divider.svg";
+import rightEndDecorationUrl from "../../assets/ui/decorations/right-up.svg";
+import nodeIconUrl from "../../assets/ui/icons/node.svg";
+import polygonIconUrl from "../../assets/ui/icons/polygon.svg";
+import wayIconUrl from "../../assets/ui/icons/way.svg";
+import type {InteractiveFeatureSummaryType} from "../models/web/interactive-ui-models.js";
+import {AppError} from "../utils/app-error.js";
+import type {MetricScaleViewType} from "../web/map-surface-port.js";
 
 interface StandardBarProps {
   logicalWidth: number;
   attributionText: string;
   attributionUrl: string;
   attributionDescription: string;
-  metricScale: LeafletMetricScaleResult | null;
+  metricScale: MetricScaleViewType | null;
   feature: InteractiveFeatureSummaryType | null;
   onReady(measuredHeight: number): void;
   onError(message: string): void;

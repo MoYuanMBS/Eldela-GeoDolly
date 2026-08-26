@@ -10,6 +10,7 @@ import type {PyToolReqType, ToolType} from "./bridge-models.js";
 import type {LeafletConfigType} from "./config-models.js";
 import type {
   AiOutputGroupsWithIdsType,
+  DisplayIdByFeatureIdType,
   EffectiveQueryModeType,
   IdentifiedOverlayGroupsWithDisplayIdType,
   RelationMemberFeaturesByRelationType,
@@ -29,6 +30,7 @@ export interface ProcessedToolReplyType {
   effective_query_mode: EffectiveQueryModeType;
   ai_output: AiOutputGroupsWithIdsType | null;
   overlay_output: IdentifiedOverlayGroupsWithDisplayIdType | null;
+  display_id_by_feature_id: DisplayIdByFeatureIdType | null;
   relation_member_features_by_relation: RelationMemberFeaturesByRelationType | null;
   relation_membership_by_feature_id: RelationMembershipByFeatureIdType | null;
   /** MapSurface 的 [width, height] CSS 逻辑像素。 */
@@ -82,6 +84,7 @@ export type RunToolFlowResultType = Readonly<{
   session_id: string;
   effective_query_mode: EffectiveQueryModeType;
   ai_output: AiOutputGroupsWithIdsType | null;
+  display_id_by_feature_id: DisplayIdByFeatureIdType | null;
   relation_membership_by_feature_id: RelationMembershipByFeatureIdType | null;
   selected_location_name: string | null;
   map_payload: CommonVisualMapPayloadType;

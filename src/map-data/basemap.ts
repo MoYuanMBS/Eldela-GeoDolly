@@ -4,7 +4,7 @@ import type {BasemapProfileIdType, ResolvedBasemapType} from "../models/common/b
 import {basemapConfigSchema} from "../models/backend/config-models.js";
 import {AppError} from "../utils/app-error.js";
 import {config} from "../utils/config-loader.js";
-import {GEOMCP_NAME} from "../utils/leaflet-internal-render-config.js";
+import {GEOMCP_NAME} from "../built-in-config/leaflet.js";
 
 /**
  * 把部署级 Proxy base URL 展开为 Browser 可直接消费的规范 XYZ template。

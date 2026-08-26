@@ -1,4 +1,4 @@
-/** Browser warning 的本地控制台发布与 Node 异步回传适配器。 */
+/** 地图 flow 使用的 Browser warning 控制台发布与 Node 异步回传适配器。 */
 
 import {
   BROWSER_WARNING_ROUTE,

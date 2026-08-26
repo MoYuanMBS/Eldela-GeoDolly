@@ -1,8 +1,8 @@
-import toolBarDecorationUrl from "../../../assets/ui/decorations/tool-bar.svg";
-import toolBarDividerUrl from "../../../assets/ui/decorations/tool-bar-divider.svg";
-import lineToolIconUrl from "../../../assets/ui/icons/line-tool.svg";
-import circleToolIconUrl from "../../../assets/ui/icons/round-tool.svg";
-import type {DrawingUiModeType} from "../../models/web/interactive-ui-models.js";
+import toolBarDecorationUrl from "../../assets/ui/decorations/tool-bar.svg";
+import toolBarDividerUrl from "../../assets/ui/decorations/tool-bar-divider.svg";
+import lineToolIconUrl from "../../assets/ui/icons/line-tool.svg";
+import circleToolIconUrl from "../../assets/ui/icons/round-tool.svg";
+import type {DrawingUiModeType} from "../models/web/interactive-ui-models.js";
 
 interface DrawingToolbarProps {
   mode: DrawingUiModeType;
@@ -19,7 +19,7 @@ const TOOLBAR_CONTROLS = [
   {kind: "mode", mode: "draw_circle", classSuffix: "draw-circle", label: "Draw circle", iconUrl: circleToolIconUrl},
 ] as const;
 
-/** 只发出序列化 mode 命令的自定义绘制栏；不直接持有 Leaflet 或 Geoman 对象。 */
+/** 只发出 mode/command 的自定义绘制栏；地图与 Geoman 对象始终留在 port 另一侧。 */
 export function DrawingToolbar({mode, disabled, onZoomIn, onZoomOut, onModeChange}: DrawingToolbarProps) {
   return (
     <nav className={`drawing-toolbar drawing-toolbar-mode-${mode.replace("_", "-")}`} aria-label="Map and drawing tools" data-drawing-mode={mode}>

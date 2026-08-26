@@ -1,4 +1,4 @@
-import type {DrawingUiModeType} from "../../models/web/interactive-ui-models.js";
+import type {DrawingUiModeType} from "../models/web/interactive-ui-models.js";
 
 export interface MeasurementHudRow {
   label: string;
@@ -16,7 +16,7 @@ const MODE_INSTRUCTIONS: Readonly<Record<DrawingUiModeType, string>> = {
   draw_circle: "Draw a circle to measure radius and area",
 };
 
-/** 高频测量状态的独立 React 子树；后续直接接收 Controller 的格式化测量行。 */
+/** 高频测量状态的独立 React 子树；只接收 Controller 已格式化的测量行。 */
 export function MeasurementHUD({mode, rows}: MeasurementHudProps) {
   const measurementState = rows.length === 0 ? "empty" : "ready";
   return (

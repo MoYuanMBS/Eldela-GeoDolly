@@ -193,7 +193,7 @@ export interface OverlayInteractionLayerEntry {
   /** canonical ID 只在同一 featureType 内唯一。 */
   featureId: string;
   featureType: CanvasSpatialFeatureType;
-  /** UI 事件回调可借此回到对应的可见 Feature 与 display_id。 */
+  /** Visual 引用只供地图 runtime 同步命中 geometry，不作为 UI 展示数据源。 */
   visualEntry: OverlayFeatureLayerEntry;
   /** 唯一透明命中 Path；不携带业务 hover/click 状态。 */
   interactionLayer: Path;
@@ -205,7 +205,6 @@ export type OverlayInteractionLayerIndex = Readonly<Record<CanvasSpatialFeatureT
 export interface OverlayInteractionTarget {
   featureType: CanvasSpatialFeatureType;
   featureId: string;
-  displayId: string;
 }
 
 export interface OverlayInteractionHandlers {

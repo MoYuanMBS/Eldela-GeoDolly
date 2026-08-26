@@ -1,6 +1,6 @@
-import featureBarDividerUrl from "../../../assets/ui/decorations/feature-bar-divider.svg";
-import featureBarLeftUrl from "../../../assets/ui/decorations/feature-bar-left.svg";
-import featureBarRightUrl from "../../../assets/ui/decorations/feature-bar-right.svg";
+import featureBarDividerUrl from "../../assets/ui/decorations/feature-bar-divider.svg";
+import featureBarLeftUrl from "../../assets/ui/decorations/feature-bar-left.svg";
+import featureBarRightUrl from "../../assets/ui/decorations/feature-bar-right.svg";
 
 interface FeatureBarProps {
   selectedLocationName: string | null;

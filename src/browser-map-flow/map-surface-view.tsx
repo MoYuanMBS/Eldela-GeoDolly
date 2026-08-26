@@ -1,65 +1,49 @@
 import {useEffect, useRef} from "react";
-import type {LatLngBoundsLiteral, LatLngTuple} from "leaflet";
-import {createInteractiveMapFlow} from "../browser-map-flow/interactive-map-flow.js";
+import "leaflet/dist/leaflet.css";
+import "../leaflet/styles/leaflet-font.css";
+import "../leaflet/styles/built-in/built-in-css.css";
+import {createInteractiveMapFlow} from "./interactive-map-flow.js";
+import {initializeBuiltInStyle} from "../leaflet/styles/built-in-style-loader.js";
 import {calculateLeafletMetricScale} from "../leaflet/runtime/metric-scale.js";
-import type {LeafletConfigType} from "../models/backend/config-models.js";
-import type {IdentifiedOverlayGroupsWithDisplayIdType, RelationMemberFeaturesByRelationType} from "../models/backend/map-data-models.js";
-import type {ResolvedBasemapType} from "../models/common/basemap-models.js";
-import type {InteractiveMapFlowResult, MapFlowReadySummary} from "../models/mapsurface/basemap-runtime-models.js";
-import type {LeafletMetricScaleResult, OverlayInteractionTarget} from "../models/mapsurface/leaflet-renderer-models.js";
-import type {CoreVisualPayloadType} from "../models/mapsurface/map-payload-models.js";
+import {initializeRuntimeStyle} from "../leaflet/styles/runtime-style-initializer.js";
+import type {InteractiveMapFlowResult} from "../models/mapsurface/basemap-runtime-models.js";
+import type {LeafletMetricScaleResult} from "../models/mapsurface/leaflet-renderer-models.js";
 import type {RuntimeStylePlan} from "../models/mapsurface/style/runtime-style-models.js";
+import type {MapSurfacePortProps, MetricScaleViewType} from "../web/map-surface-port.js";
 import {createBrowserWarningReporter} from "./browser-warning-reporter.js";
 
-export interface MapSurfaceZoomCommands {
-  zoomIn(): void;
-  zoomOut(): void;
-}
-
-export interface MapSurfaceInteractionCommands {
-  clearSelection(): void;
-}
-
-/** Web 入口收到的仍是完整 Leaflet payload；组件只在边界处分配 Visual/Interaction 配置。 */
-interface MapSurfaceViewProps {
-  /** MapSurface 的 CSS 逻辑像素尺寸，不包含外部 Reference UI。 */
-  screenshotSize: readonly [width: number, height: number];
-  /** 后端已处理日期变更线语义的初始中心与请求 bbox。 */
-  center: LatLngTuple;
-  leafletBounds: LatLngBoundsLiteral;
-  /** Node 已解析的底图 profile；Browser 不读取配置文件或裸 ID。 */
-  basemap: ResolvedBasemapType;
-  /** 两者任一缺席都表示显式 Basemap-only，不能创建不完整 Overlay。 */
-  overlayOutput: IdentifiedOverlayGroupsWithDisplayIdType | null;
-  relationMemberFeaturesByRelation: RelationMemberFeaturesByRelationType | null;
-  /** Core 模式的原始 GeoJSON；null 时不调用 Core renderer。 */
-  coreVisual: CoreVisualPayloadType;
-  /** 浏览器初始化阶段已经准备好的统一运行时样式计划。 */
-  stylePlan: RuntimeStylePlan | null;
-  leafletConfig: LeafletConfigType;
-  onMetricScaleChange(metricScale: LeafletMetricScaleResult): void;
-  onZoomCommandsChange(commands: MapSurfaceZoomCommands | null): void;
-  onInteractionCommandsChange(commands: MapSurfaceInteractionCommands | null): void;
-  onHoveredFeatureChange(target: OverlayInteractionTarget | null): void;
-  onSelectedFeatureChange(target: OverlayInteractionTarget | null): void;
-  onMapRuntimeReady(readySummary: MapFlowReadySummary): void;
-  onMapRuntimeError(message: string): void;
-}
+// 内建 Canvas/CSS 只在地图适配层初始化，纯 UI 模块不会导入 Leaflet 样式系统。
+initializeBuiltInStyle();
 
 function isSameMetricScale(left: LeafletMetricScaleResult, right: LeafletMetricScaleResult): boolean {
   return left.label === right.label && left.distanceMeters === right.distanceMeters && left.widthPx === right.widthPx;
 }
 
+function toMetricScaleView(metricScale: LeafletMetricScaleResult): MetricScaleViewType {
+  return Object.freeze({label: metricScale.label, widthPx: metricScale.widthPx});
+}
+
 /**
- * React 只负责提供真实 DOM 容器和 Interactive Flow 生命周期；初始视口仍由 MapSurface 完成。
+ * Leaflet adapter 只负责提供真实 DOM 容器并把纯数据 port 转换成 Interactive Flow 输入。
  * 异步 Flow 的完成时间可能晚于组件卸载，因此 abort 与晚到结果的 dispose 必须共同守住清理边界。
  */
-export function MapSurfaceView({screenshotSize, center, leafletBounds, basemap, overlayOutput, relationMemberFeaturesByRelation, coreVisual, stylePlan, leafletConfig, onMetricScaleChange, onZoomCommandsChange, onInteractionCommandsChange, onHoveredFeatureChange, onSelectedFeatureChange, onMapRuntimeReady, onMapRuntimeError}: MapSurfaceViewProps) {
+export function MapSurfaceView({mapPayload, stylePayload, onMetricScaleChange, onZoomCommandsChange, onInteractionCommandsChange, onHoveredFeatureChange, onSelectedFeatureChange, onMapRuntimeReady, onMapRuntimeError}: MapSurfacePortProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const container = containerRef.current;
     if (container === null) return;
+    const {screenshot_size: screenshotSize, center, leaflet_bbox: leafletBounds, basemap, overlay_output: overlayOutput, relation_member_features_by_relation: relationMemberFeaturesByRelation, core_visual: coreVisual, leaflet: leafletConfig} = mapPayload;
+    let stylePlan: RuntimeStylePlan | null = null;
+    try {
+      // Basemap-only 明确跳过 RuntimeStylePlan；其他模式在创建任何 Leaflet layer 前完成样式准备。
+      stylePlan = mapPayload.render_mode === "basemap_only" ? null : initializeRuntimeStyle(stylePayload, leafletConfig);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      onMapRuntimeError(message);
+      console.error("interactive_map_style_initialization_failed", error);
+      return;
+    }
     // signal 中断分批 Visual 渲染；flowResult 则负责清理由 Leaflet 持有的同步资源。
     const abortController = new AbortController();
     // reporter 的去重集合与当前 React/MapSurface 生命周期一致，后续平移缩放仍复用同一通道。
@@ -127,7 +111,7 @@ export function MapSurfaceView({screenshotSize, center, leafletBounds, basemap, 
           updateFailureReported = false;
           if (isSameMetricScale(currentMetricScale, nextMetricScale)) return;
           currentMetricScale = nextMetricScale;
-          onMetricScaleChange(nextMetricScale);
+          onMetricScaleChange(toMetricScaleView(nextMetricScale));
         } catch (error) {
           if (updateFailureReported) return;
           updateFailureReported = true;
@@ -150,8 +134,8 @@ export function MapSurfaceView({screenshotSize, center, leafletBounds, basemap, 
       onInteractionCommandsChange(result.interactionResult === null ? null : Object.freeze({
         clearSelection: () => result.interactionResult?.clearSelection(),
       }));
-      onMetricScaleChange(currentMetricScale);
-      onMapRuntimeReady(result.readySummary);
+      onMetricScaleChange(toMetricScaleView(currentMetricScale));
+      onMapRuntimeReady(result.readySummary.status);
     }).catch((error: unknown) => {
       // 主动卸载产生的 AbortError 属于正常生命周期；其余初始化失败才进入浏览器诊断日志。
       if (!abortController.signal.aborted) {
@@ -168,7 +152,7 @@ export function MapSurfaceView({screenshotSize, center, leafletBounds, basemap, 
       abortController.abort();
       flowResult?.dispose();
     };
-  }, [screenshotSize, center, leafletBounds, basemap, overlayOutput, relationMemberFeaturesByRelation, coreVisual, stylePlan, leafletConfig, onMetricScaleChange, onZoomCommandsChange, onInteractionCommandsChange, onHoveredFeatureChange, onSelectedFeatureChange, onMapRuntimeReady, onMapRuntimeError]);
+  }, [mapPayload, stylePayload, onMetricScaleChange, onZoomCommandsChange, onInteractionCommandsChange, onHoveredFeatureChange, onSelectedFeatureChange, onMapRuntimeReady, onMapRuntimeError]);
 
   return <div ref={containerRef} className="map-surface" aria-label="Interactive map" />;
 }
