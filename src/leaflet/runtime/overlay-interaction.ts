@@ -13,6 +13,7 @@ import type {
   OverlayFeatureLayerEntry,
   OverlayInteractionLayerEntry,
   OverlayInteractionLayerIndex,
+  OverlayInteractionTarget,
   OverlayInteractionResult,
   OverlayRenderResult,
   OverlayVisualMeasurement,
@@ -108,12 +109,12 @@ function synchronizeInteractionLayer(
   registration: OverlayInteractionRegistration,
   measurement: OverlayVisualMeasurement,
   config: LeafletConfigType["interaction"],
-): void {
+): boolean {
   const {featureType} = registration.visualEntry;
   const hitLayer = registration.interactionLayer;
   if (!measurement.hasVisiblePaint) {
     if (rootLayer.hasLayer(hitLayer)) rootLayer.removeLayer(hitLayer);
-    return;
+    return false;
   }
 
   if (!rootLayer.hasLayer(hitLayer)) rootLayer.addLayer(hitLayer);
@@ -132,6 +133,11 @@ function synchronizeInteractionLayer(
     )});
   }
   // Area 命中 geometry 不依赖视觉描边宽度；只需要同步上面的显隐状态。
+  return true;
+}
+
+function isSameInteractionTarget(left: OverlayInteractionTarget | null, right: OverlayInteractionTarget | null): boolean {
+  return left === right || (left !== null && right !== null && left.featureType === right.featureType && left.featureId === right.featureId);
 }
 
 /**
@@ -157,7 +163,7 @@ function normalizeInteractionOrder(
  * 返回结果拥有独立幂等 dispose，调用方必须按 interaction → visual → mapSurface 顺序清理。
  */
 export function attachOverlayInteraction(options: AttachOverlayInteractionOptions): OverlayInteractionResult {
-  const {map, visualResult, config} = options;
+  const {map, visualResult, config, handlers} = options;
   const interactionPane = ensureInteractionPane(map);
   const renderer = canvas({pane: interactionPane, tolerance: 0});
   const rootLayer = layerGroup().addTo(map);
@@ -169,7 +175,21 @@ export function attachOverlayInteraction(options: AttachOverlayInteractionOption
   };
   const registrations: Record<CanvasSpatialFeatureType, Array<OverlayInteractionRegistration>> = {node: [], way: [], area: []};
   const unsubscribeCallbacks: Array<() => void> = [];
+  let hoverTarget: OverlayInteractionTarget | null = null;
+  let selectedTarget: OverlayInteractionTarget | null = null;
   let disposed = false;
+
+  const publishHover = (target: OverlayInteractionTarget | null): void => {
+    if (isSameInteractionTarget(hoverTarget, target)) return;
+    hoverTarget = target;
+    handlers?.onHoverChange(target);
+  };
+  const publishSelection = (target: OverlayInteractionTarget | null): void => {
+    if (isSameInteractionTarget(selectedTarget, target)) return;
+    selectedTarget = target;
+    handlers?.onSelectionChange(target);
+  };
+  const clearSelection = (): void => publishSelection(null);
 
   try {
     // 三段显式循环保留 Area → Way → Node 优先级；不能改为遍历 layerIndex 普通对象。
@@ -178,10 +198,32 @@ export function attachOverlayInteraction(options: AttachOverlayInteractionOption
         const measurement = visualResult.measurementController.getMeasurement(featureType, visualEntry.featureId);
         const interactionLayer = createOverlayInteractionLayer(visualEntry.geometry, measurement, renderer, config);
         const registration = {visualEntry, interactionLayer} satisfies OverlayInteractionRegistration;
+        const target: OverlayInteractionTarget = Object.freeze({
+          featureType,
+          featureId: visualEntry.featureId,
+          displayId: visualEntry.displayId,
+        });
         registrations[featureType].push(registration);
         synchronizeInteractionLayer(rootLayer, registration, measurement, config);
+        const handleMouseOver = (): void => publishHover(target);
+        const handleMouseOut = (): void => {
+          if (isSameInteractionTarget(hoverTarget, target)) publishHover(null);
+        };
+        const handleClick = (): void => publishSelection(isSameInteractionTarget(selectedTarget, target) ? null : target);
+        interactionLayer.on("mouseover", handleMouseOver);
+        interactionLayer.on("mouseout", handleMouseOut);
+        interactionLayer.on("click", handleClick);
+        unsubscribeCallbacks.push(() => {
+          interactionLayer.off("mouseover", handleMouseOver);
+          interactionLayer.off("mouseout", handleMouseOut);
+          interactionLayer.off("click", handleClick);
+        });
         unsubscribeCallbacks.push(visualResult.measurementController.subscribe(featureType, visualEntry.featureId, (nextMeasurement) => {
-          if (!disposed) synchronizeInteractionLayer(rootLayer, registration, nextMeasurement, config);
+          if (disposed) return;
+          if (!synchronizeInteractionLayer(rootLayer, registration, nextMeasurement, config)) {
+            if (isSameInteractionTarget(hoverTarget, target)) publishHover(null);
+            if (isSameInteractionTarget(selectedTarget, target)) publishSelection(null);
+          }
         }));
         mutableLayerIndex[featureType][visualEntry.featureId] = Object.freeze({
           featureId: visualEntry.featureId,
@@ -197,15 +239,25 @@ export function attachOverlayInteraction(options: AttachOverlayInteractionOption
     unsubscribeCallbacks.push(visualResult.measurementController.subscribeBatchComplete(() => {
       if (!disposed) normalizeInteractionOrder(rootLayer, registrations);
     }));
+    const handleMapClick = (): void => clearSelection();
+    map.on("click", handleMapClick);
+    unsubscribeCallbacks.push(() => map.off("click", handleMapClick));
 
     const dispose = (): void => {
       if (disposed) return;
       disposed = true;
       for (const unsubscribe of unsubscribeCallbacks.splice(0)) unsubscribe();
-      // 未来 UI hover/click listener 也应由此生命周期解绑；当前尚未在本层注册业务 listener。
+      if (hoverTarget !== null) {
+        hoverTarget = null;
+        handlers?.onHoverChange(null);
+      }
+      if (selectedTarget !== null) {
+        selectedTarget = null;
+        handlers?.onSelectionChange(null);
+      }
       rootLayer.remove();
     };
-    return Object.freeze({rootLayer, layerIndex: freezeInteractionLayerIndex(mutableLayerIndex), dispose});
+    return Object.freeze({rootLayer, layerIndex: freezeInteractionLayerIndex(mutableLayerIndex), clearSelection, dispose});
   } catch (error) {
     // attach 中途失败时撤销已经建立的订阅，不能把半成品 Interaction 留给 Visual 生命周期。
     disposed = true;

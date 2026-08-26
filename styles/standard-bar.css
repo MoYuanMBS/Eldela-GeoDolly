@@ -1,8 +1,8 @@
-.reference-bar {
+.standard-bar {
   position: relative;
   width: 100%;
-  min-width: var(--geomcp-reference-ui-min-width);
-  min-height: var(--geomcp-reference-ui-min-height);
+  min-width: var(--geomcp-standard-ui-min-width);
+  min-height: var(--geomcp-standard-ui-min-height);
   border-top: 1px solid var(--geomcp-ui-highlight);
   border-bottom: 1px solid var(--geomcp-ui-highlight);
   color: var(--geomcp-ui-text);
@@ -12,23 +12,23 @@
   line-height: 1.4;
 }
 
-.reference-bar-content {
+.standard-bar-content {
   position: relative;
   z-index: 1;
   display: grid;
-  min-height: calc(var(--geomcp-reference-ui-min-height) - 2px);
+  min-height: calc(var(--geomcp-standard-ui-min-height) - 2px);
   grid-template-columns:
-    var(--geomcp-reference-ui-end-block-width)
+    var(--geomcp-standard-ui-end-block-width)
     calc(var(--geomcp-scale-max-width) + 16px)
-    var(--geomcp-reference-ui-divider-width)
-    minmax(var(--geomcp-reference-ui-live-feature-min-width), 1fr)
-    var(--geomcp-reference-ui-divider-width)
+    var(--geomcp-standard-ui-divider-width)
+    minmax(var(--geomcp-standard-ui-live-feature-min-width), 1fr)
+    var(--geomcp-standard-ui-divider-width)
     minmax(120px, 1.8fr)
-    var(--geomcp-reference-ui-end-block-width);
+    var(--geomcp-standard-ui-end-block-width);
   align-items: center;
 }
 
-.reference-scale {
+.standard-scale {
   position: relative;
   width: calc(100% - 16px);
   height: 30px;
@@ -36,7 +36,7 @@
   white-space: nowrap;
 }
 
-.reference-scale-label {
+.standard-scale-label {
   position: absolute;
   top: 0;
   left: 0;
@@ -50,7 +50,7 @@
   text-overflow: ellipsis;
 }
 
-.reference-scale-rule {
+.standard-scale-rule {
   position: relative;
   display: block;
   top: 18px;
@@ -61,14 +61,14 @@
   border-left: 1px solid var(--geomcp-ui-text);
 }
 
-.reference-bar-divider {
+.standard-bar-divider {
   position: relative;
   align-self: stretch;
   overflow: hidden;
   pointer-events: none;
 }
 
-.reference-bar-divider::before {
+.standard-bar-divider::before {
   position: absolute;
   top: 7px;
   bottom: 7px;
@@ -79,7 +79,7 @@
   transform: translateX(-50%);
 }
 
-.reference-bar-block-end {
+.standard-bar-block-end {
   position: relative;
   align-self: stretch;
   overflow: hidden;
@@ -87,8 +87,8 @@
   user-select: none;
 }
 
-.reference-bar-divider-decoration,
-.reference-bar-end-decoration {
+.standard-bar-divider-decoration,
+.standard-bar-end-decoration {
   position: absolute;
   top: 50%;
   width: auto;
@@ -97,22 +97,22 @@
   user-select: none;
 }
 
-.reference-bar-divider-decoration {
+.standard-bar-divider-decoration {
   left: 50%;
   transform: translate(-50%, -50%);
 }
 
-.reference-bar-end-decoration-left {
+.standard-bar-end-decoration-left {
   left: 0;
   transform: translateY(-50%);
 }
 
-.reference-bar-end-decoration-right {
+.standard-bar-end-decoration-right {
   right: 0;
   transform: translateY(-50%);
 }
 
-.reference-live-feature {
+.standard-live-feature {
   display: flex;
   min-width: 0;
   height: 100%;
@@ -123,21 +123,22 @@
   white-space: nowrap;
 }
 
-.reference-live-feature-icon {
+.standard-live-feature-icon {
   display: block;
   flex: 0 0 auto;
   width: 28px;
-  height: auto;
+  height: 28px;
+  object-fit: contain;
 }
 
-.reference-live-feature-id {
+.standard-live-feature-id {
   flex: 0 0 auto;
   font-size: 11px;
   font-variant-numeric: tabular-nums;
   font-weight: 600;
 }
 
-.reference-live-feature-name {
+.standard-live-feature-name {
   min-width: 0;
   overflow: hidden;
   color: color-mix(in srgb, var(--geomcp-ui-text) 76%, transparent);
@@ -145,7 +146,7 @@
   text-overflow: ellipsis;
 }
 
-.reference-attribution {
+.standard-attribution {
   min-width: 0;
   padding: 7px 8px;
   overflow-wrap: anywhere;
@@ -154,24 +155,24 @@
   text-align: right;
 }
 
-.reference-attribution-link {
+.standard-attribution-link {
   color: var(--geomcp-ui-text);
   text-decoration: none;
 }
 
-.reference-attribution-link:hover,
-.reference-attribution-link:focus-visible {
+.standard-attribution-link:hover,
+.standard-attribution-link:focus-visible {
   color: var(--geomcp-ui-text);
   text-decoration: underline;
   text-decoration-color: var(--geomcp-ui-bar-end);
   text-underline-offset: 2px;
 }
 
-.reference-bar-status-waiting-scale,
-.reference-bar-status-measuring {
+.standard-bar-status-waiting-scale,
+.standard-bar-status-measuring {
   color: color-mix(in srgb, var(--geomcp-ui-text) 64%, var(--geomcp-ui-surface));
 }
 
-.reference-bar-status-failed {
+.standard-bar-status-failed {
   border-top-color: var(--geomcp-ui-bar-end);
 }

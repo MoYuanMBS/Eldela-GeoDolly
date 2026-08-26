@@ -1,6 +1,6 @@
 import {useEffect, useRef, useState, type CSSProperties} from "react";
 import leftEndDecorationUrl from "../../../assets/ui/decorations/left-up.svg";
-import referenceBarDividerUrl from "../../../assets/ui/decorations/reference-bar-divider.svg";
+import standardBarDividerUrl from "../../../assets/ui/decorations/reference-bar-divider.svg";
 import rightEndDecorationUrl from "../../../assets/ui/decorations/right-up.svg";
 import nodeIconUrl from "../../../assets/ui/icons/node.svg";
 import polygonIconUrl from "../../../assets/ui/icons/polygon.svg";
@@ -9,7 +9,7 @@ import type {LeafletMetricScaleResult} from "../../models/mapsurface/leaflet-ren
 import type {InteractiveFeatureSummaryType} from "../../models/web/interactive-ui-models.js";
 import {AppError} from "../../utils/app-error.js";
 
-interface ReferenceBarProps {
+interface StandardBarProps {
   logicalWidth: number;
   attributionText: string;
   attributionUrl: string;
@@ -30,12 +30,12 @@ const FEATURE_TYPE_ICONS = {
   area: polygonIconUrl,
 } as const;
 
-type ReferenceUiStatus = "pending" | "waiting-scale" | "measuring" | "locked" | "ready" | "failed";
+type StandardUiStatus = "pending" | "waiting-scale" | "measuring" | "locked" | "ready" | "failed";
 
-function ReferenceBarDivider({position}: {position: "scale-feature" | "feature-attribution"}) {
+function StandardBarDivider({position}: {position: "scale-feature" | "feature-attribution"}) {
   return (
-    <span className={`reference-bar-divider reference-bar-divider-${position}`} aria-hidden="true">
-      <img className="reference-bar-divider-decoration" src={referenceBarDividerUrl} alt="" draggable={false} />
+    <span className={`standard-bar-divider standard-bar-divider-${position}`} aria-hidden="true">
+      <img className="standard-bar-divider-decoration" src={standardBarDividerUrl} alt="" draggable={false} />
     </span>
   );
 }
@@ -58,12 +58,12 @@ function waitForAnimationFrame(signal: AbortSignal): Promise<void> {
   });
 }
 
-async function waitForReferenceUiFonts(signal: AbortSignal): Promise<void> {
+async function waitForStandardUiFonts(signal: AbortSignal): Promise<void> {
   const loadedFonts = await document.fonts.load('400 13px "GeoMCP Source Han Sans"');
   await document.fonts.ready;
   if (signal.aborted) throw signal.reason;
   if (loadedFonts.length === 0) {
-    throw new AppError("reference_ui_font_failed", "Reference UI font could not be loaded");
+    throw new AppError("standard_ui_font_failed", "Standard UI font could not be loaded");
   }
 }
 
@@ -77,7 +77,7 @@ function waitForImage(image: HTMLImageElement, signal: AbortSignal): Promise<voi
     const finish = (): void => {
       cleanup();
       if (image.naturalWidth === 0) {
-        reject(new AppError("reference_ui_asset_failed", "A Reference UI image asset could not be loaded"));
+        reject(new AppError("standard_ui_asset_failed", "A Standard UI image asset could not be loaded"));
         return;
       }
       void image.decode().then(resolve, reject);
@@ -85,7 +85,7 @@ function waitForImage(image: HTMLImageElement, signal: AbortSignal): Promise<voi
     const handleLoad = (): void => finish();
     const handleError = (): void => {
       cleanup();
-      reject(new AppError("reference_ui_asset_failed", "A Reference UI image asset could not be loaded"));
+      reject(new AppError("standard_ui_asset_failed", "A Standard UI image asset could not be loaded"));
     };
     const handleAbort = (): void => {
       cleanup();
@@ -106,7 +106,7 @@ function waitForImage(image: HTMLImageElement, signal: AbortSignal): Promise<voi
   });
 }
 
-async function waitForReferenceUiAssets(element: HTMLElement, signal: AbortSignal): Promise<void> {
+async function waitForStandardUiAssets(element: HTMLElement, signal: AbortSignal): Promise<void> {
   const images = [...element.querySelectorAll<HTMLImageElement>("img")];
   await Promise.all(images.map((image) => waitForImage(image, signal)));
 }
@@ -115,11 +115,11 @@ function hasLayoutOverflow(element: HTMLElement): boolean {
   return element.scrollWidth > element.clientWidth || element.scrollHeight > element.clientHeight;
 }
 
-/** Interactive MapSurface 外部的 Scale / Feature / Attribution UI，并负责发布锁定高度。 */
-export function ReferenceBar({logicalWidth, attributionText, attributionUrl, attributionDescription, metricScale, feature, onReady, onError}: ReferenceBarProps) {
+/** Interactive MapSurface 外部的实时 Scale / Feature / Attribution，并负责锁定自身高度。 */
+export function StandardBar({logicalWidth, attributionText, attributionUrl, attributionDescription, metricScale, feature, onReady, onError}: StandardBarProps) {
   const elementRef = useRef<HTMLElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-  const [layoutStatus, setLayoutStatus] = useState<ReferenceUiStatus>("pending");
+  const [layoutStatus, setLayoutStatus] = useState<StandardUiStatus>("pending");
   const hasInitialScale = metricScale !== null;
 
   useEffect(() => {
@@ -146,7 +146,7 @@ export function ReferenceBar({logicalWidth, attributionText, attributionUrl, att
         if (signal.aborted || lockedHeight === null) return;
         if (Math.ceil(element.getBoundingClientRect().height) !== lockedHeight || hasLayoutOverflow(element)) {
           anomalyReported = true;
-          console.warn("[GeoMCP] Reference UI layout changed after its height was locked.", {locked_height: lockedHeight});
+          console.warn("[GeoMCP] Standard UI layout changed after its height was locked.", {locked_height: lockedHeight});
         }
       });
     });
@@ -156,8 +156,8 @@ export function ReferenceBar({logicalWidth, attributionText, attributionUrl, att
     void (async () => {
       try {
         await Promise.all([
-          waitForReferenceUiFonts(signal),
-          waitForReferenceUiAssets(element, signal),
+          waitForStandardUiFonts(signal),
+          waitForStandardUiAssets(element, signal),
         ]);
         let previousHeight: number | null = null;
         let previousRevision: number | null = null;
@@ -173,14 +173,14 @@ export function ReferenceBar({logicalWidth, attributionText, attributionUrl, att
           previousRevision = currentRevision;
         }
         if (!Number.isSafeInteger(lockedHeight) || lockedHeight <= 0) {
-          throw new AppError("reference_ui_layout_failed", "Reference UI produced an invalid measured height");
+          throw new AppError("standard_ui_layout_failed", "Standard UI produced an invalid measured height");
         }
         element.style.height = `${lockedHeight}px`;
         element.dataset.lockedHeight = String(lockedHeight);
         setLayoutStatus("locked");
         await waitForAnimationFrame(signal);
         if (Math.ceil(element.getBoundingClientRect().height) !== lockedHeight || hasLayoutOverflow(element)) {
-          throw new AppError("reference_ui_overflow", "Reference UI content overflowed after its height was locked");
+          throw new AppError("standard_ui_overflow", "Standard UI content overflowed after its height was locked");
         }
         readyPublished = true;
         setLayoutStatus("ready");
@@ -188,7 +188,7 @@ export function ReferenceBar({logicalWidth, attributionText, attributionUrl, att
       } catch (error) {
         if (signal.aborted) return;
         setLayoutStatus("failed");
-        onError(AppError.fromUnknown(error, "reference_ui_layout_failed", "Reference UI could not complete layout").message);
+        onError(AppError.fromUnknown(error, "standard_ui_layout_failed", "Standard UI could not complete layout").message);
       }
     })();
 
@@ -202,38 +202,38 @@ export function ReferenceBar({logicalWidth, attributionText, attributionUrl, att
   const scaleStyle: MetricScaleStyle = {
     "--geomcp-metric-scale-width": `${metricScale?.widthPx ?? 0}px`,
   };
-  const featureTypeClass = feature === null ? "reference-bar-feature-empty" : `reference-bar-feature-${feature.featureType}`;
+  const featureTypeClass = feature === null ? "standard-bar-feature-empty" : `standard-bar-feature-${feature.featureType}`;
   return (
-    <footer ref={elementRef} className={`reference-bar reference-bar-status-${layoutStatus} ${featureTypeClass}`} aria-label="Map reference information" data-reference-ui-status={layoutStatus}>
-      <div ref={contentRef} className="reference-bar-content">
-        <span className="reference-bar-block reference-bar-block-end reference-bar-block-end-left" aria-hidden="true">
-          <img className="reference-bar-end-decoration reference-bar-end-decoration-left" src={leftEndDecorationUrl} alt="" draggable={false} />
+    <footer ref={elementRef} className={`standard-bar standard-bar-status-${layoutStatus} ${featureTypeClass}`} aria-label="Interactive map standard information" data-standard-ui-status={layoutStatus}>
+      <div ref={contentRef} className="standard-bar-content">
+        <span className="standard-bar-block standard-bar-block-end standard-bar-block-end-left" aria-hidden="true">
+          <img className="standard-bar-end-decoration standard-bar-end-decoration-left" src={leftEndDecorationUrl} alt="" draggable={false} />
         </span>
-        <section className="reference-bar-block reference-bar-block-scale reference-scale" style={scaleStyle} aria-label={metricScale === null ? "Map scale loading" : `Map scale ${metricScale.label}`}>
-          <span className="reference-scale-label">{metricScale?.label ?? "Scale"}</span>
-          <span className="reference-scale-rule" aria-hidden="true" />
+        <section className="standard-bar-block standard-bar-block-scale standard-scale" style={scaleStyle} aria-label={metricScale === null ? "Map scale loading" : `Map scale ${metricScale.label}`}>
+          <span className="standard-scale-label">{metricScale?.label ?? "Scale"}</span>
+          <span className="standard-scale-rule" aria-hidden="true" />
         </section>
-        <ReferenceBarDivider position="scale-feature" />
+        <StandardBarDivider position="scale-feature" />
         <div
-          className={`reference-bar-block reference-bar-block-feature reference-live-feature ${feature === null ? "reference-live-feature-empty" : `reference-live-feature-${feature.featureType}`}`}
+          className={`standard-bar-block standard-bar-block-feature standard-live-feature ${feature === null ? "standard-live-feature-empty" : `standard-live-feature-${feature.featureType}`}`}
           aria-label={feature === null ? "No current feature" : `Current ${feature.featureType} feature ${feature.displayId}${feature.name === null ? "" : `, ${feature.name}`}`}
           aria-live="polite"
           data-feature-state={feature === null ? "empty" : "ready"}
         >
           {feature === null ? null : (
             <>
-              <img className={`reference-live-feature-icon reference-live-feature-icon-${feature.featureType}`} src={FEATURE_TYPE_ICONS[feature.featureType]} alt="" draggable={false} aria-hidden="true" />
-              <span className="reference-live-feature-id">{feature.displayId}</span>
-              {feature.name === null ? null : <span className="reference-live-feature-name">{feature.name}</span>}
+              <img className={`standard-live-feature-icon standard-live-feature-icon-${feature.featureType}`} src={FEATURE_TYPE_ICONS[feature.featureType]} alt="" draggable={false} aria-hidden="true" />
+              <span className="standard-live-feature-id">{feature.displayId}</span>
+              {feature.name === null ? null : <span className="standard-live-feature-name">{feature.name}</span>}
             </>
           )}
         </div>
-        <ReferenceBarDivider position="feature-attribution" />
-        <div className="reference-bar-block reference-bar-block-attribution reference-attribution">
-          <a className="reference-attribution-link" href={attributionUrl} target="_blank" rel="noreferrer" title={attributionDescription}>{attributionText}</a>
+        <StandardBarDivider position="feature-attribution" />
+        <div className="standard-bar-block standard-bar-block-attribution standard-attribution">
+          <a className="standard-attribution-link" href={attributionUrl} target="_blank" rel="noreferrer" title={attributionDescription}>{attributionText}</a>
         </div>
-        <span className="reference-bar-block reference-bar-block-end reference-bar-block-end-right" aria-hidden="true">
-          <img className="reference-bar-end-decoration reference-bar-end-decoration-right" src={rightEndDecorationUrl} alt="" draggable={false} />
+        <span className="standard-bar-block standard-bar-block-end standard-bar-block-end-right" aria-hidden="true">
+          <img className="standard-bar-end-decoration standard-bar-end-decoration-right" src={rightEndDecorationUrl} alt="" draggable={false} />
         </span>
       </div>
     </footer>

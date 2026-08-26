@@ -83,6 +83,7 @@ export type RunToolFlowResultType = Readonly<{
   effective_query_mode: EffectiveQueryModeType;
   ai_output: AiOutputGroupsWithIdsType | null;
   relation_membership_by_feature_id: RelationMembershipByFeatureIdType | null;
+  selected_location_name: string | null;
   map_payload: CommonVisualMapPayloadType;
   style_payload: RenderStylePayload;
   info: string;

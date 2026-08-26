@@ -4,7 +4,7 @@ import "../leaflet/styles/leaflet-font.css";
 import "../leaflet/styles/built-in/built-in-css.css";
 import "../../styles/ui-palette.css";
 import "../../styles/web.css";
-import "../../styles/reference-bar.css";
+import "../../styles/standard-bar.css";
 import "../../styles/drawing.css";
 import {initializeBuiltInStyle} from "../leaflet/styles/built-in-style-loader.js";
 import {AppError} from "../utils/app-error.js";

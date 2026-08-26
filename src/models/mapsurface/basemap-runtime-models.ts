@@ -8,6 +8,7 @@ import type {CoreOverlayRendererOptions, CoreOverlayRenderResult} from "./core-r
 import type {
   MapSurfaceHandle,
   LeafletMetricScaleResult,
+  OverlayInteractionHandlers,
   OverlayInteractionResult,
   OverlayRendererOptions,
   OverlayRenderResult,
@@ -90,6 +91,8 @@ export interface InteractiveMapFlowOptions extends Omit<LeafletVisualRuntimeOpti
   metricScaleMaxWidthPx: number;
   /** 仅供透明命中层使用；Visual runtime 不读取交互配置。 */
   interactionConfig: LeafletConfigType["interaction"];
+  /** hover/click 只通过纯数据回调进入 React，不把 Leaflet 对象带出 runtime。 */
+  interactionHandlers?: OverlayInteractionHandlers;
   /** 页面生命周期级 warning sink；不参与 ready summary 或 AppError throw。 */
   warningReporter?: BrowserWarningReporterType;
 }

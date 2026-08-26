@@ -212,6 +212,8 @@ export async function runToolFlow(tool: ToolType, cachedSelection: LocSearchRepl
     effective_query_mode: processed.effective_query_mode,
     ai_output: processed.ai_output,
     relation_membership_by_feature_id: processed.relation_membership_by_feature_id,
+    // Feature UI 只使用候选的精确 name，不以 display_name 代替。
+    selected_location_name: pythonQuery.selected_candidate.name ?? null,
     map_payload: mapPayload,
     style_payload: stylePayload,
     info: processed.info,

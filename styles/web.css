@@ -28,7 +28,7 @@ body {
 .map-page {
   position: relative;
   width: var(--geomcp-map-width);
-  min-width: var(--geomcp-reference-ui-min-width);
+  min-width: var(--geomcp-standard-ui-min-width);
 }
 
 .map-capture-frame {

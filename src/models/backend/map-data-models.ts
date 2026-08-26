@@ -173,6 +173,14 @@ export const relationMemberFeaturesSchema = z.object({
 }).strict();
 export const relationMemberFeaturesByRelationSchema = z.record(z.string(), relationMemberFeaturesSchema);
 
+// Interactive session 复用的空间 Feature → relation feature_id[] 反向索引。
+export const relationFeatureIdsByFeatureIdSchema = z.record(z.string(), z.array(z.string()));
+export const relationMembershipByFeatureIdSchema = z.object({
+  node: relationFeatureIdsByFeatureIdSchema,
+  area: relationFeatureIdsByFeatureIdSchema,
+  way: relationFeatureIdsByFeatureIdSchema,
+}).strict();
+
 export const filteredOverpassResultSchema = z
   .object({
     ai_output: aiOutputGroupsSchema,
@@ -212,13 +220,8 @@ export type IdentifiedOverlayGroupsWithDisplayIdType = z.infer<typeof identified
 export type RelationMemberFeatureType = z.infer<typeof relationMemberFeatureSchema>;
 export type RelationMemberFeaturesType = z.infer<typeof relationMemberFeaturesSchema>;
 export type RelationMemberFeaturesByRelationType = z.infer<typeof relationMemberFeaturesByRelationSchema>;
-// 反向索引只在浏览器运行时派生，不进入 Bridge 或 session 边界，因此不增加 Zod schema。
-export type RelationFeatureIdsByFeatureIdType = Record<string, Array<string>>;
-export interface RelationMembershipByFeatureIdType {
-  node: RelationFeatureIdsByFeatureIdType;
-  area: RelationFeatureIdsByFeatureIdType;
-  way: RelationFeatureIdsByFeatureIdType;
-}
+export type RelationFeatureIdsByFeatureIdType = z.infer<typeof relationFeatureIdsByFeatureIdSchema>;
+export type RelationMembershipByFeatureIdType = z.infer<typeof relationMembershipByFeatureIdSchema>;
 export type FilteredOverpassResultType = z.infer<typeof filteredOverpassResultSchema>;
 export type EffectiveQueryModeType = z.infer<typeof effectiveQueryModeSchema>;
 export type PyToolResultType = z.infer<typeof pyToolResultSchema>;

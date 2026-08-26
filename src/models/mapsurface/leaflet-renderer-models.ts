@@ -201,11 +201,25 @@ export interface OverlayInteractionLayerEntry {
 
 export type OverlayInteractionLayerIndex = Readonly<Record<CanvasSpatialFeatureType, Readonly<Record<string, OverlayInteractionLayerEntry>>>>;
 
+/** Interaction 向 React 发布的纯数据 target；不携带 Leaflet layer 或事件对象。 */
+export interface OverlayInteractionTarget {
+  featureType: CanvasSpatialFeatureType;
+  featureId: string;
+  displayId: string;
+}
+
+export interface OverlayInteractionHandlers {
+  onHoverChange(target: OverlayInteractionTarget | null): void;
+  onSelectionChange(target: OverlayInteractionTarget | null): void;
+}
+
 export interface OverlayInteractionResult {
   /** 持有唯一 Interaction renderer 与当前可见的透明 hit Paths。 */
   rootLayer: LayerGroup;
   /** UI 层按 type + feature_id 绑定事件的稳定入口。 */
   layerIndex: OverlayInteractionLayerIndex;
+  /** UI close button 与地图空白点击共用同一个 selection 清理入口。 */
+  clearSelection(): void;
   /** 幂等清理 measurement 订阅、未来 UI listener 与全部透明 hit Paths。 */
   dispose(): void;
 }
@@ -218,6 +232,8 @@ export interface AttachOverlayInteractionOptions {
   visualResult: OverlayRenderResult;
   /** 仅影响透明命中半径/宽度，不参与可见绘制。 */
   config: LeafletConfigType["interaction"];
+  /** 可选 UI 事件出口；Snapshot 不接收也不构造该回调。 */
+  handlers?: OverlayInteractionHandlers;
 }
 
 export interface OverlayRendererOptions {

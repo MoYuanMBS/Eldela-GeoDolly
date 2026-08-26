@@ -1,28 +1,22 @@
 import {useCallback, useEffect, useMemo, useRef, useState, type CSSProperties} from "react";
-import {z} from "zod";
 import {initializeRuntimeStyle} from "../leaflet/styles/runtime-style-initializer.js";
-import {commonVisualMapPayloadSchema, type CommonVisualMapPayloadType} from "../models/mapsurface/map-payload-models.js";
-import type {BrowserFlowReadySummary, MapFlowReadySummary} from "../models/mapsurface/basemap-runtime-models.js";
-import type {LeafletMetricScaleResult} from "../models/mapsurface/leaflet-renderer-models.js";
+import type {MapFlowReadySummary} from "../models/mapsurface/basemap-runtime-models.js";
+import type {LeafletMetricScaleResult, OverlayInteractionTarget} from "../models/mapsurface/leaflet-renderer-models.js";
 import type {RuntimeStylePlan} from "../models/mapsurface/style/runtime-style-models.js";
-import {renderStylePayloadSchema} from "../models/mapsurface/style/user-css-style-models.js";
-import type {DrawingUiModeType} from "../models/web/interactive-ui-models.js";
+import {interactiveMapDataSchema, type DrawingUiModeType, type InteractiveMapDataType} from "../models/web/interactive-ui-models.js";
 import {AppError} from "../utils/app-error.js";
 import {UI_BUILT_IN_CONFIG} from "./built-in-config.js";
 import {DrawingToolbar} from "./components/drawing-toolbar.js";
 import {FeatureBar} from "./components/feature-bar.js";
 import {MeasurementHUD} from "./components/measurement-hud.js";
-import {ReferenceBar} from "./components/reference-bar.js";
-import {MapSurfaceView, type MapSurfaceZoomCommands} from "./map-surface-view.js";
-
-const publishedMapPayloadSchema = z.object({
-  map_payload: commonVisualMapPayloadSchema,
-  style_payload: renderStylePayloadSchema,
-}).strict();
+import {OsmTagsPopup} from "./components/osm-tags-popup.js";
+import {StandardBar} from "./components/standard-bar.js";
+import {resolveInteractiveFeatureDetails} from "./interactive-feature-details.js";
+import {MapSurfaceView, type MapSurfaceInteractionCommands, type MapSurfaceZoomCommands} from "./map-surface-view.js";
 
 type MapLoadState =
   | {status: "loading"}
-  | {status: "ready"; payload: CommonVisualMapPayloadType; stylePlan: RuntimeStylePlan | null}
+  | {status: "ready"; data: InteractiveMapDataType; stylePlan: RuntimeStylePlan | null}
   | {status: "error"; message: string};
 
 interface MapPageProps {
@@ -31,11 +25,11 @@ interface MapPageProps {
 
 interface MapPageStyle extends CSSProperties {
   "--geomcp-map-width": string;
-  "--geomcp-reference-ui-min-width": string;
-  "--geomcp-reference-ui-min-height": string;
-  "--geomcp-reference-ui-end-block-width": string;
-  "--geomcp-reference-ui-live-feature-min-width": string;
-  "--geomcp-reference-ui-divider-width": string;
+  "--geomcp-standard-ui-min-width": string;
+  "--geomcp-standard-ui-min-height": string;
+  "--geomcp-standard-ui-end-block-width": string;
+  "--geomcp-standard-ui-live-feature-min-width": string;
+  "--geomcp-standard-ui-divider-width": string;
   "--geomcp-feature-bar-gap": string;
   "--geomcp-scale-max-width": string;
 }
@@ -45,7 +39,7 @@ type MapRuntimeState =
   | {status: "ready"; summary: MapFlowReadySummary}
   | {status: "failed"; message: string};
 
-type ReferenceUiState =
+type StandardUiState =
   | {status: "pending"}
   | {status: "ready"; measuredHeight: number}
   | {status: "failed"; message: string};
@@ -54,16 +48,22 @@ export function MapPage({mapDataUrl}: MapPageProps) {
   const [loadState, setLoadState] = useState<MapLoadState>({status: "loading"});
   const [metricScale, setMetricScale] = useState<LeafletMetricScaleResult | null>(null);
   const [mapRuntimeState, setMapRuntimeState] = useState<MapRuntimeState>({status: "pending"});
-  const [referenceUiState, setReferenceUiState] = useState<ReferenceUiState>({status: "pending"});
+  const [standardUiState, setStandardUiState] = useState<StandardUiState>({status: "pending"});
+  const [hoveredFeature, setHoveredFeature] = useState<OverlayInteractionTarget | null>(null);
+  const [selectedFeature, setSelectedFeature] = useState<OverlayInteractionTarget | null>(null);
   const [drawingMode, setDrawingMode] = useState<DrawingUiModeType>("idle");
   const zoomCommandsRef = useRef<MapSurfaceZoomCommands | null>(null);
+  const interactionCommandsRef = useRef<MapSurfaceInteractionCommands | null>(null);
 
   useEffect(() => {
     setMetricScale(null);
     setMapRuntimeState({status: "pending"});
-    setReferenceUiState({status: "pending"});
+    setStandardUiState({status: "pending"});
+    setHoveredFeature(null);
+    setSelectedFeature(null);
     setDrawingMode("idle");
     zoomCommandsRef.current = null;
+    interactionCommandsRef.current = null;
     if (mapDataUrl === null) {
       setLoadState({status: "error", message: "Map data URL is missing"});
       return;
@@ -77,13 +77,13 @@ export function MapPage({mapDataUrl}: MapPageProps) {
         if (!response.ok) {
           throw new AppError("map_data_request", `Map data request failed with HTTP ${response.status}`);
         }
-        const publishedPayload = publishedMapPayloadSchema.parse(await response.json());
-        const payload = publishedPayload.map_payload;
+        const data = interactiveMapDataSchema.parse(await response.json());
+        const payload = data.map_payload;
         // Basemap-only 不初始化 RuntimeStylePlan；其他模式必须在创建 Leaflet 前完成样式准备。
         const stylePlan = payload.render_mode === "basemap_only"
           ? null
-          : initializeRuntimeStyle(publishedPayload.style_payload, payload.leaflet);
-        setLoadState({status: "ready", payload, stylePlan});
+          : initializeRuntimeStyle(data.style_payload, payload.leaflet);
+        setLoadState({status: "ready", data, stylePlan});
       } catch (error) {
         if (abortController.signal.aborted) return;
         setLoadState({status: "error", message: error instanceof Error ? error.message : String(error)});
@@ -99,6 +99,9 @@ export function MapPage({mapDataUrl}: MapPageProps) {
   const handleZoomCommandsChange = useCallback((commands: MapSurfaceZoomCommands | null): void => {
     zoomCommandsRef.current = commands;
   }, []);
+  const handleInteractionCommandsChange = useCallback((commands: MapSurfaceInteractionCommands | null): void => {
+    interactionCommandsRef.current = commands;
+  }, []);
   const handleZoomIn = useCallback((): void => {
     zoomCommandsRef.current?.zoomIn();
   }, []);
@@ -111,21 +114,39 @@ export function MapPage({mapDataUrl}: MapPageProps) {
   const handleMapRuntimeError = useCallback((message: string): void => {
     setMapRuntimeState({status: "failed", message});
   }, []);
-  const handleReferenceUiReady = useCallback((measuredHeight: number): void => {
-    setReferenceUiState({status: "ready", measuredHeight});
+  const handleStandardUiReady = useCallback((measuredHeight: number): void => {
+    setStandardUiState({status: "ready", measuredHeight});
   }, []);
-  const handleReferenceUiError = useCallback((message: string): void => {
-    setReferenceUiState({status: "failed", message});
+  const handleStandardUiError = useCallback((message: string): void => {
+    setStandardUiState({status: "failed", message});
+  }, []);
+  const handleCloseTagsPopup = useCallback((): void => {
+    if (interactionCommandsRef.current === null) setSelectedFeature(null);
+    else interactionCommandsRef.current.clearSelection();
   }, []);
 
-  const browserReadySummary = useMemo<BrowserFlowReadySummary | null>(() => {
-    if (mapRuntimeState.status !== "ready" || referenceUiState.status !== "ready") return null;
-    return Object.freeze({
-      ...mapRuntimeState.summary,
-      reference_ui: "ready",
-      measured_reference_ui_height: referenceUiState.measuredHeight,
-    });
-  }, [mapRuntimeState, referenceUiState]);
+  const activeFeatureDetails = useMemo(() => {
+    if (loadState.status !== "ready") return null;
+    const payload = loadState.data.map_payload;
+    return resolveInteractiveFeatureDetails(
+      selectedFeature ?? hoveredFeature,
+      loadState.data.ai_output,
+      payload.overlay_output,
+      payload.relation_member_features_by_relation,
+      loadState.data.relation_membership_by_feature_id,
+    );
+  }, [loadState, hoveredFeature, selectedFeature]);
+  const selectedFeatureDetails = useMemo(() => {
+    if (loadState.status !== "ready") return null;
+    const payload = loadState.data.map_payload;
+    return resolveInteractiveFeatureDetails(
+      selectedFeature,
+      loadState.data.ai_output,
+      payload.overlay_output,
+      payload.relation_member_features_by_relation,
+      loadState.data.relation_membership_by_feature_id,
+    );
+  }, [loadState, selectedFeature]);
 
   if (loadState.status === "loading") {
     return <main className="map-page-state" role="status">Loading map data…</main>;
@@ -134,30 +155,33 @@ export function MapPage({mapDataUrl}: MapPageProps) {
     return <main className="map-page-state map-page-error" role="alert">{loadState.message}</main>;
   }
 
-  const {payload, stylePlan} = loadState;
+  const {data, stylePlan} = loadState;
+  const payload = data.map_payload;
   const pageStyle: MapPageStyle = {
     "--geomcp-map-width": `${payload.screenshot_size[0]}px`,
-    "--geomcp-reference-ui-min-width": `${UI_BUILT_IN_CONFIG.referenceUi.minWidth}px`,
-    "--geomcp-reference-ui-min-height": `${UI_BUILT_IN_CONFIG.referenceUi.minHeight}px`,
-    "--geomcp-reference-ui-end-block-width": `${UI_BUILT_IN_CONFIG.referenceUi.endBlockRatio * 100}%`,
-    "--geomcp-reference-ui-live-feature-min-width": `${UI_BUILT_IN_CONFIG.referenceUi.liveFeatureMinWidth}px`,
-    "--geomcp-reference-ui-divider-width": `${UI_BUILT_IN_CONFIG.referenceUi.dividerWidth}px`,
+    "--geomcp-standard-ui-min-width": `${UI_BUILT_IN_CONFIG.standardUi.minWidth}px`,
+    "--geomcp-standard-ui-min-height": `${UI_BUILT_IN_CONFIG.standardUi.minHeight}px`,
+    "--geomcp-standard-ui-end-block-width": `${UI_BUILT_IN_CONFIG.standardUi.endBlockRatio * 100}%`,
+    "--geomcp-standard-ui-live-feature-min-width": `${UI_BUILT_IN_CONFIG.standardUi.liveFeatureMinWidth}px`,
+    "--geomcp-standard-ui-divider-width": `${UI_BUILT_IN_CONFIG.standardUi.dividerWidth}px`,
     "--geomcp-feature-bar-gap": `${UI_BUILT_IN_CONFIG.featureBar.gapPx}px`,
     "--geomcp-scale-max-width": `${__GEOMCP_MAX_SCALE_WIDTH_PX__}px`,
   };
   const failureMessage = mapRuntimeState.status === "failed"
     ? mapRuntimeState.message
-    : referenceUiState.status === "failed" ? referenceUiState.message : null;
-  const browserReadyStatus = failureMessage === null ? browserReadySummary?.status ?? "pending" : "failed";
+    : standardUiState.status === "failed" ? standardUiState.message : null;
+  const browserReadyStatus = failureMessage !== null
+    ? "failed"
+    : mapRuntimeState.status === "ready" && standardUiState.status === "ready" ? mapRuntimeState.summary.status : "pending";
   return (
     <main
       className="map-page"
       style={pageStyle}
       aria-busy={browserReadyStatus === "pending"}
       data-geomcp-ready-status={browserReadyStatus}
-      data-geomcp-reference-ui-status={referenceUiState.status}
-      data-geomcp-reference-ui-height={referenceUiState.status === "ready" ? referenceUiState.measuredHeight : undefined}
-      data-geomcp-final-logical-height={referenceUiState.status === "ready" ? payload.screenshot_size[1] + referenceUiState.measuredHeight : undefined}
+      data-geomcp-standard-ui-status={standardUiState.status}
+      data-geomcp-standard-ui-height={standardUiState.status === "ready" ? standardUiState.measuredHeight : undefined}
+      data-geomcp-final-logical-height={standardUiState.status === "ready" ? payload.screenshot_size[1] + standardUiState.measuredHeight : undefined}
     >
       <div className="map-capture-frame">
         <div className="interactive-map-frame">
@@ -173,6 +197,9 @@ export function MapPage({mapDataUrl}: MapPageProps) {
             leafletConfig={payload.leaflet}
             onMetricScaleChange={handleMetricScaleChange}
             onZoomCommandsChange={handleZoomCommandsChange}
+            onInteractionCommandsChange={handleInteractionCommandsChange}
+            onHoveredFeatureChange={setHoveredFeature}
+            onSelectedFeatureChange={setSelectedFeature}
             onMapRuntimeReady={handleMapRuntimeReady}
             onMapRuntimeError={handleMapRuntimeError}
           />
@@ -185,21 +212,26 @@ export function MapPage({mapDataUrl}: MapPageProps) {
               onModeChange={setDrawingMode}
             />
             <MeasurementHUD mode={drawingMode} rows={[]} />
+            {selectedFeatureDetails === null ? null : <OsmTagsPopup details={selectedFeatureDetails} onClose={handleCloseTagsPopup} />}
           </div>
         </div>
-        <ReferenceBar
+        <StandardBar
           logicalWidth={payload.screenshot_size[0]}
           attributionText={payload.basemap.attribution}
           attributionUrl={payload.basemap.attribution_url}
           attributionDescription={payload.basemap.full_attribution ?? payload.basemap.attribution}
           metricScale={metricScale}
-          feature={null}
-          onReady={handleReferenceUiReady}
-          onError={handleReferenceUiError}
+          feature={activeFeatureDetails === null ? null : {
+            featureType: activeFeatureDetails.featureType,
+            displayId: activeFeatureDetails.displayId,
+            name: activeFeatureDetails.name,
+          }}
+          onReady={handleStandardUiReady}
+          onError={handleStandardUiError}
         />
         {failureMessage === null ? null : <span className="map-ready-error" role="alert">{failureMessage}</span>}
       </div>
-      <FeatureBar feature={null} />
+      <FeatureBar selectedLocationName={data.selected_location_name} />
     </main>
   );
 }

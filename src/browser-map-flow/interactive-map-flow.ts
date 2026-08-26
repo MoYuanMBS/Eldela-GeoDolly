@@ -79,6 +79,7 @@ export async function createInteractiveMapFlow(options: InteractiveMapFlowOption
         map: mapSurface.map,
         visualResult: visualRuntime.visualResult,
         config: options.interactionConfig,
+        handlers: options.interactionHandlers,
       });
     }
     const dispose = (): void => {
