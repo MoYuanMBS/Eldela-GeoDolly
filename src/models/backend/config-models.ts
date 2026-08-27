@@ -276,9 +276,10 @@ export const browserMapConfigSchema = z.object({
 
 //#########################browser UI###############################
 
-/** Browser UI 的部署配置；保持平铺，避免单字段 Scale 配置产生无意义层级。 */
+/** Browser UI 的部署配置；平铺保存彼此独立的公开尺寸参数。 */
 export const uiConfigSchema = z.object({
   max_scale_width_px: positiveIntegerSchema,
+  feature_ui_max_height_px: positiveIntegerSchema,
 }).strict();
 
 //#########################basemap proxy###############################

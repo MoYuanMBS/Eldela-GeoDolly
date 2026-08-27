@@ -2,6 +2,7 @@ import {createRoot} from "react-dom/client";
 import "../../styles/ui-palette.css";
 import "../../styles/web.css";
 import "../../styles/standard-bar.css";
+import "../../styles/feature-ui.css";
 import "../../styles/drawing.css";
 import {MapSurfaceView} from "../browser-map-flow/map-surface-view.js";
 import {AppError} from "../utils/app-error.js";

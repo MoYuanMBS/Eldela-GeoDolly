@@ -36,6 +36,7 @@ interface MapPageStyle extends CSSProperties {
   "--geomcp-standard-ui-live-feature-min-width": string;
   "--geomcp-standard-ui-divider-width": string;
   "--geomcp-feature-bar-gap": string;
+  "--geomcp-feature-ui-max-height": string;
   "--geomcp-scale-max-width": string;
 }
 
@@ -168,6 +169,7 @@ export function MapPage({mapDataUrl, MapSurfaceComponent}: MapPageProps) {
     "--geomcp-standard-ui-live-feature-min-width": `${UI_BUILT_IN_CONFIG.standardUi.liveFeatureMinWidth}px`,
     "--geomcp-standard-ui-divider-width": `${UI_BUILT_IN_CONFIG.standardUi.dividerWidth}px`,
     "--geomcp-feature-bar-gap": `${UI_BUILT_IN_CONFIG.featureBar.gapPx}px`,
+    "--geomcp-feature-ui-max-height": `${__GEOMCP_FEATURE_UI_MAX_HEIGHT_PX__}px`,
     "--geomcp-scale-max-width": `${__GEOMCP_MAX_SCALE_WIDTH_PX__}px`,
   };
   const failureMessage = mapRuntimeState.status === "failed"
@@ -227,7 +229,7 @@ export function MapPage({mapDataUrl, MapSurfaceComponent}: MapPageProps) {
         />
         {failureMessage === null ? null : <span className="map-ready-error" role="alert">{failureMessage}</span>}
       </div>
-      <FeatureBar selectedLocationName={data.selected_location_name} />
+      <FeatureBar selectedLocationName={data.selected_location_name} aiOutput={data.ai_output} />
     </main>
   );
 }

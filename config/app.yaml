@@ -182,6 +182,8 @@ basemap:
 ui:
   # 公制 Scale 在当前视口中心纬度处用于换算距离的最大逻辑像素宽度。
   max_scale_width_px: 100
+  # Feature UI 展开内容超过此高度后在面板内部滚动，不挤入 iframe 保证高度。
+  feature_ui_max_height_px: 480
 
 # Leaflet 地图视口与 Overlay renderer 的可公开调节参数。
 # 这些值由 TypeScript 在进程启动时校验，并随每次地图 payload 传给浏览器；浏览器不直接读取 YAML。

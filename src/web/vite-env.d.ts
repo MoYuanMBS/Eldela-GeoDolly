@@ -10,3 +10,4 @@ declare const __GEOMCP_MAP_PADDING__: {
 declare const __GEOMCP_MAP_READY_TIMEOUT_MS__: number;
 declare const __GEOMCP_PROXY_TILE_TIMEOUT_MS__: number;
 declare const __GEOMCP_MAX_SCALE_WIDTH_PX__: number;
+declare const __GEOMCP_FEATURE_UI_MAX_HEIGHT_PX__: number;
