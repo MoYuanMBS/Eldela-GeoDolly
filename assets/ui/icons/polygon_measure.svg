@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="measure_polygon" data-name="measure polygon" xmlns="http://www.w3.org/2000/svg" width="83.9415" height="82.988" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 83.9415 82.988">
+  <defs>
+    <pattern id="_新建图案色板_2" data-name="新建图案色板 2" x="0" y="0" width="54.9231" height="18.3077" patternTransform="translate(-8141.7078 -6934.113) rotate(44) scale(.1071)" patternUnits="userSpaceOnUse" viewBox="0 0 54.9231 18.3077">
+      <g>
+        <rect x="0" y="0" width="54.9231" height="18.3077" style="fill: none;"/>
+        <rect x="18.3077" y="0" width="18.3077" height="18.3077" style="fill: #e3695e;"/>
+        <rect x="36.6154" y="0" width="18.3077" height="18.3077" style="fill: none;"/>
+        <rect x="0" y="0" width="18.3077" height="18.3077" style="fill: none;"/>
+      </g>
+    </pattern>
+  </defs>
+  <polygon points="78.1784 21.9017 44.2436 2.3094 10.3087 21.9017 10.3087 61.0863 44.2436 80.6786 78.1784 61.0863 78.1784 21.9017" style="fill: none; stroke: #231815; stroke-dasharray: 4; stroke-miterlimit: 10; stroke-width: 4px;"/>
+  <polygon points="68.4806 27.5008 44.2436 13.5075 20.0066 27.5008 20.0066 55.4872 44.2436 69.4804 68.4806 55.4872 68.4806 27.5008" style="fill: #e49696;"/>
+  <polygon points="68.4806 27.5008 44.2436 13.5075 20.0066 27.5008 20.0066 55.4872 44.2436 69.4804 68.4806 55.4872 68.4806 27.5008" style="fill: url(#_新建图案色板_2); stroke: #e3695e; stroke-miterlimit: 10; stroke-width: 2px;"/>
+  <rect x="7.6213" y="15.7454" width="11.2289" height="15.6923" rx="3.588" ry="3.588" transform="translate(13.569 -3.4572) rotate(30)" style="fill: #e3695e; stroke: #231815; stroke-miterlimit: 10; stroke-width: 2px;"/>
+</svg>

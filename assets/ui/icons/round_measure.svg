@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="measure_round" data-name="measure round" xmlns="http://www.w3.org/2000/svg" width="83.9415" height="82.988" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 83.9415 82.988">
+  <defs>
+    <pattern id="_新建图案色板_2" data-name="新建图案色板 2" x="0" y="0" width="54.9231" height="18.3077" patternTransform="translate(-8092.674 -7441.9007) rotate(44) scale(.0608)" patternUnits="userSpaceOnUse" viewBox="0 0 54.9231 18.3077">
+      <g>
+        <rect x="0" y="0" width="54.9231" height="18.3077" style="fill: none;"/>
+        <rect x="18.3077" y="0" width="18.3077" height="18.3077" style="fill: #e3695e;"/>
+        <rect x="36.6154" y="0" width="18.3077" height="18.3077" style="fill: none;"/>
+        <rect x="0" y="0" width="18.3077" height="18.3077" style="fill: none;"/>
+      </g>
+    </pattern>
+  </defs>
+  <circle cx="45.3834" cy="41.494" r="24.3762" style="fill: #e49696;"/>
+  <circle cx="45.3834" cy="41.494" r="24.3762" style="fill: url(#_新建图案色板_2); stroke: #e3695e; stroke-miterlimit: 10; stroke-width: 2px;"/>
+  <circle cx="45.3834" cy="41.494" r="34.2858" style="fill: none; stroke: #040000; stroke-dasharray: 4; stroke-miterlimit: 10; stroke-width: 4px;"/>
+  <rect x="4.2723" y="31.8511" width="13.6506" height="19.2858" rx="4.295" ry="4.295" style="fill: #e3695e; stroke: #231815; stroke-miterlimit: 10; stroke-width: 2px;"/>
+</svg>

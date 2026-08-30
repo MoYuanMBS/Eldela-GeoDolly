@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="measure_line" data-name="measure line" xmlns="http://www.w3.org/2000/svg" width="108.484" height="127.2084" viewBox="0 0 108.484 127.2084">
+  <polyline points="7.2306 108.9814 30.2867 85.3249 53.5003 99.1911 76.7109 72.8637" style="fill: none; stroke: #231815; stroke-dasharray: 4; stroke-miterlimit: 10; stroke-width: 4px;"/>
+  <rect x="1" y="102.7508" width="12.4612" height="12.4612" rx="3.2986" ry="3.2986" style="fill: #e3695e; stroke: #231815; stroke-miterlimit: 10; stroke-width: 2px;"/>
+  <rect x="70.4803" y="66.6331" width="12.4612" height="12.4612" rx="3.2986" ry="3.2986" style="fill: #e3695e; stroke: #231815; stroke-miterlimit: 10; stroke-width: 2px;"/>
+</svg>
