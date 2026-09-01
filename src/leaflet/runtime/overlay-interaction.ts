@@ -165,6 +165,8 @@ function normalizeInteractionOrder(
 export function attachOverlayInteraction(options: AttachOverlayInteractionOptions): OverlayInteractionResult {
   const {map, visualResult, config, handlers} = options;
   const interactionPane = ensureInteractionPane(map);
+  const interactionPaneElement = map.getPane(interactionPane);
+  if (interactionPaneElement === undefined) throw new AppError("overlay_interaction", "Overlay interaction pane was not created");
   const renderer = canvas({pane: interactionPane, tolerance: 0});
   const rootLayer = layerGroup().addTo(map);
   rootLayer.addLayer(renderer);
@@ -177,6 +179,7 @@ export function attachOverlayInteraction(options: AttachOverlayInteractionOption
   const unsubscribeCallbacks: Array<() => void> = [];
   let hoverTarget: OverlayInteractionTarget | null = null;
   let selectedTarget: OverlayInteractionTarget | null = null;
+  let enabled = true;
   let disposed = false;
 
   const publishHover = (target: OverlayInteractionTarget | null): void => {
@@ -189,6 +192,7 @@ export function attachOverlayInteraction(options: AttachOverlayInteractionOption
     selectedTarget = target;
     handlers?.onSelectionChange(target);
   };
+  const clearHover = (): void => publishHover(null);
   const clearSelection = (): void => publishSelection(null);
 
   try {
@@ -238,9 +242,25 @@ export function attachOverlayInteraction(options: AttachOverlayInteractionOption
     unsubscribeCallbacks.push(visualResult.measurementController.subscribeBatchComplete(() => {
       if (!disposed) normalizeInteractionOrder(rootLayer, registrations);
     }));
-    const handleMapClick = (): void => clearSelection();
+    const handleMapClick = (): void => {
+      if (enabled) clearSelection();
+    };
     map.on("click", handleMapClick);
     unsubscribeCallbacks.push(() => map.off("click", handleMapClick));
+
+    const setEnabled = (nextEnabled: boolean): void => {
+      if (disposed || enabled === nextEnabled) return;
+      enabled = nextEnabled;
+      if (!enabled) {
+        clearHover();
+        clearSelection();
+        // Canvas renderer 覆盖整张 MapSurface；只暂停 pane 命中，避免 remove/add 后丢失事件状态。
+        interactionPaneElement.style.pointerEvents = "none";
+        return;
+      }
+      interactionPaneElement.style.pointerEvents = "auto";
+    };
+    const getEnabled = (): boolean => !disposed && enabled;
 
     const dispose = (): void => {
       if (disposed) return;
@@ -256,7 +276,7 @@ export function attachOverlayInteraction(options: AttachOverlayInteractionOption
       }
       rootLayer.remove();
     };
-    return Object.freeze({rootLayer, layerIndex: freezeInteractionLayerIndex(mutableLayerIndex), clearSelection, dispose});
+    return Object.freeze({rootLayer, layerIndex: freezeInteractionLayerIndex(mutableLayerIndex), clearSelection, clearHover, setEnabled, getEnabled, dispose});
   } catch (error) {
     // attach 中途失败时撤销已经建立的订阅，不能把半成品 Interaction 留给 Visual 生命周期。
     disposed = true;

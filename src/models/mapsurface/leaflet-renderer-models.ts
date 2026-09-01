@@ -219,6 +219,12 @@ export interface OverlayInteractionResult {
   layerIndex: OverlayInteractionLayerIndex;
   /** UI close button 与地图空白点击共用同一个 selection 清理入口。 */
   clearSelection(): void;
+  /** Measurement hover 获得优先级时清理已过期的 Overlay hover。 */
+  clearHover(): void;
+  /** Measure Tool 绘制期间暂停透明 hit root；可见 Overlay 不受影响。 */
+  setEnabled(enabled: boolean): void;
+  /** Controller 进入前记录实际状态，退出时不误恢复其他所有者的 suspension。 */
+  getEnabled(): boolean;
   /** 幂等清理 measurement 订阅、未来 UI listener 与全部透明 hit Paths。 */
   dispose(): void;
 }

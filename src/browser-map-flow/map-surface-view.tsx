@@ -8,8 +8,11 @@ import {calculateLeafletMetricScale} from "../leaflet/runtime/metric-scale.js";
 import {initializeRuntimeStyle} from "../leaflet/styles/runtime-style-initializer.js";
 import type {InteractiveMapFlowResult} from "../models/mapsurface/basemap-runtime-models.js";
 import type {LeafletMetricScaleResult} from "../models/mapsurface/leaflet-renderer-models.js";
+import {INITIAL_MEASURE_TOOL_UI_STATE, type MeasureToolUiStateType} from "../models/measure-tools/measure-tool-models.js";
 import type {RuntimeStylePlan} from "../models/mapsurface/style/runtime-style-models.js";
-import type {MapSurfacePortProps, MetricScaleViewType} from "../web/map-surface-port.js";
+import type {MapSurfacePortProps, MeasureToolUiPortType, MetricScaleViewType} from "../web/map-surface-port.js";
+import type {MeasureToolController} from "../models/measure-tools/measure-tool-runtime-models.js";
+import {AppError} from "../utils/app-error.js";
 import {createBrowserWarningReporter} from "./browser-warning-reporter.js";
 
 // 内建 Canvas/CSS 只在地图适配层初始化，纯 UI 模块不会导入 Leaflet 样式系统。
@@ -23,11 +26,22 @@ function toMetricScaleView(metricScale: LeafletMetricScaleResult): MetricScaleVi
   return Object.freeze({label: metricScale.label, widthPx: metricScale.widthPx});
 }
 
+function createUnavailableMeasureToolPort(message: string): MeasureToolUiPortType {
+  // Measure Tool 初始化失败不应拖垮已 ready 的地图；提供只读失败 state 让 Toolbar/HUD 安全降级。
+  const state: MeasureToolUiStateType = Object.freeze({...INITIAL_MEASURE_TOOL_UI_STATE, revision: 1, errorMessage: message});
+  return Object.freeze({
+    getUiState: () => state,
+    subscribe: () => () => undefined,
+    setMode: () => undefined,
+    clearMeasurementSelection: () => undefined,
+  });
+}
+
 /**
  * Leaflet adapter 只负责提供真实 DOM 容器并把纯数据 port 转换成 Interactive Flow 输入。
  * 异步 Flow 的完成时间可能晚于组件卸载，因此 abort 与晚到结果的 dispose 必须共同守住清理边界。
  */
-export function MapSurfaceView({mapPayload, stylePayload, onMetricScaleChange, onZoomCommandsChange, onInteractionCommandsChange, onHoveredFeatureChange, onSelectedFeatureChange, onMapRuntimeReady, onMapRuntimeError}: MapSurfacePortProps) {
+export function MapSurfaceView({mapPayload, stylePayload, onMetricScaleChange, onZoomCommandsChange, onInteractionCommandsChange, onMeasureToolPortChange, onActiveMeasurementChange, onHoveredFeatureChange, onSelectedFeatureChange, onMapRuntimeReady, onMapRuntimeError}: MapSurfacePortProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -49,6 +63,7 @@ export function MapSurfaceView({mapPayload, stylePayload, onMetricScaleChange, o
     // reporter 的去重集合与当前 React/MapSurface 生命周期一致，后续平移缩放仍复用同一通道。
     const warningReporter = createBrowserWarningReporter();
     let flowResult: InteractiveMapFlowResult | null = null;
+    let measureToolController: MeasureToolController | null = null;
     let disposeMetricScaleListener: (() => void) | null = null;
     const overlay = overlayOutput !== null && relationMemberFeaturesByRelation !== null && stylePlan !== null
       ? {
@@ -90,11 +105,19 @@ export function MapSurfaceView({mapPayload, stylePayload, onMetricScaleChange, o
       coreOverlay,
       interactionConfig: leafletConfig.interaction,
       interactionHandlers: {
-        onHoverChange: onHoveredFeatureChange,
-        onSelectionChange: onSelectedFeatureChange,
+        onHoverChange: (target) => {
+          // Overlay 成为 active target 时只清 Measurement hover；selection 仍由各自 click 路径仲裁。
+          if (target !== null) measureToolController?.clearMeasurementHover();
+          onHoveredFeatureChange(target);
+        },
+        onSelectionChange: (target) => {
+          // 两套 selection 不能并存，避免 Standard UI 与删除按钮同时指向不同对象。
+          if (target !== null) measureToolController?.clearMeasurementSelection();
+          onSelectedFeatureChange(target);
+        },
       },
       warningReporter,
-    }).then((result) => {
+    }).then(async (result) => {
       // Promise 可能在 React cleanup 之后才完成，此时结果从未交给组件，必须立即自行释放。
       if (abortController.signal.aborted) {
         result.dispose();
@@ -134,6 +157,29 @@ export function MapSurfaceView({mapPayload, stylePayload, onMetricScaleChange, o
       onInteractionCommandsChange(result.interactionResult === null ? null : Object.freeze({
         clearSelection: () => result.interactionResult?.clearSelection(),
       }));
+      try {
+        // GeographicLib 与 Measure Tool 只从 Interactive adapter 动态加载，Snapshot flow 不会请求该 chunk。
+        const {createMeasureToolController} = await import("../measure-tools/leaflet/measure-tool-controller.js");
+        if (abortController.signal.aborted) return;
+        measureToolController = createMeasureToolController({
+          map: result.mapSurface.map,
+          overlayInteraction: result.interactionResult,
+          previewRefreshIntervalMs: __GEOMCP_MEASUREMENT_PREVIEW_REFRESH_INTERVAL_MS__,
+          onActiveMeasurementChange,
+        });
+        onMeasureToolPortChange(Object.freeze({
+          // 只向 React 暴露纯状态订阅与 command，不把 map/layer/controller 实例放入 component state。
+          getUiState: measureToolController.getUiState,
+          subscribe: measureToolController.subscribe,
+          setMode: measureToolController.setMode,
+          clearMeasurementSelection: measureToolController.clearMeasurementSelection,
+        }));
+      } catch (error) {
+        if (abortController.signal.aborted) return;
+        const message = AppError.fromUnknown(error, "measure_tool_init_failed", "Measure Tool could not be initialized").message;
+        console.warn("[GeoMCP] Measure Tool is unavailable; the ready map remains usable.", error);
+        onMeasureToolPortChange(createUnavailableMeasureToolPort(message));
+      }
       onMetricScaleChange(toMetricScaleView(currentMetricScale));
       onMapRuntimeReady(result.readySummary.status);
     }).catch((error: unknown) => {
@@ -147,12 +193,16 @@ export function MapSurfaceView({mapPayload, stylePayload, onMetricScaleChange, o
     return () => {
       // 先停止 UI 订阅和异步批次，再按 Interactive Flow 内部定义的顺序释放已完成资源。
       disposeMetricScaleListener?.();
+      measureToolController?.dispose();
+      measureToolController = null;
       onZoomCommandsChange(null);
       onInteractionCommandsChange(null);
+      onMeasureToolPortChange(null);
+      onActiveMeasurementChange(null);
       abortController.abort();
       flowResult?.dispose();
     };
-  }, [mapPayload, stylePayload, onMetricScaleChange, onZoomCommandsChange, onInteractionCommandsChange, onHoveredFeatureChange, onSelectedFeatureChange, onMapRuntimeReady, onMapRuntimeError]);
+  }, [mapPayload, stylePayload, onMetricScaleChange, onZoomCommandsChange, onInteractionCommandsChange, onMeasureToolPortChange, onActiveMeasurementChange, onHoveredFeatureChange, onSelectedFeatureChange, onMapRuntimeReady, onMapRuntimeError]);
 
   return <div ref={containerRef} className="map-surface" aria-label="Interactive map" />;
 }

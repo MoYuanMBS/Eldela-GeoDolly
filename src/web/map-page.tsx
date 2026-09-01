@@ -1,16 +1,17 @@
 import {useCallback, useEffect, useMemo, useRef, useState, type CSSProperties} from "react";
-import {interactiveMapDataSchema, type DrawingUiModeType, type InteractiveMapDataType} from "../models/web/interactive-ui-models.js";
+import type {ActiveMeasurementTargetType} from "../models/measure-tools/measure-tool-models.js";
+import {interactiveMapDataSchema, type InteractiveMapDataType} from "../models/web/interactive-ui-models.js";
 import {AppError} from "../utils/app-error.js";
 import {UI_BUILT_IN_CONFIG} from "../built-in-config/ui.js";
-import {DrawingToolbar} from "../ui/drawing-toolbar.js";
 import {FeatureBar} from "../ui/feature-bar.js";
-import {MeasurementHUD} from "../ui/measurement-hud.js";
+import {MeasureToolUi} from "../ui/measure-tool-ui.js";
 import {OsmTagsPopup} from "../ui/osm-tags-popup.js";
 import {StandardBar} from "../ui/standard-bar.js";
 import {resolveInteractiveFeatureDetails} from "./interactive-feature-details.js";
 import type {
   InteractiveFeatureTargetType,
   MapRuntimeStatusType,
+  MeasureToolUiPortType,
   MapSurfaceInteractionCommands,
   MapSurfacePortComponentType,
   MapSurfaceZoomCommands,
@@ -57,7 +58,9 @@ export function MapPage({mapDataUrl, MapSurfaceComponent}: MapPageProps) {
   const [standardUiState, setStandardUiState] = useState<StandardUiState>({status: "pending"});
   const [hoveredFeature, setHoveredFeature] = useState<InteractiveFeatureTargetType | null>(null);
   const [selectedFeature, setSelectedFeature] = useState<InteractiveFeatureTargetType | null>(null);
-  const [drawingMode, setDrawingMode] = useState<DrawingUiModeType>("idle");
+  const [measureToolPort, setMeasureToolPort] = useState<MeasureToolUiPortType | null>(null);
+  // 这里只保存低频 hover/selection 摘要；mousemove draft state 由独立 MeasureToolUi 子树订阅。
+  const [activeMeasurementTarget, setActiveMeasurementTarget] = useState<ActiveMeasurementTargetType | null>(null);
   const zoomCommandsRef = useRef<MapSurfaceZoomCommands | null>(null);
   const interactionCommandsRef = useRef<MapSurfaceInteractionCommands | null>(null);
 
@@ -67,7 +70,8 @@ export function MapPage({mapDataUrl, MapSurfaceComponent}: MapPageProps) {
     setStandardUiState({status: "pending"});
     setHoveredFeature(null);
     setSelectedFeature(null);
-    setDrawingMode("idle");
+    setMeasureToolPort(null);
+    setActiveMeasurementTarget(null);
     zoomCommandsRef.current = null;
     interactionCommandsRef.current = null;
     if (mapDataUrl === null) {
@@ -103,6 +107,12 @@ export function MapPage({mapDataUrl, MapSurfaceComponent}: MapPageProps) {
   }, []);
   const handleInteractionCommandsChange = useCallback((commands: MapSurfaceInteractionCommands | null): void => {
     interactionCommandsRef.current = commands;
+  }, []);
+  const handleMeasureToolPortChange = useCallback((port: MeasureToolUiPortType | null): void => {
+    setMeasureToolPort(port);
+  }, []);
+  const handleActiveMeasurementChange = useCallback((target: ActiveMeasurementTargetType | null): void => {
+    setActiveMeasurementTarget(target);
   }, []);
   const handleZoomIn = useCallback((): void => {
     zoomCommandsRef.current?.zoomIn();
@@ -152,6 +162,11 @@ export function MapPage({mapDataUrl, MapSurfaceComponent}: MapPageProps) {
     );
   }, [loadState, selectedFeature]);
 
+  // 跨类型优先级：Measurement selection > Feature selection > Measurement hover > Feature hover。
+  const standardMeasurement = activeMeasurementTarget?.interactionState === "selected" || selectedFeature === null
+    ? activeMeasurementTarget?.measurement ?? null
+    : null;
+
   if (loadState.status === "loading") {
     return <main className="map-page-state" role="status">Loading map data…</main>;
   }
@@ -196,20 +211,20 @@ export function MapPage({mapDataUrl, MapSurfaceComponent}: MapPageProps) {
             onMetricScaleChange={handleMetricScaleChange}
             onZoomCommandsChange={handleZoomCommandsChange}
             onInteractionCommandsChange={handleInteractionCommandsChange}
+            onMeasureToolPortChange={handleMeasureToolPortChange}
+            onActiveMeasurementChange={handleActiveMeasurementChange}
             onHoveredFeatureChange={setHoveredFeature}
             onSelectedFeatureChange={setSelectedFeature}
             onMapRuntimeReady={handleMapRuntimeReady}
             onMapRuntimeError={handleMapRuntimeError}
           />
           <div className="interactive-ui-root">
-            <DrawingToolbar
-              mode={drawingMode}
+            <MeasureToolUi
+              port={measureToolPort}
               disabled={mapRuntimeState.status !== "ready"}
               onZoomIn={handleZoomIn}
               onZoomOut={handleZoomOut}
-              onModeChange={setDrawingMode}
             />
-            <MeasurementHUD mode={drawingMode} rows={[]} />
             {selectedFeatureDetails === null ? null : <OsmTagsPopup details={selectedFeatureDetails} onClose={handleCloseTagsPopup} />}
           </div>
         </div>
@@ -219,11 +234,12 @@ export function MapPage({mapDataUrl, MapSurfaceComponent}: MapPageProps) {
           attributionUrl={payload.basemap.attribution_url}
           attributionDescription={payload.basemap.full_attribution ?? payload.basemap.attribution}
           metricScale={metricScale}
-          feature={activeFeatureDetails === null ? null : {
+          feature={standardMeasurement !== null || activeFeatureDetails === null ? null : {
             featureType: activeFeatureDetails.featureType,
             displayId: activeFeatureDetails.displayId,
             name: activeFeatureDetails.name,
           }}
+          measurement={standardMeasurement}
           onReady={handleStandardUiReady}
           onError={handleStandardUiError}
         />

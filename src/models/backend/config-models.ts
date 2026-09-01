@@ -280,6 +280,7 @@ export const browserMapConfigSchema = z.object({
 export const uiConfigSchema = z.object({
   max_scale_width_px: positiveIntegerSchema,
   feature_ui_max_height_px: positiveIntegerSchema,
+  measurement_preview_refresh_interval_ms: positiveIntegerSchema,
 }).strict();
 
 //#########################basemap proxy###############################

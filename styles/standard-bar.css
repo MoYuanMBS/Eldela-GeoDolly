@@ -131,6 +131,16 @@
   object-fit: contain;
 }
 
+.standard-live-measurement-icon {
+  /* Measurement SVG 比空间 Feature 图标信息密度更高，使用固定槽位防止数值变化挤压栏高。 */
+  width: 28px;
+  height: 28px;
+}
+
+.standard-live-measurement-values {
+  font-variant-numeric: tabular-nums;
+}
+
 .standard-live-feature-id {
   flex: 0 0 auto;
   font-size: 11px;

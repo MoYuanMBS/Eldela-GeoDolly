@@ -31,9 +31,6 @@ export type InteractiveMapDataType = z.infer<typeof interactiveMapDataSchema>;
 /** UI 只认识业务 Feature 类型；不得借用 Leaflet Canvas renderer 的类型作为页面契约。 */
 export type InteractiveSpatialFeatureType = Exclude<IdentifiedOverlayFeatureKindType, "relation">;
 
-/** React 与后续 DrawingController 共享的可序列化工具状态。 */
-export type DrawingUiModeType = "idle" | "draw_path" | "draw_circle";
-
 /** selected/hover 解析完成后交给 Interactive UI 的最小空间对象摘要。 */
 export interface InteractiveFeatureSummaryType {
   featureType: InteractiveSpatialFeatureType;

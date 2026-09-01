@@ -1,5 +1,6 @@
 import type {ComponentType} from "react";
 import type {CommonVisualMapPayloadType} from "../models/mapsurface/map-payload-models.js";
+import type {ActiveMeasurementTargetType, MeasureToolModeType, MeasureToolUiStateType} from "../models/measure-tools/measure-tool-models.js";
 import type {RenderStylePayload} from "../models/mapsurface/style/user-css-style-models.js";
 import type {InteractiveSpatialFeatureType} from "../models/web/interactive-ui-models.js";
 
@@ -27,6 +28,14 @@ export interface MapSurfaceInteractionCommands {
   clearSelection(): void;
 }
 
+/** UI 只订阅纯数据 state 并发送 mode command；不接触 Leaflet Layer。 */
+export interface MeasureToolUiPortType {
+  getUiState(): MeasureToolUiStateType;
+  subscribe(listener: () => void): () => void;
+  setMode(mode: MeasureToolModeType): void;
+  clearMeasurementSelection(): void;
+}
+
 /**
  * UI 与地图实现之间的唯一接线契约。
  * 这里刻意只允许可序列化 payload、纯数据事件和命令函数，禁止 Leaflet Map/Layer/Event 泄漏到 UI。
@@ -37,6 +46,8 @@ export interface MapSurfacePortProps {
   onMetricScaleChange(metricScale: MetricScaleViewType): void;
   onZoomCommandsChange(commands: MapSurfaceZoomCommands | null): void;
   onInteractionCommandsChange(commands: MapSurfaceInteractionCommands | null): void;
+  onMeasureToolPortChange(port: MeasureToolUiPortType | null): void;
+  onActiveMeasurementChange(target: ActiveMeasurementTargetType | null): void;
   onHoveredFeatureChange(target: InteractiveFeatureTargetType | null): void;
   onSelectedFeatureChange(target: InteractiveFeatureTargetType | null): void;
   onMapRuntimeReady(status: MapRuntimeStatusType): void;

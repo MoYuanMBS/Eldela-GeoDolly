@@ -138,6 +138,16 @@
   color: color-mix(in srgb, var(--geomcp-ui-text) 72%, transparent);
 }
 
+.measurement-hud-warning,
+.measurement-hud-error {
+  color: var(--geomcp-ui-bar-end);
+  font-size: 10px;
+}
+
+.measurement-hud-state-failed {
+  border-color: var(--geomcp-ui-bar-end);
+}
+
 .measurement-hud-values {
   display: grid;
   margin: 0;
@@ -154,6 +164,38 @@
 .measurement-hud-row-label,
 .measurement-hud-row-value {
   margin: 0;
+}
+
+.measurement-delete-marker {
+  border: 0;
+  background: transparent;
+}
+
+/* Marker 的 26px 尺寸由 Leaflet inline style 提供；button 填满它，SVG 留 1px 安全边。 */
+.measurement-delete-button {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 1px;
+  border: 1px solid color-mix(in srgb, var(--geomcp-ui-bar-end) 72%, transparent);
+  border-radius: 50%;
+  background-color: color-mix(in srgb, var(--geomcp-ui-surface) 92%, transparent);
+  background-image: url("../assets/ui/icons/delete.svg");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: calc(100% - 2px) calc(100% - 2px);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--geomcp-ui-text) 18%, transparent);
+  cursor: pointer;
+}
+
+.measurement-delete-button:hover,
+.measurement-delete-button:focus-visible {
+  background-color: var(--geomcp-ui-highlight);
+}
+
+.measurement-delete-button:focus-visible {
+  outline: 2px solid var(--geomcp-ui-bar-end);
+  outline-offset: 1px;
 }
 
 .measurement-hud-row-value {

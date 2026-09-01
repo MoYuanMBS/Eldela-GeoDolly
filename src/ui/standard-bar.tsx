@@ -5,9 +5,14 @@ import rightEndDecorationUrl from "../../assets/ui/decorations/right-up.svg";
 import nodeIconUrl from "../../assets/ui/icons/node.svg";
 import polygonIconUrl from "../../assets/ui/icons/polygon.svg";
 import wayIconUrl from "../../assets/ui/icons/way.svg";
+import lineMeasurementIconUrl from "../../assets/ui/icons/line_measure.svg";
+import polygonMeasurementIconUrl from "../../assets/ui/icons/polygon_measure.svg";
+import circleMeasurementIconUrl from "../../assets/ui/icons/round_measure.svg";
+import type {CompletedMeasurementType} from "../models/measure-tools/measure-tool-models.js";
 import type {InteractiveFeatureSummaryType} from "../models/web/interactive-ui-models.js";
 import {AppError} from "../utils/app-error.js";
 import type {MetricScaleViewType} from "../web/map-surface-port.js";
+import {formatCompletedMeasurementRows} from "./measurement-formatter.js";
 
 interface StandardBarProps {
   logicalWidth: number;
@@ -16,6 +21,7 @@ interface StandardBarProps {
   attributionDescription: string;
   metricScale: MetricScaleViewType | null;
   feature: InteractiveFeatureSummaryType | null;
+  measurement: CompletedMeasurementType | null;
   onReady(measuredHeight: number): void;
   onError(message: string): void;
 }
@@ -28,6 +34,12 @@ const FEATURE_TYPE_ICONS = {
   node: nodeIconUrl,
   way: wayIconUrl,
   area: polygonIconUrl,
+} as const;
+
+const MEASUREMENT_TYPE_ICONS = {
+  line: lineMeasurementIconUrl,
+  polygon: polygonMeasurementIconUrl,
+  circle: circleMeasurementIconUrl,
 } as const;
 
 type StandardUiStatus = "pending" | "waiting-scale" | "measuring" | "locked" | "ready" | "failed";
@@ -116,7 +128,7 @@ function hasLayoutOverflow(element: HTMLElement): boolean {
 }
 
 /** Interactive MapSurface 外部的实时 Scale / Feature / Attribution，并负责锁定自身高度。 */
-export function StandardBar({logicalWidth, attributionText, attributionUrl, attributionDescription, metricScale, feature, onReady, onError}: StandardBarProps) {
+export function StandardBar({logicalWidth, attributionText, attributionUrl, attributionDescription, metricScale, feature, measurement, onReady, onError}: StandardBarProps) {
   const elementRef = useRef<HTMLElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const [layoutStatus, setLayoutStatus] = useState<StandardUiStatus>("pending");
@@ -202,7 +214,13 @@ export function StandardBar({logicalWidth, attributionText, attributionUrl, attr
   const scaleStyle: MetricScaleStyle = {
     "--geomcp-metric-scale-width": `${metricScale?.widthPx ?? 0}px`,
   };
-  const featureTypeClass = feature === null ? "standard-bar-feature-empty" : `standard-bar-feature-${feature.featureType}`;
+  const featureTypeClass = measurement !== null
+    ? `standard-bar-measurement-${measurement.kind}`
+    : feature === null ? "standard-bar-feature-empty" : `standard-bar-feature-${feature.featureType}`;
+  const measurementRows = measurement === null ? [] : formatCompletedMeasurementRows(measurement);
+  const liveTargetLabel = measurement !== null
+    ? `Current ${measurement.kind} measurement, ${measurementRows.map((row) => `${row.label} ${row.value}`).join(", ")}`
+    : feature === null ? "No current feature" : `Current ${feature.featureType} feature ${feature.displayId}${feature.name === null ? "" : `, ${feature.name}`}`;
   return (
     <footer ref={elementRef} className={`standard-bar standard-bar-status-${layoutStatus} ${featureTypeClass}`} aria-label="Interactive map standard information" data-standard-ui-status={layoutStatus}>
       <div ref={contentRef} className="standard-bar-content">
@@ -215,12 +233,19 @@ export function StandardBar({logicalWidth, attributionText, attributionUrl, attr
         </section>
         <StandardBarDivider position="scale-feature" />
         <div
-          className={`standard-bar-block standard-bar-block-feature standard-live-feature ${feature === null ? "standard-live-feature-empty" : `standard-live-feature-${feature.featureType}`}`}
-          aria-label={feature === null ? "No current feature" : `Current ${feature.featureType} feature ${feature.displayId}${feature.name === null ? "" : `, ${feature.name}`}`}
+          className={`standard-bar-block standard-bar-block-feature standard-live-feature ${measurement !== null ? `standard-live-measurement-${measurement.kind}` : feature === null ? "standard-live-feature-empty" : `standard-live-feature-${feature.featureType}`}`}
+          aria-label={liveTargetLabel}
           aria-live="polite"
-          data-feature-state={feature === null ? "empty" : "ready"}
+          data-feature-state={measurement === null && feature === null ? "empty" : "ready"}
+          data-live-target={measurement !== null ? "measurement" : feature === null ? "empty" : "feature"}
         >
-          {feature === null ? null : (
+          {measurement !== null ? (
+            <>
+              <img className={`standard-live-feature-icon standard-live-measurement-icon standard-live-measurement-icon-${measurement.kind}`} src={MEASUREMENT_TYPE_ICONS[measurement.kind]} alt="" draggable={false} aria-hidden="true" />
+              <span className="standard-live-feature-id standard-live-measurement-kind">测量 {measurement.kind[0].toUpperCase() + measurement.kind.slice(1)}</span>
+              <span className="standard-live-feature-name standard-live-measurement-values">{measurementRows.map((row) => `${row.label}: ${row.value}`).join(" · ")}</span>
+            </>
+          ) : feature === null ? null : (
             <>
               <img className={`standard-live-feature-icon standard-live-feature-icon-${feature.featureType}`} src={FEATURE_TYPE_ICONS[feature.featureType]} alt="" draggable={false} aria-hidden="true" />
               <span className="standard-live-feature-id">{feature.displayId}</span>
