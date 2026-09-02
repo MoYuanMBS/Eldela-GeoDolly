@@ -21,23 +21,23 @@ export function MeasurementHUD({state}: MeasurementHudProps) {
     : null;
   const measurementState = state.errorMessage !== null ? "failed" : rows.length === 0 ? "empty" : "ready";
   return (
-    <aside className={`measurement-hud measurement-hud-mode-${state.mode.replace("_", "-")} measurement-hud-state-${measurementState}`} aria-label="Drawing measurement" aria-live="polite" data-measurement-state={measurementState}>
-      <span className="measurement-hud-title">Measurement</span>
+    <aside className={`geomcp-measurement-hud geomcp-measurement-hud-mode-${state.mode.replace("_", "-")} geomcp-measurement-hud-state-${measurementState}`} aria-label="Drawing measurement" aria-live="polite" data-measurement-state={measurementState}>
+      <span className="geomcp-measurement-hud-title">Measurement</span>
       {state.errorMessage !== null
-        ? <span className="measurement-hud-error">{state.errorMessage}</span>
+        ? <span className="geomcp-measurement-hud-error">{state.errorMessage}</span>
         : rows.length === 0
-        ? <span className={`measurement-hud-empty measurement-hud-empty-${state.mode.replace("_", "-")}`}>{MODE_INSTRUCTIONS[state.mode]}</span>
+        ? <span className={`geomcp-measurement-hud-empty geomcp-measurement-hud-empty-${state.mode.replace("_", "-")}`}>{MODE_INSTRUCTIONS[state.mode]}</span>
         : (
-            <dl className="measurement-hud-values">
+            <dl className="geomcp-measurement-hud-values">
               {rows.map((row) => (
-                <div className="measurement-hud-row" key={row.label}>
-                  <dt className="measurement-hud-row-label">{row.label}</dt>
-                  <dd className="measurement-hud-row-value">{row.value}</dd>
+                <div className="geomcp-measurement-hud-row" key={row.label}>
+                  <dt className="geomcp-measurement-hud-row-label">{row.label}</dt>
+                  <dd className="geomcp-measurement-hud-row-value">{row.value}</dd>
                 </div>
               ))}
             </dl>
           )}
-      {warning === null ? null : <span className="measurement-hud-warning">{warning}</span>}
+      {warning === null ? null : <span className="geomcp-measurement-hud-warning">{warning}</span>}
     </aside>
   );
 }

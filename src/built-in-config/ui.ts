@@ -23,4 +23,17 @@ export const UI_BUILT_IN_CONFIG = {
     minWidth: 600,
     minHeight: 50,
   },
+  attribution: {
+    separator: " · ",
+    references: {
+      leaflet: {
+        attribution: "Leaflet",
+        attribution_url: "https://leafletjs.com/"
+      },
+      osmData: {
+        attribution: "© OpenStreetMap contributors",
+        attribution_url: "https://www.openstreetmap.org/copyright"
+      },
+    },
+  },
 } as const;

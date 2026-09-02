@@ -1,0 +1,237 @@
+:root {
+  color: var(--geomcp-ui-text);
+  font-family: "GeoMCP Source Han Sans", sans-serif;
+}
+
+.geomcp-tool-bar-button {
+  color: var(--geomcp-ui-text);
+}
+
+.geomcp-tool-bar-zoom-symbol {
+  font-family: sans-serif;
+  font-size: 21px;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.geomcp-standard-bar {
+  color: var(--geomcp-ui-text);
+  font-family: "GeoMCP Source Han Sans", sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.geomcp-standard-scale-label {
+  color: var(--geomcp-ui-text);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  line-height: 14px;
+  text-align: center;
+  text-overflow: ellipsis;
+}
+
+.geomcp-standard-live-measurement-values {
+  font-variant-numeric: tabular-nums;
+}
+
+.geomcp-standard-live-feature-id {
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.geomcp-standard-live-feature-name {
+  min-width: 0;
+  overflow: hidden;
+  color: color-mix(in srgb, var(--geomcp-ui-text) 76%, transparent);
+  font-size: 11px;
+  text-overflow: ellipsis;
+}
+
+.geomcp-standard-attribution {
+  font-size: 11px;
+  line-height: 1.35;
+  text-align: right;
+}
+
+.geomcp-standard-attribution-link {
+  color: var(--geomcp-ui-text);
+  text-decoration: none;
+}
+
+.geomcp-standard-attribution-link:hover,
+.geomcp-standard-attribution-link:focus-visible {
+  color: var(--geomcp-ui-text);
+  text-decoration: underline;
+  text-decoration-color: var(--geomcp-ui-bar-end);
+  text-underline-offset: 2px;
+}
+
+.geomcp-standard-bar-status-waiting-scale,
+.geomcp-standard-bar-status-measuring {
+  color: color-mix(in srgb, var(--geomcp-ui-text) 64%, var(--geomcp-ui-surface));
+}
+
+.geomcp-feature-bar {
+  color: var(--geomcp-ui-text);
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.geomcp-feature-bar-toggle {
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  text-align: left;
+}
+
+.geomcp-feature-bar-title {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.geomcp-feature-bar-location-name {
+  font-weight: 600;
+}
+
+.geomcp-measurement-hud {
+  color: var(--geomcp-ui-text);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.geomcp-measurement-hud-title {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.geomcp-measurement-hud-empty {
+  color: color-mix(in srgb, var(--geomcp-ui-text) 72%, transparent);
+}
+
+.geomcp-measurement-hud-warning,
+.geomcp-measurement-hud-error {
+  color: var(--geomcp-ui-bar-end);
+  font-size: 10px;
+}
+
+.geomcp-measurement-hud-row-value {
+  overflow: hidden;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.geomcp-osm-tags-popup {
+  color: var(--geomcp-ui-text);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.geomcp-osm-tags-popup-title {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.geomcp-osm-tags-popup-close {
+  color: var(--geomcp-ui-text);
+  font: inherit;
+  font-size: 19px;
+  line-height: 1;
+}
+
+.geomcp-osm-tags-popup-section-title,
+.geomcp-osm-tags-popup-tag-group-title {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.geomcp-osm-tags-popup-section-title {
+  margin-bottom: 6px;
+  color: color-mix(in srgb, var(--geomcp-ui-text) 72%, transparent);
+  text-transform: uppercase;
+}
+
+.geomcp-osm-tags-popup-osm-refs,
+.geomcp-osm-tags-popup-tag-key,
+.geomcp-osm-tags-popup-tag-value,
+.geomcp-osm-tags-popup-relation-role {
+  overflow-wrap: anywhere;
+}
+
+.geomcp-osm-tags-popup-osm-refs {
+  font-variant-numeric: tabular-nums;
+}
+
+.geomcp-osm-tags-popup-empty {
+  color: color-mix(in srgb, var(--geomcp-ui-text) 68%, transparent);
+}
+
+.geomcp-osm-tags-popup-tag-key {
+  color: color-mix(in srgb, var(--geomcp-ui-text) 70%, transparent);
+}
+
+.geomcp-osm-tags-popup-relation-id {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.geomcp-osm-tags-popup-relation-role {
+  flex: 0 1 auto;
+  color: color-mix(in srgb, var(--geomcp-ui-text) 68%, transparent);
+}
+
+.geomcp-ai-output-group-summary {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.geomcp-ai-output-group-count,
+.geomcp-ai-output-record-summary {
+  font-variant-numeric: tabular-nums;
+}
+
+.geomcp-ai-output-group-count {
+  text-align: center;
+}
+
+.geomcp-ai-output-record-kind,
+.geomcp-ai-output-field-row > dt,
+.geomcp-ai-output-tag-row > dt {
+  font-weight: 600;
+}
+
+.geomcp-ai-output-record-id {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.geomcp-ai-output-field-row > dd,
+.geomcp-ai-output-tag-row > dd {
+  overflow-wrap: anywhere;
+}
+
+.geomcp-ai-output-empty-group,
+.geomcp-ai-output-empty-value {
+  color: color-mix(in srgb, var(--geomcp-ui-text) 64%, transparent);
+}
+
+.geomcp-map-ready-error {
+  color: var(--geomcp-ui-text);
+  font-size: 12px;
+}
+
+.geomcp-map-page-error {
+  color: var(--geomcp-ui-text);
+}

@@ -8,6 +8,7 @@ import {
   type Polyline,
 } from "leaflet";
 import {MEASURE_TOOL_BUILT_IN_CONFIG} from "../../built-in-config/measure-tool.js";
+import {UI_SVG_ASSETS} from "../../built-in-config/ui-svg.js";
 import {
   INITIAL_MEASURE_TOOL_UI_STATE,
   type ActiveMeasurementTargetType,
@@ -300,13 +301,20 @@ export function createMeasureToolController(options: MeasureToolControllerOption
     const anchor = layerRuntime.getVisualNorthEast(record.visualLayer);
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "measurement-delete-button";
+    button.className = "geomcp-measurement-delete-button";
     button.setAttribute("aria-label", `Delete ${record.measurement.kind} measurement`);
     DomEvent.disableClickPropagation(button);
     DomEvent.disableScrollPropagation(button);
+    const deleteImage = document.createElement("img");
+    deleteImage.className = "geomcp-ui-icon geomcp-ui-icon-delete";
+    deleteImage.src = UI_SVG_ASSETS.icons.delete;
+    deleteImage.alt = "";
+    deleteImage.draggable = false;
+    deleteImage.setAttribute("aria-hidden", "true");
+    button.append(deleteImage);
     button.addEventListener("click", () => deleteMeasurement(record.measurement.measurementId), {once: true});
     const icon = divIcon({
-      className: "measurement-delete-marker",
+      className: "geomcp-measurement-delete-marker",
       html: button,
       iconSize: [MEASURE_TOOL_BUILT_IN_CONFIG.deleteMarkerSizePx, MEASURE_TOOL_BUILT_IN_CONFIG.deleteMarkerSizePx],
       iconAnchor: [MEASURE_TOOL_BUILT_IN_CONFIG.deleteMarkerSizePx / 2, MEASURE_TOOL_BUILT_IN_CONFIG.deleteMarkerSizePx / 2],

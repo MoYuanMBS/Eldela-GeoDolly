@@ -168,10 +168,10 @@ export function MapPage({mapDataUrl, MapSurfaceComponent}: MapPageProps) {
     : null;
 
   if (loadState.status === "loading") {
-    return <main className="map-page-state" role="status">Loading map data…</main>;
+    return <main className="geomcp-map-page-state" role="status">Loading map data…</main>;
   }
   if (loadState.status === "error") {
-    return <main className="map-page-state map-page-error" role="alert">{loadState.message}</main>;
+    return <main className="geomcp-map-page-state geomcp-map-page-error" role="alert">{loadState.message}</main>;
   }
 
   const {data} = loadState;
@@ -195,7 +195,7 @@ export function MapPage({mapDataUrl, MapSurfaceComponent}: MapPageProps) {
     : mapRuntimeState.status === "ready" && standardUiState.status === "ready" ? mapRuntimeState.runtimeStatus : "pending";
   return (
     <main
-      className="map-page"
+      className="geomcp-map-page"
       style={pageStyle}
       aria-busy={browserReadyStatus === "pending"}
       data-geomcp-ready-status={browserReadyStatus}
@@ -203,8 +203,8 @@ export function MapPage({mapDataUrl, MapSurfaceComponent}: MapPageProps) {
       data-geomcp-standard-ui-height={standardUiState.status === "ready" ? standardUiState.measuredHeight : undefined}
       data-geomcp-final-logical-height={standardUiState.status === "ready" ? payload.screenshot_size[1] + standardUiState.measuredHeight : undefined}
     >
-      <div className="map-capture-frame">
-        <div className="interactive-map-frame">
+      <div className="geomcp-map-capture-frame">
+        <div className="geomcp-interactive-map-frame">
           <MapSurfaceComponent
             mapPayload={payload}
             stylePayload={data.style_payload}
@@ -218,7 +218,7 @@ export function MapPage({mapDataUrl, MapSurfaceComponent}: MapPageProps) {
             onMapRuntimeReady={handleMapRuntimeReady}
             onMapRuntimeError={handleMapRuntimeError}
           />
-          <div className="interactive-ui-root">
+          <div className="geomcp-interactive-ui-root">
             <MeasureToolUi
               port={measureToolPort}
               disabled={mapRuntimeState.status !== "ready"}
@@ -243,7 +243,7 @@ export function MapPage({mapDataUrl, MapSurfaceComponent}: MapPageProps) {
           onReady={handleStandardUiReady}
           onError={handleStandardUiError}
         />
-        {failureMessage === null ? null : <span className="map-ready-error" role="alert">{failureMessage}</span>}
+        {failureMessage === null ? null : <span className="geomcp-map-ready-error" role="alert">{failureMessage}</span>}
       </div>
       <FeatureBar selectedLocationName={data.selected_location_name} aiOutput={data.ai_output} />
     </main>

@@ -1,13 +1,6 @@
 import {useEffect, useRef, useState, type CSSProperties} from "react";
-import leftEndDecorationUrl from "../../assets/ui/decorations/left-up.svg";
-import standardBarDividerUrl from "../../assets/ui/decorations/reference-bar-divider.svg";
-import rightEndDecorationUrl from "../../assets/ui/decorations/right-up.svg";
-import nodeIconUrl from "../../assets/ui/icons/node.svg";
-import polygonIconUrl from "../../assets/ui/icons/polygon.svg";
-import wayIconUrl from "../../assets/ui/icons/way.svg";
-import lineMeasurementIconUrl from "../../assets/ui/icons/line_measure.svg";
-import polygonMeasurementIconUrl from "../../assets/ui/icons/polygon_measure.svg";
-import circleMeasurementIconUrl from "../../assets/ui/icons/round_measure.svg";
+import {UI_SVG_ASSETS} from "../built-in-config/ui-svg.js";
+import {UI_BUILT_IN_CONFIG} from "../built-in-config/ui.js";
 import type {CompletedMeasurementType} from "../models/measure-tools/measure-tool-models.js";
 import type {InteractiveFeatureSummaryType} from "../models/web/interactive-ui-models.js";
 import {AppError} from "../utils/app-error.js";
@@ -31,23 +24,45 @@ interface MetricScaleStyle extends CSSProperties {
 }
 
 const FEATURE_TYPE_ICONS = {
-  node: nodeIconUrl,
-  way: wayIconUrl,
-  area: polygonIconUrl,
+  node: UI_SVG_ASSETS.icons.node,
+  way: UI_SVG_ASSETS.icons.way,
+  area: UI_SVG_ASSETS.icons.polygon,
 } as const;
 
 const MEASUREMENT_TYPE_ICONS = {
-  line: lineMeasurementIconUrl,
-  polygon: polygonMeasurementIconUrl,
-  circle: circleMeasurementIconUrl,
+  line: UI_SVG_ASSETS.icons.lineMeasurement,
+  polygon: UI_SVG_ASSETS.icons.polygonMeasurement,
+  circle: UI_SVG_ASSETS.icons.roundMeasurement,
 } as const;
 
 type StandardUiStatus = "pending" | "waiting-scale" | "measuring" | "locked" | "ready" | "failed";
 
+interface AttributionReference {
+  attribution: string;
+  attribution_url: string;
+  title: string;
+}
+
+function buildAttributionReferences(attributionText: string, attributionUrl: string, attributionDescription: string): readonly AttributionReference[] {
+  const references: AttributionReference[] = [
+    {...UI_BUILT_IN_CONFIG.attribution.references.leaflet, title: UI_BUILT_IN_CONFIG.attribution.references.leaflet.attribution},
+    {...UI_BUILT_IN_CONFIG.attribution.references.osmData, title: UI_BUILT_IN_CONFIG.attribution.references.osmData.attribution},
+    {attribution: attributionText, attribution_url: attributionUrl, title: attributionDescription},
+  ];
+  const seenUrls = new Set<string>();
+  // OSM basemap 与固定 OSM Data reference 指向同一版权页时只显示一次。
+  return Object.freeze(references.filter((reference) => {
+    const normalizedUrl = new URL(reference.attribution_url).href.replace(/\/$/u, "");
+    if (seenUrls.has(normalizedUrl)) return false;
+    seenUrls.add(normalizedUrl);
+    return true;
+  }));
+}
+
 function StandardBarDivider({position}: {position: "scale-feature" | "feature-attribution"}) {
   return (
-    <span className={`standard-bar-divider standard-bar-divider-${position}`} aria-hidden="true">
-      <img className="standard-bar-divider-decoration" src={standardBarDividerUrl} alt="" draggable={false} />
+    <span className={`geomcp-standard-bar-divider geomcp-standard-bar-divider-${position}`} aria-hidden="true">
+      <img className="geomcp-ui-decoration geomcp-ui-decoration-standard-divider" src={UI_SVG_ASSETS.decorations.referenceBarDivider} alt="" draggable={false} />
     </span>
   );
 }
@@ -215,25 +230,26 @@ export function StandardBar({logicalWidth, attributionText, attributionUrl, attr
     "--geomcp-metric-scale-width": `${metricScale?.widthPx ?? 0}px`,
   };
   const featureTypeClass = measurement !== null
-    ? `standard-bar-measurement-${measurement.kind}`
-    : feature === null ? "standard-bar-feature-empty" : `standard-bar-feature-${feature.featureType}`;
+    ? `geomcp-standard-bar-measurement-${measurement.kind}`
+    : feature === null ? "geomcp-standard-bar-feature-empty" : `geomcp-standard-bar-feature-${feature.featureType}`;
   const measurementRows = measurement === null ? [] : formatCompletedMeasurementRows(measurement);
+  const attributionReferences = buildAttributionReferences(attributionText, attributionUrl, attributionDescription);
   const liveTargetLabel = measurement !== null
     ? `Current ${measurement.kind} measurement, ${measurementRows.map((row) => `${row.label} ${row.value}`).join(", ")}`
     : feature === null ? "No current feature" : `Current ${feature.featureType} feature ${feature.displayId}${feature.name === null ? "" : `, ${feature.name}`}`;
   return (
-    <footer ref={elementRef} className={`standard-bar standard-bar-status-${layoutStatus} ${featureTypeClass}`} aria-label="Interactive map standard information" data-standard-ui-status={layoutStatus}>
-      <div ref={contentRef} className="standard-bar-content">
-        <span className="standard-bar-block standard-bar-block-end standard-bar-block-end-left" aria-hidden="true">
-          <img className="standard-bar-end-decoration standard-bar-end-decoration-left" src={leftEndDecorationUrl} alt="" draggable={false} />
+    <footer ref={elementRef} className={`geomcp-standard-bar geomcp-standard-bar-status-${layoutStatus} ${featureTypeClass}`} aria-label="Interactive map standard information" data-standard-ui-status={layoutStatus}>
+      <div ref={contentRef} className="geomcp-standard-bar-content">
+        <span className="geomcp-standard-bar-block geomcp-standard-bar-block-end geomcp-standard-bar-block-end-left" aria-hidden="true">
+          <img className="geomcp-ui-decoration geomcp-ui-decoration-standard-end geomcp-ui-decoration-standard-end-left" src={UI_SVG_ASSETS.decorations.leftUp} alt="" draggable={false} />
         </span>
-        <section className="standard-bar-block standard-bar-block-scale standard-scale" style={scaleStyle} aria-label={metricScale === null ? "Map scale loading" : `Map scale ${metricScale.label}`}>
-          <span className="standard-scale-label">{metricScale?.label ?? "Scale"}</span>
-          <span className="standard-scale-rule" aria-hidden="true" />
+        <section className="geomcp-standard-bar-block geomcp-standard-bar-block-scale geomcp-standard-scale" style={scaleStyle} aria-label={metricScale === null ? "Map scale loading" : `Map scale ${metricScale.label}`}>
+          <span className="geomcp-standard-scale-label">{metricScale?.label ?? "Scale"}</span>
+          <span className="geomcp-standard-scale-rule" aria-hidden="true" />
         </section>
         <StandardBarDivider position="scale-feature" />
         <div
-          className={`standard-bar-block standard-bar-block-feature standard-live-feature ${measurement !== null ? `standard-live-measurement-${measurement.kind}` : feature === null ? "standard-live-feature-empty" : `standard-live-feature-${feature.featureType}`}`}
+          className={`geomcp-standard-bar-block geomcp-standard-bar-block-feature geomcp-standard-live-feature ${measurement !== null ? `geomcp-standard-live-measurement-${measurement.kind}` : feature === null ? "geomcp-standard-live-feature-empty" : `geomcp-standard-live-feature-${feature.featureType}`}`}
           aria-label={liveTargetLabel}
           aria-live="polite"
           data-feature-state={measurement === null && feature === null ? "empty" : "ready"}
@@ -241,24 +257,29 @@ export function StandardBar({logicalWidth, attributionText, attributionUrl, attr
         >
           {measurement !== null ? (
             <>
-              <img className={`standard-live-feature-icon standard-live-measurement-icon standard-live-measurement-icon-${measurement.kind}`} src={MEASUREMENT_TYPE_ICONS[measurement.kind]} alt="" draggable={false} aria-hidden="true" />
-              <span className="standard-live-feature-id standard-live-measurement-kind">测量 {measurement.kind[0].toUpperCase() + measurement.kind.slice(1)}</span>
-              <span className="standard-live-feature-name standard-live-measurement-values">{measurementRows.map((row) => `${row.label}: ${row.value}`).join(" · ")}</span>
+              <img className={`geomcp-ui-icon geomcp-ui-icon-standard-target geomcp-ui-icon-standard-measurement geomcp-ui-icon-standard-measurement-${measurement.kind}`} src={MEASUREMENT_TYPE_ICONS[measurement.kind]} alt="" draggable={false} aria-hidden="true" />
+              <span className="geomcp-standard-live-feature-id geomcp-standard-live-measurement-kind">测量 {measurement.kind[0].toUpperCase() + measurement.kind.slice(1)}</span>
+              <span className="geomcp-standard-live-feature-name geomcp-standard-live-measurement-values">{measurementRows.map((row) => `${row.label}: ${row.value}`).join(" · ")}</span>
             </>
           ) : feature === null ? null : (
             <>
-              <img className={`standard-live-feature-icon standard-live-feature-icon-${feature.featureType}`} src={FEATURE_TYPE_ICONS[feature.featureType]} alt="" draggable={false} aria-hidden="true" />
-              <span className="standard-live-feature-id">{feature.displayId}</span>
-              {feature.name === null ? null : <span className="standard-live-feature-name">{feature.name}</span>}
+              <img className={`geomcp-ui-icon geomcp-ui-icon-standard-target geomcp-ui-icon-standard-feature-${feature.featureType}`} src={FEATURE_TYPE_ICONS[feature.featureType]} alt="" draggable={false} aria-hidden="true" />
+              <span className="geomcp-standard-live-feature-id">{feature.displayId}</span>
+              {feature.name === null ? null : <span className="geomcp-standard-live-feature-name">{feature.name}</span>}
             </>
           )}
         </div>
         <StandardBarDivider position="feature-attribution" />
-        <div className="standard-bar-block standard-bar-block-attribution standard-attribution">
-          <a className="standard-attribution-link" href={attributionUrl} target="_blank" rel="noreferrer" title={attributionDescription}>{attributionText}</a>
+        <div className="geomcp-standard-bar-block geomcp-standard-bar-block-attribution geomcp-standard-attribution" aria-label="Map attribution">
+          {attributionReferences.map((reference, index) => (
+            <span className="geomcp-standard-attribution-item" key={reference.attribution_url}>
+              {index === 0 ? null : <span className="geomcp-standard-attribution-separator" aria-hidden="true">{UI_BUILT_IN_CONFIG.attribution.separator}</span>}
+              <a className="geomcp-standard-attribution-link" href={reference.attribution_url} target="_blank" rel="noreferrer" title={reference.title}>{reference.attribution}</a>
+            </span>
+          ))}
         </div>
-        <span className="standard-bar-block standard-bar-block-end standard-bar-block-end-right" aria-hidden="true">
-          <img className="standard-bar-end-decoration standard-bar-end-decoration-right" src={rightEndDecorationUrl} alt="" draggable={false} />
+        <span className="geomcp-standard-bar-block geomcp-standard-bar-block-end geomcp-standard-bar-block-end-right" aria-hidden="true">
+          <img className="geomcp-ui-decoration geomcp-ui-decoration-standard-end geomcp-ui-decoration-standard-end-right" src={UI_SVG_ASSETS.decorations.rightUp} alt="" draggable={false} />
         </span>
       </div>
     </footer>

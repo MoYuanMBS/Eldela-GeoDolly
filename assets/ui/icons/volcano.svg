@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="volcano" xmlns="http://www.w3.org/2000/svg" width="52.9401" height="21.3545" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 52.9401 21.3545">
+  <defs>
+    <linearGradient id="_未命名的渐变_102" data-name="未命名的渐变 102" x1="27.4893" y1="0" x2="27.4893" y2="3.0506" gradientUnits="userSpaceOnUse">
+      <stop offset=".1714" stop-color="#fad6d1"/>
+      <stop offset=".2482" stop-color="#f8cecb"/>
+      <stop offset=".3642" stop-color="#f6b9bd"/>
+      <stop offset=".5051" stop-color="#f197a6"/>
+      <stop offset=".6643" stop-color="#eb6885"/>
+      <stop offset=".6727" stop-color="#eb6684"/>
+    </linearGradient>
+    <linearGradient id="_未命名的渐变_102-2" data-name="未命名的渐变 102" x1="29.2355" y1="1.5253" x2="29.2355" y2="4.576" xlink:href="#_未命名的渐变_102"/>
+    <linearGradient id="_未命名的渐变_102-3" data-name="未命名的渐变 102" x1="26.9044" y1="1.5253" x2="26.9044" y2="8.3893" xlink:href="#_未命名的渐变_102"/>
+  </defs>
+  <path d="M27.4893,3.0506c.9644,0,1.7461-.6829,1.7461-1.5253s-.7818-1.5253-1.7461-1.5253-1.7461.6829-1.7461,1.5253.7818,1.5253,1.7461,1.5253Z" style="fill: url(#_未命名的渐变_102);"/>
+  <path d="M29.2355,4.576c.9644,0,1.7461-.6829,1.7461-1.5253s-.7818-1.5253-1.7461-1.5253-1.7461.6829-1.7461,1.5253.7818,1.5253,1.7461,1.5253Z" style="fill: url(#_未命名的渐变_102-2);"/>
+  <path d="M29.8292,3.0506h-3.2129c0-.8424-.7818-1.5253-1.7461-1.5253s-1.7461.6829-1.7461,1.5253h-1.0215c-.9644,0-1.7461.6829-1.7461,1.5253s.7818,1.5253,1.7461,1.5253h1.338c.2585,0,.4082.1499.4082.3565v1.9314h5.2384v-1.9314c0-.2032.1815-.3565.4082-.3565h2.2111c.9644,0,1.7461-.6829,1.7461-1.5253s-.7817-1.5253-1.7461-1.5253h-1.8771Z" style="fill: url(#_未命名的渐变_102-3);"/>
+  <path d="M29.6225,9.432l-8.2771.4767-5.2301,9.8192c-.4039.7584.2299,1.6266,1.1874,1.6266h17.4617s-4.2945-10.7111-5.1419-11.9225Z" style="fill: #723435;"/>
+  <path d="M34.4225,21.3545l-2.1713-4.8774c-.3285-.7379-1.1419-1.2239-2.0482-1.2239-.6739,0-1.28-.3584-1.5303-.905l-1.3317-2.9082v-1.8164l4.0278-.1915,5.4572,10.298c.4018.7582-.2321,1.6245-1.1884,1.6245h-1.215Z" style="fill: #9a5e66;"/>
+  <path d="M21.2294,10.6772v-.4243c0-.1648.2222-.5654.2222-.5654,0,0,.6726-1.2714.8928-1.7254.1219-.2513.335-.684.6666-.9241.2673-.1936.6388-.2243.8928-.2243.3393,0,3.0508.0178,5.1833.0323.5733.0039.8719.1249,1.2415.6174.5245.9853,1.0488,1.9706,1.0488,1.9706,0,0,.3289.6914.3289,1.0545v1.714c0,.4212-.3909.7627-.8731.7627s-.8731-.3414-.8731-.7627-.3909-.7627-.8731-.7627-.8731.3414-.8731.7627v1.5253c0,.4212-.3909.7627-.8731.7627s-.8731-.3414-.8731-.7627v-.7627c0-.4212-.3909-.7627-.8731-.7627s-.8731.3414-.8731.7627v5.3386c0,.4212-.3909.7627-.8731.7627s-.8731-.3414-.8731-.7627v-6.1013c0-.4908-.338-.7627-.8731-.7627s-.8731-.3414-.8731-.7627Z" style="fill: #dc9292;"/>
+  <image width="23" height="20" transform="translate(23.6701 1.8772) scale(.24)" xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAARCAYAAADdRIy+AAAACXBIWXMAAC4jAAAuIwF4pT92AAACp0lEQVQ4jXWUzYplRRCEIzKrzr3t+AKDOKjvI65cKAo6MgPSDIiICL6AG9GFDMIgs1LX4gMpupg3aO45VRnh4lzH7qYNKGpTfJU/kck/v/3xh8hY0LIzojOzM7MF2ZiRJgKZBEAAgG1IglyQStJ87dGH7+KsFsfl1chcmLlExIKldWY0JhvJxH7OMACwIMtSuTSjNF789Mtv9z95/x0AaLn0e9HagT0PzFjYsrNlZ0ZHRPIG0DYslKal6VHD0qahfPH819/vf/ze2y2O/R6zHaLnkUtf2OLAyCUyO5IJRCL+TVeCMF01PWtzxKZREZg08pzy0l9ha8dY2pGtHaK3I1ssbLkwsiMjz+na3qPCiI2MEEkahiSHCwAaWzvGoV9Eb0f2vGDrx1j60T0PaLngumZtwTgJgClRUQymI4Ks2CPse0PY8sDWD3HoF17aBeMc2XUFO4jJQBjguRCA/bJlgYiMZENEY2ZzRN4J231TMCakglAuleWCXDZqB+7/GILhEqWCNG/DPGvDOq+0jZNmrZ61umrzmNv5HgDQUCqHJlnDEwEALNW5GQHssUBzaNbmqdVjrBp10jZOrjppasWsFQCaS5tYpIGwyqUBVDJ3uA3DKkxPS0M1d+g2Vo1aPeZpv8cJAJrGPLEkdk8XG6MSZFwfNcOF0nRp99+s4dLqdW5SrdrG+vrlww924FZXDA1WNTLOowaCJGzv1ZVsl8vTpYFtDkmb59wkbQ8uH370cpZ12q6CbMhIJQLMIPyfIQyzVC6V7H1KqoalgVnjwWePH99yAvD30+c/MyJABoM3NosNQdqXAVCYNVUakOYbX3z65A5r7frr+2fPzhYiIgBpN6stAFKpYJen5ptfXX5+l09vAG/rj2+efgfbAGRJb3395Mv/e3td/wBJTfVRWldh2wAAAABJRU5ErkJggg=="/>
+</svg>

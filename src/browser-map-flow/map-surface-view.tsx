@@ -204,5 +204,5 @@ export function MapSurfaceView({mapPayload, stylePayload, onMetricScaleChange, o
     };
   }, [mapPayload, stylePayload, onMetricScaleChange, onZoomCommandsChange, onInteractionCommandsChange, onMeasureToolPortChange, onActiveMeasurementChange, onHoveredFeatureChange, onSelectedFeatureChange, onMapRuntimeReady, onMapRuntimeError]);
 
-  return <div ref={containerRef} className="map-surface" aria-label="Interactive map" />;
+  return <div ref={containerRef} className="geomcp-map-surface" aria-label="Interactive map" />;
 }

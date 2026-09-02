@@ -1,0 +1,116 @@
+/* SVG 素材的尺寸与定位；实际文件导入统一由 src/built-in-config/ui-svg.ts 管理。 */
+.geomcp-ui-icon,
+.geomcp-ui-decoration {
+  display: block;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Icons */
+.geomcp-ui-icon-tool {
+  width: 28px;
+  height: auto;
+}
+
+.geomcp-ui-icon-standard-target {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+
+.geomcp-ui-icon-feature-extend {
+  width: 24px;
+  height: auto;
+  justify-self: center;
+  transition: transform 140ms ease;
+}
+
+.geomcp-ui-icon-feature-extend-expanded {
+  transform: rotate(180deg);
+}
+
+.geomcp-ui-icon-osm-feature {
+  flex: 0 0 auto;
+  width: 25px;
+  height: 25px;
+  object-fit: contain;
+}
+
+.geomcp-ui-icon-osm-tag {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+
+.geomcp-ui-icon-delete {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Decorations */
+.geomcp-ui-decoration-tool-bar {
+  position: absolute;
+  inset: 0;
+  width: 79px;
+  height: 124px;
+}
+
+.geomcp-ui-decoration-tool-divider {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 79px;
+  height: 124px;
+  transform: translate(-50%, -50%);
+}
+
+.geomcp-ui-decoration-standard-divider,
+.geomcp-ui-decoration-standard-end {
+  position: absolute;
+  top: 50%;
+  width: auto;
+  height: 124px;
+}
+
+.geomcp-ui-decoration-standard-divider {
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.geomcp-ui-decoration-standard-end-left {
+  left: 0;
+  transform: translateY(-50%);
+}
+
+.geomcp-ui-decoration-standard-end-right {
+  right: 0;
+  transform: translateY(-50%);
+}
+
+.geomcp-ui-decoration-feature-divider {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 79px;
+  height: 124px;
+  transform: translate(-50%, -50%);
+}
+
+.geomcp-ui-decoration-feature-end {
+  position: absolute;
+  top: 50%;
+  width: 79px;
+  height: 124px;
+  transform: translateY(-50%);
+}
+
+.geomcp-ui-decoration-feature-end-left {
+  left: 0;
+}
+
+.geomcp-ui-decoration-feature-end-right {
+  right: 0;
+}
