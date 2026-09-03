@@ -5,23 +5,23 @@
   top: 12px;
   right: 12px;
   display: grid;
-  width: clamp(var(--geomcp-popup-min-width), 46%, var(--geomcp-popup-max-width));
+  width: var(--geomcp-popup-width);
   min-height: min(var(--geomcp-popup-min-height), calc(100% - 24px));
   max-height: min(var(--geomcp-popup-max-height), calc(100% - 24px));
-  overflow: hidden;
+  overflow: visible;
   border: 1px solid var(--geomcp-ui-border);
   border-radius: 8px;
   background: var(--geomcp-ui-surface);
   box-shadow: 0 5px 18px color-mix(in srgb, var(--geomcp-ui-text) 18%, transparent);
   pointer-events: auto;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr);
 }
 
 .geomcp-interactive-popup-header {
   display: flex;
   min-width: 0;
-  min-height: 42px;
-  padding: 6px 7px 5px 10px;
+  min-height: 52px;
+  padding: 4px 5px 3px 8px;
   border-bottom: 1px solid var(--geomcp-ui-divider);
   align-items: center;
   justify-content: space-between;
@@ -29,20 +29,24 @@
 }
 
 .geomcp-interactive-popup-header-content {
+  display: flex;
   min-width: 0;
+  height: 100%;
+  align-items: center;
 }
 
 .geomcp-interactive-popup-close {
-  display: grid;
+  position: relative;
+  display: block;
   flex: 0 0 auto;
-  width: 34px;
-  height: 26px;
+  width: 44px;
+  height: 42px;
   padding: 0;
+  overflow: hidden;
   border: 0;
   border-radius: 5px;
   background: transparent;
   cursor: pointer;
-  place-items: center;
 }
 
 .geomcp-interactive-popup-close:hover,
@@ -60,15 +64,20 @@
   padding: 8px 12px 4px;
   overflow-x: hidden;
   overflow-y: auto;
+  border-radius: 0 0 8px 8px;
+  background: var(--geomcp-ui-surface);
   overscroll-behavior: contain;
 }
 
 .geomcp-interactive-popup-footer {
+  position: absolute;
+  z-index: 2;
+  right: -5px;
+  bottom: -8px;
   display: flex;
-  min-height: 22px;
-  padding-right: 8px;
-  justify-content: flex-end;
-  overflow: hidden;
+  width: 74px;
+  height: 30px;
+  overflow: visible;
   pointer-events: none;
 }
 
@@ -83,10 +92,13 @@
   min-width: 0;
   min-height: 22px;
   padding: 3px 0;
-  border-bottom: 1px dotted var(--geomcp-ui-divider);
   grid-template-columns: 22px minmax(72px, 0.75fr) minmax(0, 1.25fr);
-  align-items: start;
+  align-items: center;
   gap: 5px;
+}
+
+.geomcp-interactive-popup-row:not(:last-child) {
+  border-bottom: 1px dotted var(--geomcp-ui-divider);
 }
 
 .geomcp-measurement-hud-title-group {
@@ -186,6 +198,11 @@
 
 .geomcp-osm-tags-popup-tag-list {
   margin-top: 2px;
+}
+
+.geomcp-osm-tags-popup-tag-group-title {
+  /* volcano 的可见图形经 placement 裁边后从 section 左缘开始。 */
+  margin-left: 0;
 }
 
 .geomcp-osm-tags-popup-tag-row {

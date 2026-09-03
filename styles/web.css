@@ -31,7 +31,7 @@ body {
 
 .geomcp-map-capture-frame {
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   border-radius: 8px;
   background: var(--geomcp-ui-surface);
   box-shadow:
@@ -69,6 +69,8 @@ body {
 .geomcp-interactive-map-frame {
   position: relative;
   width: fit-content;
+  overflow: hidden;
+  border-radius: 8px 8px 0 0;
 }
 
 .geomcp-interactive-ui-root {

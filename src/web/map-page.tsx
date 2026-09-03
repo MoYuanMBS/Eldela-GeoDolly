@@ -36,12 +36,17 @@ interface MapPageStyle extends CSSProperties {
   "--geomcp-standard-ui-end-block-width": string;
   "--geomcp-standard-ui-live-feature-min-width": string;
   "--geomcp-standard-ui-divider-width": string;
+  "--geomcp-standard-ui-bar-end-width": string;
+  "--geomcp-standard-ui-bar-end-height": string;
+  "--geomcp-standard-ui-bar-end-scale-x": string;
   "--geomcp-feature-bar-gap": string;
   "--geomcp-feature-ui-max-height": string;
-  "--geomcp-popup-min-width": string;
-  "--geomcp-popup-max-width": string;
+  "--geomcp-popup-width": string;
   "--geomcp-popup-min-height": string;
   "--geomcp-popup-max-height": string;
+  "--geomcp-tool-bar-width": string;
+  "--geomcp-tool-bar-height": string;
+  "--geomcp-tool-bar-left-offset": string;
   "--geomcp-scale-max-width": string;
 }
 
@@ -187,12 +192,17 @@ export function MapPage({mapDataUrl, MapSurfaceComponent}: MapPageProps) {
     "--geomcp-standard-ui-end-block-width": `${UI_BUILT_IN_CONFIG.standardUi.endBlockRatio * 100}%`,
     "--geomcp-standard-ui-live-feature-min-width": `${UI_BUILT_IN_CONFIG.standardUi.liveFeatureMinWidth}px`,
     "--geomcp-standard-ui-divider-width": `${UI_BUILT_IN_CONFIG.standardUi.dividerWidth}px`,
+    "--geomcp-standard-ui-bar-end-width": `${UI_BUILT_IN_CONFIG.standardUi.barEndSourceWidthPx}px`,
+    "--geomcp-standard-ui-bar-end-height": `${UI_BUILT_IN_CONFIG.standardUi.barEndHeightPx}px`,
+    "--geomcp-standard-ui-bar-end-scale-x": String(payload.screenshot_size[0] / UI_BUILT_IN_CONFIG.standardUi.barEndVisibleWidthPx),
     "--geomcp-feature-bar-gap": `${UI_BUILT_IN_CONFIG.featureBar.gapPx}px`,
     "--geomcp-feature-ui-max-height": `${__GEOMCP_FEATURE_UI_MAX_HEIGHT_PX__}px`,
-    "--geomcp-popup-min-width": `${UI_BUILT_IN_CONFIG.popup.minWidthPx}px`,
-    "--geomcp-popup-max-width": `${UI_BUILT_IN_CONFIG.popup.maxWidthPx}px`,
+    "--geomcp-popup-width": `${UI_BUILT_IN_CONFIG.popup.widthPx}px`,
     "--geomcp-popup-min-height": `${UI_BUILT_IN_CONFIG.popup.minHeightPx}px`,
     "--geomcp-popup-max-height": `${UI_BUILT_IN_CONFIG.popup.maxHeightPx}px`,
+    "--geomcp-tool-bar-width": `${UI_BUILT_IN_CONFIG.toolbar.widthPx}px`,
+    "--geomcp-tool-bar-height": `${UI_BUILT_IN_CONFIG.toolbar.heightPx}px`,
+    "--geomcp-tool-bar-left-offset": `${UI_BUILT_IN_CONFIG.toolbar.leftOffsetPx}px`,
     "--geomcp-scale-max-width": `${__GEOMCP_MAX_SCALE_WIDTH_PX__}px`,
   };
   const failureMessage = mapRuntimeState.status === "failed"
@@ -240,7 +250,7 @@ export function MapPage({mapDataUrl, MapSurfaceComponent}: MapPageProps) {
           logicalWidth={payload.screenshot_size[0]}
           attributionText={payload.basemap.attribution}
           attributionUrl={payload.basemap.attribution_url}
-          attributionDescription={payload.basemap.full_attribution ?? payload.basemap.attribution}
+          attributionDescription={payload.basemap.full_attribution}
           metricScale={metricScale}
           feature={standardMeasurement !== null || activeFeatureDetails === null ? null : {
             featureType: activeFeatureDetails.featureType,

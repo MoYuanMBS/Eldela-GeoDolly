@@ -18,7 +18,8 @@ export const MEASURE_TOOL_BUILT_IN_CONFIG = Object.freeze({
     hoverWeightPx: 4,
     selectedWeightPx: 5,
     innerBandWidthPx: 8,
-    dashArray: "6 5",
+    // 较长的 dash/gap 让地图缩放后仍保持清晰、稀疏的测量轮廓。
+    dashArray: "12 10",
     draftOpacity: 0.82,
   }),
   // 与 Overlay node-default 使用同一组双圆尺寸，只替换为 Measure/UI 色板。

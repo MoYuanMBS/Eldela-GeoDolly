@@ -11,7 +11,7 @@ interface StandardBarProps {
   logicalWidth: number;
   attributionText: string;
   attributionUrl: string;
-  attributionDescription: string;
+  attributionDescription: string | null;
   metricScale: MetricScaleViewType | null;
   feature: InteractiveFeatureSummaryType | null;
   measurement: CompletedMeasurementType | null;
@@ -39,24 +39,18 @@ type StandardUiStatus = "pending" | "waiting-scale" | "measuring" | "locked" | "
 
 interface AttributionReference {
   attribution: string;
-  attribution_url: string;
-  title: string;
+  attribution_url: string | null;
+  title?: string;
 }
 
-function buildAttributionReferences(attributionText: string, attributionUrl: string, attributionDescription: string): readonly AttributionReference[] {
-  const references: AttributionReference[] = [
-    {...UI_BUILT_IN_CONFIG.attribution.references.leaflet, title: UI_BUILT_IN_CONFIG.attribution.references.leaflet.attribution},
-    {...UI_BUILT_IN_CONFIG.attribution.references.osmData, title: UI_BUILT_IN_CONFIG.attribution.references.osmData.attribution},
-    {attribution: attributionText, attribution_url: attributionUrl, title: attributionDescription},
-  ];
-  const seenUrls = new Set<string>();
-  // OSM basemap 与固定 OSM Data reference 指向同一版权页时只显示一次。
-  return Object.freeze(references.filter((reference) => {
-    const normalizedUrl = new URL(reference.attribution_url).href.replace(/\/$/u, "");
-    if (seenUrls.has(normalizedUrl)) return false;
-    seenUrls.add(normalizedUrl);
-    return true;
-  }));
+function buildAttributionReferences(attributionText: string, attributionUrl: string, attributionDescription: string | null): readonly AttributionReference[] {
+  // 四项分别表达工具、地图引擎、底图和 OSM 数据来源；URL 相同也不能合并。
+  return Object.freeze([
+    UI_BUILT_IN_CONFIG.attribution.references.tool,
+    UI_BUILT_IN_CONFIG.attribution.references.leaflet,
+    {attribution: attributionText, attribution_url: attributionUrl, title: attributionDescription ?? undefined},
+    UI_BUILT_IN_CONFIG.attribution.references.osmData,
+  ] satisfies AttributionReference[]);
 }
 
 function StandardBarDivider({position}: {position: "scale-feature" | "feature-attribution"}) {
@@ -138,8 +132,9 @@ async function waitForStandardUiAssets(element: HTMLElement, signal: AbortSignal
   await Promise.all(images.map((image) => waitForImage(image, signal)));
 }
 
-function hasLayoutOverflow(element: HTMLElement): boolean {
-  return element.scrollWidth > element.clientWidth || element.scrollHeight > element.clientHeight;
+function hasLayoutOverflow(element: HTMLElement, content: HTMLElement): boolean {
+  // 角饰允许越过边框，因此只比较正常布局盒；absolute decoration 不属于 overflow 错误。
+  return content.offsetWidth > element.clientWidth || content.offsetHeight > element.clientHeight;
 }
 
 /** Interactive MapSurface 外部的实时 Scale / Feature / Attribution，并负责锁定自身高度。 */
@@ -171,7 +166,7 @@ export function StandardBar({logicalWidth, attributionText, attributionUrl, attr
       anomalyFrameId = requestAnimationFrame(() => {
         anomalyFrameId = null;
         if (signal.aborted || lockedHeight === null) return;
-        if (Math.ceil(element.getBoundingClientRect().height) !== lockedHeight || hasLayoutOverflow(element)) {
+        if (Math.ceil(element.getBoundingClientRect().height) !== lockedHeight || hasLayoutOverflow(element, content)) {
           anomalyReported = true;
           console.warn("[GeoMCP] Standard UI layout changed after its height was locked.", {locked_height: lockedHeight});
         }
@@ -206,7 +201,7 @@ export function StandardBar({logicalWidth, attributionText, attributionUrl, attr
         element.dataset.lockedHeight = String(lockedHeight);
         setLayoutStatus("locked");
         await waitForAnimationFrame(signal);
-        if (Math.ceil(element.getBoundingClientRect().height) !== lockedHeight || hasLayoutOverflow(element)) {
+        if (Math.ceil(element.getBoundingClientRect().height) !== lockedHeight || hasLayoutOverflow(element, content)) {
           throw new AppError("standard_ui_overflow", "Standard UI content overflowed after its height was locked");
         }
         readyPublished = true;
@@ -241,7 +236,8 @@ export function StandardBar({logicalWidth, attributionText, attributionUrl, attr
     <footer ref={elementRef} className={`geomcp-standard-bar geomcp-standard-bar-status-${layoutStatus} ${featureTypeClass}`} aria-label="Interactive map standard information" data-standard-ui-status={layoutStatus}>
       <div ref={contentRef} className="geomcp-standard-bar-content">
         <span className="geomcp-standard-bar-block geomcp-standard-bar-block-end geomcp-standard-bar-block-end-left" aria-hidden="true">
-          <img className="geomcp-ui-decoration geomcp-ui-decoration-standard-end geomcp-ui-decoration-standard-end-left" src={UI_SVG_ASSETS.decorations.leftUp} alt="" draggable={false} />
+          <img className="geomcp-ui-decoration geomcp-ui-decoration-standard-end geomcp-ui-decoration-standard-end-up geomcp-ui-decoration-standard-end-left" src={UI_SVG_ASSETS.decorations.leftUp} alt="" draggable={false} />
+          <img className="geomcp-ui-decoration geomcp-ui-decoration-standard-end geomcp-ui-decoration-standard-end-down geomcp-ui-decoration-standard-end-left" src={UI_SVG_ASSETS.decorations.leftDown} alt="" draggable={false} />
         </span>
         <section className="geomcp-standard-bar-block geomcp-standard-bar-block-scale geomcp-standard-scale" style={scaleStyle} aria-label={metricScale === null ? "Map scale loading" : `Map scale ${metricScale.label}`}>
           <span className="geomcp-standard-scale-label">{metricScale?.label ?? "Scale"}</span>
@@ -263,8 +259,8 @@ export function StandardBar({logicalWidth, attributionText, attributionUrl, attr
             </>
           ) : feature === null ? (
             <>
-              <img className="geomcp-ui-icon geomcp-ui-icon-standard-empty" src={UI_SVG_ASSETS.icons.empty} alt="" draggable={false} aria-hidden="true" />
-              <span className="geomcp-standard-live-feature-empty-prompt">Hover or select a feature</span>
+              <img className="geomcp-ui-icon geomcp-ui-icon-standard-target geomcp-ui-icon-standard-empty" src={UI_SVG_ASSETS.icons.empty} alt="" draggable={false} aria-hidden="true" />
+              <span className="geomcp-standard-live-feature-empty-prompt">{UI_BUILT_IN_CONFIG.standardUi.emptyPrompt}</span>
             </>
           ) : (
             <>
@@ -277,16 +273,22 @@ export function StandardBar({logicalWidth, attributionText, attributionUrl, attr
         <StandardBarDivider position="feature-attribution" />
         <div className="geomcp-standard-bar-block geomcp-standard-bar-block-attribution geomcp-standard-attribution" aria-label="Map attribution">
           {attributionReferences.map((reference, index) => (
-            <span className="geomcp-standard-attribution-item" key={reference.attribution_url}>
+            <span className="geomcp-standard-attribution-item" key={`${index}:${reference.attribution}`}>
               {index === 0 ? null : <span className="geomcp-standard-attribution-separator" aria-hidden="true">{UI_BUILT_IN_CONFIG.attribution.separator}</span>}
-              <a className="geomcp-standard-attribution-link" href={reference.attribution_url} target="_blank" rel="noreferrer" title={reference.title}>{reference.attribution}</a>
+              {reference.attribution_url === null
+                ? <span className="geomcp-standard-attribution-text">{reference.attribution}</span>
+                : <a className="geomcp-standard-attribution-link" href={reference.attribution_url} target="_blank" rel="noreferrer" title={reference.title}>{reference.attribution}</a>}
             </span>
           ))}
         </div>
         <span className="geomcp-standard-bar-block geomcp-standard-bar-block-end geomcp-standard-bar-block-end-right" aria-hidden="true">
-          <img className="geomcp-ui-decoration geomcp-ui-decoration-standard-end geomcp-ui-decoration-standard-end-right" src={UI_SVG_ASSETS.decorations.rightUp} alt="" draggable={false} />
+          <img className="geomcp-ui-decoration geomcp-ui-decoration-standard-end geomcp-ui-decoration-standard-end-up geomcp-ui-decoration-standard-end-right" src={UI_SVG_ASSETS.decorations.rightUp} alt="" draggable={false} />
+          <img className="geomcp-ui-decoration geomcp-ui-decoration-standard-end geomcp-ui-decoration-standard-end-down geomcp-ui-decoration-standard-end-right" src={UI_SVG_ASSETS.decorations.rightDown} alt="" draggable={false} />
         </span>
       </div>
+      <span className="geomcp-standard-bar-end-clip" aria-hidden="true">
+        <img className="geomcp-ui-decoration geomcp-ui-decoration-standard-bar-end" src={UI_SVG_ASSETS.decorations.uiBarEnd} alt="" draggable={false} />
+      </span>
     </footer>
   );
 }

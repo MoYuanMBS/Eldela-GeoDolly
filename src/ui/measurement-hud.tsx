@@ -42,7 +42,7 @@ export function MeasurementHUD({state, onClose}: MeasurementHudProps) {
       onClose={onClose}
       header={(
         <span className="geomcp-measurement-hud-title-group">
-          <img className="geomcp-ui-icon geomcp-ui-icon-popup-measurement" src={MEASUREMENT_TYPE_ICONS[measurementKind]} alt="" draggable={false} aria-hidden="true" />
+          <img className={`geomcp-ui-icon geomcp-ui-icon-popup-measurement geomcp-ui-icon-popup-measurement-${measurementKind}`} src={MEASUREMENT_TYPE_ICONS[measurementKind]} alt="" draggable={false} aria-hidden="true" />
           <span className="geomcp-measurement-hud-title">Measure</span>
         </span>
       )}
@@ -52,15 +52,18 @@ export function MeasurementHUD({state, onClose}: MeasurementHudProps) {
           : rows.length === 0
           ? <span className={`geomcp-measurement-hud-empty geomcp-measurement-hud-empty-${state.mode.replace("_", "-")}`}>{MODE_INSTRUCTIONS[state.mode]}</span>
           : (
-              <dl className="geomcp-interactive-popup-values geomcp-measurement-hud-values">
-                {rows.map((row) => (
-                  <div className="geomcp-interactive-popup-row geomcp-measurement-hud-row" key={row.label}>
-                    <img className="geomcp-ui-icon geomcp-ui-icon-popup-row-dot" src={UI_SVG_ASSETS.icons.tagPopupDot} alt="" draggable={false} aria-hidden="true" />
-                    <dt className="geomcp-measurement-hud-row-label">{row.label}</dt>
-                    <dd className="geomcp-measurement-hud-row-value">{row.value}</dd>
-                  </div>
-                ))}
-              </dl>
+              <>
+                <dl className="geomcp-interactive-popup-values geomcp-measurement-hud-values">
+                  {rows.map((row) => (
+                    <div className="geomcp-interactive-popup-row geomcp-measurement-hud-row" key={row.label}>
+                      <img className="geomcp-ui-icon geomcp-ui-icon-popup-row-dot" src={UI_SVG_ASSETS.icons.tagPopupDot} alt="" draggable={false} aria-hidden="true" />
+                      <dt className="geomcp-measurement-hud-row-label">{row.label}</dt>
+                      <dd className="geomcp-measurement-hud-row-value">{row.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+                <img className="geomcp-ui-decoration geomcp-ui-decoration-popup-record-divider geomcp-ui-decoration-measurement-record-divider" src={UI_SVG_ASSETS.decorations.tagBarEnd} alt="" draggable={false} aria-hidden="true" />
+              </>
             )}
         {warning === null ? null : <span className="geomcp-measurement-hud-warning">{warning}</span>}
     </InteractivePopup>
