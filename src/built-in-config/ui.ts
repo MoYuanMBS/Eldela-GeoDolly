@@ -19,6 +19,13 @@ export const UI_BUILT_IN_CONFIG = {
   featureBar: {
     gapPx: 6,
   },
+  popup: {
+    // Popup 保持内容自适应，但不得因为长 tag 或大量 records 挤压 MapSurface。
+    minWidthPx: 320,
+    maxWidthPx: 480,
+    minHeightPx: 160,
+    maxHeightPx: 480,
+  },
   toolbar: {
     minWidth: 600,
     minHeight: 50,

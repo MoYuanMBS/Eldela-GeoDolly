@@ -261,7 +261,12 @@ export function StandardBar({logicalWidth, attributionText, attributionUrl, attr
               <span className="geomcp-standard-live-feature-id geomcp-standard-live-measurement-kind">测量 {measurement.kind[0].toUpperCase() + measurement.kind.slice(1)}</span>
               <span className="geomcp-standard-live-feature-name geomcp-standard-live-measurement-values">{measurementRows.map((row) => `${row.label}: ${row.value}`).join(" · ")}</span>
             </>
-          ) : feature === null ? null : (
+          ) : feature === null ? (
+            <>
+              <img className="geomcp-ui-icon geomcp-ui-icon-standard-empty" src={UI_SVG_ASSETS.icons.empty} alt="" draggable={false} aria-hidden="true" />
+              <span className="geomcp-standard-live-feature-empty-prompt">Hover or select a feature</span>
+            </>
+          ) : (
             <>
               <img className={`geomcp-ui-icon geomcp-ui-icon-standard-target geomcp-ui-icon-standard-feature-${feature.featureType}`} src={FEATURE_TYPE_ICONS[feature.featureType]} alt="" draggable={false} aria-hidden="true" />
               <span className="geomcp-standard-live-feature-id">{feature.displayId}</span>

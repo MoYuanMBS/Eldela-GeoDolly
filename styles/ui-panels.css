@@ -1,35 +1,107 @@
-/* Measurement HUD. */
-.geomcp-measurement-hud {
+/* Feature/Measurement 共享 Popup 外壳；内容状态由 React 保持互斥。 */
+.geomcp-interactive-popup {
   position: absolute;
+  z-index: 4;
   top: 12px;
   right: 12px;
   display: grid;
-  width: min(240px, calc(100% - 96px));
-  min-height: 52px;
-  padding: 8px 11px;
-  border: 1px solid color-mix(in srgb, var(--geomcp-ui-highlight) 78%, transparent);
-  border-radius: 7px;
-  background: color-mix(in srgb, var(--geomcp-ui-surface) 90%, transparent);
-  box-shadow: 0 3px 12px color-mix(in srgb, var(--geomcp-ui-text) 12%, transparent);
+  width: clamp(var(--geomcp-popup-min-width), 46%, var(--geomcp-popup-max-width));
+  min-height: min(var(--geomcp-popup-min-height), calc(100% - 24px));
+  max-height: min(var(--geomcp-popup-max-height), calc(100% - 24px));
+  overflow: hidden;
+  border: 1px solid var(--geomcp-ui-border);
+  border-radius: 8px;
+  background: var(--geomcp-ui-surface);
+  box-shadow: 0 5px 18px color-mix(in srgb, var(--geomcp-ui-text) 18%, transparent);
   pointer-events: auto;
-  row-gap: 3px;
+  grid-template-rows: auto minmax(0, 1fr) auto;
 }
 
-.geomcp-measurement-hud-state-failed {
-  border-color: var(--geomcp-ui-bar-end);
+.geomcp-interactive-popup-header {
+  display: flex;
+  min-width: 0;
+  min-height: 42px;
+  padding: 6px 7px 5px 10px;
+  border-bottom: 1px solid var(--geomcp-ui-divider);
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.geomcp-interactive-popup-header-content {
+  min-width: 0;
+}
+
+.geomcp-interactive-popup-close {
+  display: grid;
+  flex: 0 0 auto;
+  width: 34px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  cursor: pointer;
+  place-items: center;
+}
+
+.geomcp-interactive-popup-close:hover,
+.geomcp-interactive-popup-close:focus-visible {
+  background: color-mix(in srgb, var(--geomcp-ui-highlight) 62%, transparent);
+}
+
+.geomcp-interactive-popup-close:focus-visible {
+  outline: 2px solid var(--geomcp-ui-bar-end);
+  outline-offset: -2px;
+}
+
+.geomcp-interactive-popup-scroll {
+  min-height: 0;
+  padding: 8px 12px 4px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.geomcp-interactive-popup-footer {
+  display: flex;
+  min-height: 22px;
+  padding-right: 8px;
+  justify-content: flex-end;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.geomcp-interactive-popup-values {
+  display: grid;
+  min-width: 0;
+  margin: 4px 0 0;
+}
+
+.geomcp-interactive-popup-row {
+  display: grid;
+  min-width: 0;
+  min-height: 22px;
+  padding: 3px 0;
+  border-bottom: 1px dotted var(--geomcp-ui-divider);
+  grid-template-columns: 22px minmax(72px, 0.75fr) minmax(0, 1.25fr);
+  align-items: start;
+  gap: 5px;
+}
+
+.geomcp-measurement-hud-title-group {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
 }
 
 .geomcp-measurement-hud-values {
-  display: grid;
-  margin: 0;
-  gap: 2px;
+  margin-top: 0;
 }
 
 .geomcp-measurement-hud-row {
-  display: flex;
-  min-width: 0;
-  justify-content: space-between;
-  gap: 12px;
+  grid-template-columns: 22px minmax(72px, 0.75fr) minmax(0, 1.25fr);
 }
 
 .geomcp-measurement-hud-row-label,
@@ -37,9 +109,39 @@
   margin: 0;
 }
 
+.geomcp-measurement-hud-empty,
+.geomcp-measurement-hud-error,
+.geomcp-measurement-hud-warning {
+  display: block;
+  margin: 4px 0 8px;
+}
+
 .geomcp-measurement-delete-marker {
   border: 0;
   background: transparent;
+}
+
+.geomcp-measurement-map-label-marker {
+  border: 0;
+  background: transparent;
+  pointer-events: none;
+}
+
+.geomcp-measurement-map-label {
+  position: absolute;
+  display: block;
+  padding: 1px 5px;
+  border: 1px solid var(--geomcp-ui-divider);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--geomcp-ui-surface) 88%, transparent);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--geomcp-ui-text) 14%, transparent);
+  color: var(--geomcp-ui-text);
+  font-family: "GeoMCP Source Han Sans", sans-serif;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
 }
 
 /* Marker 的 26px 尺寸由 Leaflet inline style 提供；button 填满它，SVG 留 1px 安全边。 */
@@ -48,7 +150,7 @@
   width: 100%;
   height: 100%;
   padding: 1px;
-  border: 1px solid color-mix(in srgb, var(--geomcp-ui-bar-end) 72%, transparent);
+  border: 1px solid var(--geomcp-ui-border);
   border-radius: 50%;
   background-color: color-mix(in srgb, var(--geomcp-ui-surface) 92%, transparent);
   box-shadow: 0 2px 8px color-mix(in srgb, var(--geomcp-ui-text) 18%, transparent);
@@ -65,67 +167,11 @@
   outline-offset: 1px;
 }
 
-/* OSM tags popup. */
-.geomcp-osm-tags-popup {
-  position: absolute;
-  z-index: 4;
-  top: 12px;
-  right: 12px;
-  display: grid;
-  width: min(360px, calc(100% - 96px));
-  max-height: calc(100% - 24px);
-  border: 1px solid color-mix(in srgb, var(--geomcp-ui-highlight) 82%, transparent);
-  border-radius: 7px;
-  background: var(--geomcp-ui-surface);
-  box-shadow: 0 5px 18px color-mix(in srgb, var(--geomcp-ui-text) 18%, transparent);
-  pointer-events: auto;
-  grid-template-rows: auto minmax(0, 1fr);
-}
-
-.geomcp-osm-tags-popup-header {
-  display: flex;
-  min-width: 0;
-  padding: 7px 8px 6px 10px;
-  border-bottom: 1px solid var(--geomcp-ui-highlight);
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
 .geomcp-osm-tags-popup-title-group {
   display: flex;
   min-width: 0;
   align-items: center;
   gap: 7px;
-}
-
-.geomcp-osm-tags-popup-close {
-  display: grid;
-  flex: 0 0 auto;
-  width: 25px;
-  height: 25px;
-  padding: 0;
-  border: 0;
-  border-radius: 5px;
-  background: transparent;
-  cursor: pointer;
-  place-items: center;
-}
-
-.geomcp-osm-tags-popup-close:hover,
-.geomcp-osm-tags-popup-close:focus-visible {
-  background: color-mix(in srgb, var(--geomcp-ui-highlight) 62%, transparent);
-}
-
-.geomcp-osm-tags-popup-close:focus-visible {
-  outline: 2px solid var(--geomcp-ui-bar-end);
-  outline-offset: -2px;
-}
-
-.geomcp-osm-tags-popup-scroll {
-  min-height: 0;
-  padding: 8px 10px 10px;
-  overflow: auto;
 }
 
 .geomcp-osm-tags-popup-osm-refs,
@@ -135,20 +181,15 @@
 
 .geomcp-osm-tags-popup-tag-group + .geomcp-osm-tags-popup-tag-group,
 .geomcp-osm-tags-popup-relation + .geomcp-osm-tags-popup-relation {
-  margin-top: 10px;
+  margin-top: 8px;
 }
 
 .geomcp-osm-tags-popup-tag-list {
-  display: grid;
-  margin: 4px 0 0;
-  gap: 2px;
+  margin-top: 2px;
 }
 
 .geomcp-osm-tags-popup-tag-row {
-  display: grid;
-  min-width: 0;
-  grid-template-columns: minmax(72px, 0.7fr) minmax(0, 1.3fr);
-  gap: 8px;
+  grid-template-columns: 22px minmax(72px, 0.75fr) minmax(0, 1.25fr);
 }
 
 .geomcp-osm-tags-popup-tag-key,
@@ -160,7 +201,17 @@
 .geomcp-osm-tags-popup-relations-section {
   margin-top: 12px;
   padding-top: 9px;
-  border-top: 1px solid var(--geomcp-ui-highlight);
+  border-top: 1px solid var(--geomcp-ui-divider);
+}
+
+.geomcp-osm-tags-popup-section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.geomcp-osm-tags-popup-empty-group {
+  margin-top: 5px;
 }
 
 .geomcp-osm-tags-popup-relation-header {
@@ -183,7 +234,7 @@
 }
 
 .geomcp-ai-output-group {
-  border: 1px solid color-mix(in srgb, var(--geomcp-ui-highlight) 78%, transparent);
+  border: 1px solid var(--geomcp-ui-border);
   border-radius: 5px;
   background: color-mix(in srgb, var(--geomcp-ui-surface) 88%, transparent);
 }
@@ -238,7 +289,7 @@
 }
 
 .geomcp-ai-output-record {
-  border-left: 1px solid var(--geomcp-ui-highlight);
+  border-left: 1px solid var(--geomcp-ui-divider);
 }
 
 .geomcp-ai-output-record-summary {

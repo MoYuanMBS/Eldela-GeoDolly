@@ -38,6 +38,10 @@ interface MapPageStyle extends CSSProperties {
   "--geomcp-standard-ui-divider-width": string;
   "--geomcp-feature-bar-gap": string;
   "--geomcp-feature-ui-max-height": string;
+  "--geomcp-popup-min-width": string;
+  "--geomcp-popup-max-width": string;
+  "--geomcp-popup-min-height": string;
+  "--geomcp-popup-max-height": string;
   "--geomcp-scale-max-width": string;
 }
 
@@ -185,6 +189,10 @@ export function MapPage({mapDataUrl, MapSurfaceComponent}: MapPageProps) {
     "--geomcp-standard-ui-divider-width": `${UI_BUILT_IN_CONFIG.standardUi.dividerWidth}px`,
     "--geomcp-feature-bar-gap": `${UI_BUILT_IN_CONFIG.featureBar.gapPx}px`,
     "--geomcp-feature-ui-max-height": `${__GEOMCP_FEATURE_UI_MAX_HEIGHT_PX__}px`,
+    "--geomcp-popup-min-width": `${UI_BUILT_IN_CONFIG.popup.minWidthPx}px`,
+    "--geomcp-popup-max-width": `${UI_BUILT_IN_CONFIG.popup.maxWidthPx}px`,
+    "--geomcp-popup-min-height": `${UI_BUILT_IN_CONFIG.popup.minHeightPx}px`,
+    "--geomcp-popup-max-height": `${UI_BUILT_IN_CONFIG.popup.maxHeightPx}px`,
     "--geomcp-scale-max-width": `${__GEOMCP_MAX_SCALE_WIDTH_PX__}px`,
   };
   const failureMessage = mapRuntimeState.status === "failed"
@@ -224,8 +232,8 @@ export function MapPage({mapDataUrl, MapSurfaceComponent}: MapPageProps) {
               disabled={mapRuntimeState.status !== "ready"}
               onZoomIn={handleZoomIn}
               onZoomOut={handleZoomOut}
+              featurePopup={selectedFeatureDetails === null ? null : <OsmTagsPopup details={selectedFeatureDetails} onClose={handleCloseTagsPopup} />}
             />
-            {selectedFeatureDetails === null ? null : <OsmTagsPopup details={selectedFeatureDetails} onClose={handleCloseTagsPopup} />}
           </div>
         </div>
         <StandardBar

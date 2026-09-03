@@ -8,9 +8,9 @@ interface FeatureBarProps {
   aiOutput: AiOutputGroupsWithIdsType | null;
 }
 
-function FeatureBarDivider() {
+function FeatureBarDivider({position}: {position: "title-toggle" | "toggle-location"}) {
   return (
-    <span className="geomcp-feature-bar-divider geomcp-feature-bar-divider-feature-location" aria-hidden="true">
+    <span className={`geomcp-feature-bar-divider geomcp-feature-bar-divider-${position}`} aria-hidden="true">
       <img className="geomcp-ui-decoration geomcp-ui-decoration-feature-divider" src={UI_SVG_ASSETS.decorations.featureBarDivider} alt="" draggable={false} />
     </span>
   );
@@ -25,13 +25,16 @@ interface FeatureBarHeaderProps {
 
 function FeatureBarHeader({selectedLocationName, expanded, treeId, onToggle}: FeatureBarHeaderProps) {
   return (
-    <button className="geomcp-feature-bar-content geomcp-feature-bar-toggle" type="button" aria-expanded={expanded} aria-controls={treeId} onClick={onToggle}>
+    <div className="geomcp-feature-bar-content geomcp-feature-bar-content-expandable">
       <span className="geomcp-feature-bar-title">Feature</span>
-      <FeatureBarDivider />
+      <FeatureBarDivider position="title-toggle" />
+      <button className="geomcp-feature-bar-toggle" type="button" aria-label={expanded ? "Collapse Feature data" : "Expand Feature data"} aria-expanded={expanded} aria-controls={treeId} onClick={onToggle}>
+        {/* 仅在 AI Output 存在时挂载 img，basemap-only 页面不会请求 extend.svg。 */}
+        <img className={`geomcp-ui-icon geomcp-ui-icon-feature-extend${expanded ? " geomcp-ui-icon-feature-extend-expanded" : ""}`} src={UI_SVG_ASSETS.icons.extend} alt="" draggable={false} aria-hidden="true" />
+      </button>
+      <FeatureBarDivider position="toggle-location" />
       <span className={`geomcp-feature-bar-location-name ${selectedLocationName === null ? "geomcp-feature-bar-location-name-empty" : "geomcp-feature-bar-location-name-ready"}`}>{selectedLocationName ?? ""}</span>
-      {/* 仅在 AI Output 存在时挂载 img，basemap-only 页面不会请求 extend.svg。 */}
-      <img className={`geomcp-ui-icon geomcp-ui-icon-feature-extend${expanded ? " geomcp-ui-icon-feature-extend-expanded" : ""}`} src={UI_SVG_ASSETS.icons.extend} alt="" draggable={false} aria-hidden="true" />
-    </button>
+    </div>
   );
 }
 
@@ -55,7 +58,7 @@ export function FeatureBar({selectedLocationName, aiOutput}: FeatureBarProps) {
       ) : (
         <div className="geomcp-feature-bar-content geomcp-feature-bar-content-static">
           <span className="geomcp-feature-bar-title">Feature</span>
-          <FeatureBarDivider />
+          <FeatureBarDivider position="title-toggle" />
           <span className={`geomcp-feature-bar-location-name ${selectedLocationName === null ? "geomcp-feature-bar-location-name-empty" : "geomcp-feature-bar-location-name-ready"}`}>{selectedLocationName ?? ""}</span>
         </div>
       )}

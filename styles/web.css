@@ -35,7 +35,7 @@ body {
   border-radius: 8px;
   background: var(--geomcp-ui-surface);
   box-shadow:
-    0 0 0 1px var(--geomcp-ui-highlight),
+    0 0 0 1px var(--geomcp-ui-border),
     0 12px 36px color-mix(in srgb, var(--geomcp-ui-text) 14%, transparent);
 }
 
@@ -51,7 +51,7 @@ body {
   left: 50%;
   max-width: calc(100% - 24px);
   padding: 7px 10px;
-  border: 1px solid var(--geomcp-ui-bar-end);
+  border: 1px solid var(--geomcp-ui-border);
   border-radius: 4px;
   background: color-mix(in srgb, var(--geomcp-ui-surface) 94%, transparent);
   box-shadow: 0 3px 12px color-mix(in srgb, var(--geomcp-ui-text) 14%, transparent);
@@ -61,13 +61,9 @@ body {
 .geomcp-map-page-state {
   max-width: 560px;
   padding: 20px 24px;
-  border: 1px solid var(--geomcp-ui-highlight);
+  border: 1px solid var(--geomcp-ui-border);
   border-radius: 8px;
   background: var(--geomcp-ui-surface);
-}
-
-.geomcp-map-page-error {
-  border-color: var(--geomcp-ui-bar-end);
 }
 
 .geomcp-interactive-map-frame {

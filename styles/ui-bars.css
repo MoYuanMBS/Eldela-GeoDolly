@@ -1,4 +1,4 @@
-/* Tool UI：布局和按钮状态。SVG 与文字分别由 ui-svg.css / ui-typography.css 管理。 */
+/* Tool UI：布局和按钮状态。SVG 与文字分别由 ui-assets.css / ui-typography.css 管理。 */
 .geomcp-tool-bar {
   position: absolute;
   top: 0;
@@ -72,8 +72,8 @@
   width: 100%;
   min-width: var(--geomcp-standard-ui-min-width);
   min-height: var(--geomcp-standard-ui-min-height);
-  border-top: 1px solid var(--geomcp-ui-highlight);
-  border-bottom: 1px solid var(--geomcp-ui-highlight);
+  border-top: 1px solid var(--geomcp-ui-border);
+  border-bottom: 1px solid var(--geomcp-ui-border);
   background: var(--geomcp-ui-surface);
 }
 
@@ -133,7 +133,7 @@
   bottom: 7px;
   left: 50%;
   width: 1px;
-  background: var(--geomcp-ui-highlight);
+  background: var(--geomcp-ui-divider);
   content: "";
   transform: translateX(-50%);
 }
@@ -157,14 +157,20 @@
   white-space: nowrap;
 }
 
+.geomcp-standard-live-feature-empty {
+  justify-content: center;
+}
+
+.geomcp-standard-live-feature-empty-prompt {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .geomcp-standard-attribution {
   min-width: 0;
   padding: 7px 8px;
   overflow-wrap: anywhere;
-}
-
-.geomcp-standard-bar-status-failed {
-  border-top-color: var(--geomcp-ui-bar-end);
 }
 
 /* Feature UI：折叠标题和额外树区域均不参与 MapSurface 尺寸。 */
@@ -172,8 +178,7 @@
   position: relative;
   width: min(720px, calc(100% - 32px));
   margin: var(--geomcp-feature-bar-gap) auto 0;
-  border-top: 1px solid var(--geomcp-ui-highlight);
-  border-bottom: 1px solid var(--geomcp-ui-highlight);
+  border: 1px solid var(--geomcp-ui-border);
   border-radius: 7px;
   background: color-mix(in srgb, var(--geomcp-ui-surface) 94%, transparent);
   box-shadow: 0 3px 14px color-mix(in srgb, var(--geomcp-ui-text) 14%, transparent);
@@ -187,18 +192,26 @@
   width: 100%;
   height: 36px;
   padding: 3px 44px;
-  grid-template-columns: auto 30px minmax(0, 1fr) 32px;
   align-items: center;
 }
 
+.geomcp-feature-bar-content-expandable {
+  grid-template-columns: auto 24px 32px 24px minmax(0, 1fr);
+}
+
 .geomcp-feature-bar-content-static {
-  grid-template-columns: auto 30px minmax(0, 1fr);
+  grid-template-columns: auto 24px minmax(0, 1fr);
 }
 
 .geomcp-feature-bar-toggle {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  padding: 0;
   border: 0;
   background: transparent;
   cursor: pointer;
+  place-items: center;
 }
 
 .geomcp-feature-bar-toggle:focus-visible {
@@ -229,6 +242,17 @@
   pointer-events: none;
 }
 
+.geomcp-feature-bar-divider::before {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 50%;
+  width: 1px;
+  background: var(--geomcp-ui-divider);
+  content: "";
+  transform: translateX(-50%);
+}
+
 .geomcp-feature-bar-end {
   position: absolute;
   z-index: 2;
@@ -252,6 +276,6 @@
   max-height: var(--geomcp-feature-ui-max-height);
   padding: 7px 12px 10px;
   overflow: auto;
-  border-top: 1px solid var(--geomcp-ui-highlight);
+  border-top: 1px solid var(--geomcp-ui-divider);
   overscroll-behavior: contain;
 }

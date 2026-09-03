@@ -1,4 +1,4 @@
-import type {Circle, CircleMarker, Map as LeafletMap, Path, Polyline} from "leaflet";
+import type {Circle, CircleMarker, Layer, Map as LeafletMap, Marker, Path, Polyline} from "leaflet";
 import type {OverlayInteractionResult} from "../mapsurface/leaflet-renderer-models.js";
 import type {
   ActiveMeasurementTargetType,
@@ -19,9 +19,26 @@ export interface MeasurementVertexLayers {
   centerLayer: CircleMarker;
 }
 
+/** Path draft 的主线与数值标注必须同步更新，避免高频 preview 产生遗留 Marker。 */
+export interface MeasurementDraftPathLayers {
+  pathLayer: Polyline;
+  labelLayer: Marker;
+}
+
+/** Circle 的外框、内侧带、水平半径线与数值标注作为一个视觉对象管理。 */
+export interface MeasurementCircleVisualLayers {
+  outlineLayer: Circle;
+  innerBandLayer: Circle;
+  radiusLayer: Polyline;
+  labelLayer: Marker;
+}
+
 export interface CompletedMeasurementLayers {
-  /** 可见主几何；Line/Polygon 的顶点 Node 单独保存在 vertexLayers。 */
+  /** 可见主几何；内侧带、半径线、数值标签与顶点分别保存以便整体清理。 */
   visualLayer: Path;
+  innerBandLayer: Path | null;
+  radiusLayer: Polyline | null;
+  labelLayer: Marker;
   vertexLayers: readonly MeasurementVertexLayers[];
   /** 透明交互几何使用独立 SVG renderer，避免整图 Canvas 截断下层 Overlay。 */
   hitLayer: Path;
@@ -29,17 +46,19 @@ export interface CompletedMeasurementLayers {
 
 /** Leaflet 细节由 runtime 封装，Controller 只通过该端口管理图层生命周期。 */
 export interface MeasurementLayerRuntime {
-  createDraftPath(coordinates: readonly MeasureCoordinateType[]): Polyline;
+  createDraftPath(coordinates: readonly MeasureCoordinateType[], lengthMeters: number): MeasurementDraftPathLayers;
+  updateDraftPath(layers: MeasurementDraftPathLayers, coordinates: readonly MeasureCoordinateType[], lengthMeters: number): void;
   createDraftPathVertices(coordinates: readonly MeasureCoordinateType[]): readonly MeasurementVertexLayers[];
-  createDraftCircle(center: MeasureCoordinateType, radiusMeters: number): Circle;
-  createCompletedLayers(geometry: MeasurementGeometryType): CompletedMeasurementLayers;
-  setVisualState(layers: Pick<CompletedMeasurementLayers, "visualLayer" | "vertexLayers">, state: "base" | "hover" | "selected"): void;
+  createDraftCircle(center: MeasureCoordinateType, radiusMeters: number): MeasurementCircleVisualLayers;
+  updateDraftCircle(layers: MeasurementCircleVisualLayers, radiusMeters: number): void;
+  createCompletedLayers(geometry: MeasurementGeometryType, labelMeters: number): CompletedMeasurementLayers;
+  setVisualState(layers: Pick<CompletedMeasurementLayers, "visualLayer" | "radiusLayer" | "vertexLayers">, state: "base" | "hover" | "selected"): void;
   /** 返回主几何包围范围右上角，作为 selection 删除按钮的地图锚点。 */
   getVisualNorthEast(layer: Path): MeasureCoordinateType;
   /** 绘制 mode 中只暂停命中，不删除已完成的可见 Geometry。 */
   setCompletedInteractionEnabled(enabled: boolean): void;
   getCompletedInteractionEnabled(): boolean;
-  removeVisualLayer(layer: Path): void;
+  removeVisualLayer(layer: Layer): void;
   removeHitLayer(layer: Path): void;
   dispose(): void;
 }

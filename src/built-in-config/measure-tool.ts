@@ -17,7 +17,8 @@ export const MEASURE_TOOL_BUILT_IN_CONFIG = Object.freeze({
     weightPx: 3,
     hoverWeightPx: 4,
     selectedWeightPx: 5,
-    fillOpacity: 0.18,
+    innerBandWidthPx: 8,
+    dashArray: "6 5",
     draftOpacity: 0.82,
   }),
   // 与 Overlay node-default 使用同一组双圆尺寸，只替换为 Measure/UI 色板。

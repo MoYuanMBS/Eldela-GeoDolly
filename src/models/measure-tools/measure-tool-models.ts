@@ -60,7 +60,7 @@ export interface MeasureToolUiStateType {
   revision: number;
   mode: MeasureToolModeType;
   draftMeasurement: DraftMeasurementType | null;
-  /** 最近一次完成结果服务 HUD，不代表它当前正处于 hover 或 selection。 */
+  /** 最近一次完成结果只供运行时追踪，不代表 Popup 当前正在展示它。 */
   latestMeasurement: CompletedMeasurementType | null;
   hoveredMeasurement: CompletedMeasurementType | null;
   selectedMeasurement: CompletedMeasurementType | null;

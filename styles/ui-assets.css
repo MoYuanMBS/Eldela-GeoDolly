@@ -19,6 +19,13 @@
   object-fit: contain;
 }
 
+.geomcp-ui-icon-standard-empty {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 27px;
+  object-fit: contain;
+}
+
 .geomcp-ui-icon-feature-extend {
   width: 24px;
   height: auto;
@@ -41,6 +48,32 @@
   flex: 0 0 auto;
   width: 22px;
   height: 22px;
+  object-fit: contain;
+}
+
+.geomcp-ui-icon-popup-close {
+  width: 32px;
+  height: 20px;
+  object-fit: contain;
+}
+
+.geomcp-ui-icon-popup-section {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 16px;
+  object-fit: contain;
+}
+
+.geomcp-ui-icon-popup-row-dot {
+  width: 22px;
+  height: 12px;
+  object-fit: contain;
+}
+
+.geomcp-ui-icon-popup-measurement {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 24px;
   object-fit: contain;
 }
 
@@ -113,4 +146,15 @@
 
 .geomcp-ui-decoration-feature-end-right {
   right: 0;
+}
+
+.geomcp-ui-decoration-popup-record-divider {
+  width: 100%;
+  height: 2px;
+}
+
+.geomcp-ui-decoration-popup-footer {
+  width: 53px;
+  height: 22px;
+  object-fit: contain;
 }

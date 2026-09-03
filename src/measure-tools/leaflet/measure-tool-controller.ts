@@ -2,10 +2,8 @@ import {
   DomEvent,
   divIcon,
   marker,
-  type Circle,
   type LeafletMouseEvent,
   type Marker,
-  type Polyline,
 } from "leaflet";
 import {MEASURE_TOOL_BUILT_IN_CONFIG} from "../../built-in-config/measure-tool.js";
 import {UI_SVG_ASSETS} from "../../built-in-config/ui-svg.js";
@@ -23,6 +21,8 @@ import {
 } from "../../models/measure-tools/measure-tool-models.js";
 import type {
   CompletedMeasurementLayers,
+  MeasurementCircleVisualLayers,
+  MeasurementDraftPathLayers,
   MeasurementGeometryType,
   MeasurementLayerRuntime,
   MeasurementVertexLayers,
@@ -97,9 +97,10 @@ export function createMeasureToolController(options: MeasureToolControllerOption
   let pathCursor: MeasureCoordinateType | null = null;
   let circleCenter: MeasureCoordinateType | null = null;
   let circleRadiusPoint: MeasureCoordinateType | null = null;
-  let draftPathLayer: Polyline | null = null;
+  let draftPathLayers: MeasurementDraftPathLayers | null = null;
   let draftVertexLayers: readonly MeasurementVertexLayers[] = Object.freeze([]);
-  let draftCircleLayer: Circle | null = null;
+  let draftCircleLayers: MeasurementCircleVisualLayers | null = null;
+  let draftCircleCenterLayers: readonly MeasurementVertexLayers[] = Object.freeze([]);
 
   // 高频 mousemove 采用 interval + animation frame 两层门控，队列中永远只保留最新事件。
   let previewTimerId: number | null = null;
@@ -150,19 +151,32 @@ export function createMeasureToolController(options: MeasureToolControllerOption
   };
 
   const removeDraftLayers = (): void => {
-    if (draftPathLayer !== null) layerRuntime.removeVisualLayer(draftPathLayer);
+    if (draftPathLayers !== null) {
+      layerRuntime.removeVisualLayer(draftPathLayers.pathLayer);
+      layerRuntime.removeVisualLayer(draftPathLayers.labelLayer);
+    }
     for (const {outerLayer, centerLayer} of draftVertexLayers) {
       layerRuntime.removeVisualLayer(outerLayer);
       layerRuntime.removeVisualLayer(centerLayer);
     }
-    if (draftCircleLayer !== null) layerRuntime.removeVisualLayer(draftCircleLayer);
-    draftPathLayer = null;
+    if (draftCircleLayers !== null) {
+      layerRuntime.removeVisualLayer(draftCircleLayers.outlineLayer);
+      layerRuntime.removeVisualLayer(draftCircleLayers.innerBandLayer);
+      layerRuntime.removeVisualLayer(draftCircleLayers.radiusLayer);
+      layerRuntime.removeVisualLayer(draftCircleLayers.labelLayer);
+    }
+    for (const {outerLayer, centerLayer} of draftCircleCenterLayers) {
+      layerRuntime.removeVisualLayer(outerLayer);
+      layerRuntime.removeVisualLayer(centerLayer);
+    }
+    draftPathLayers = null;
     draftVertexLayers = Object.freeze([]);
-    draftCircleLayer = null;
+    draftCircleLayers = null;
+    draftCircleCenterLayers = Object.freeze([]);
   };
 
   const clearDraft = (): void => {
-    // Esc、切换 mode、成功 finalize 与失败路径共用同一清理入口，防止遗留 timer/layer。
+    // Esc/关闭、切换 mode、成功 finalize 与失败路径共用清理入口，防止遗留 timer/layer。
     cancelPreviewSchedule();
     removeDraftLayers();
     pathVertices = [];
@@ -173,7 +187,7 @@ export function createMeasureToolController(options: MeasureToolControllerOption
   };
 
   const failCurrentDraft = (error: unknown): void => {
-    // 测量失败不销毁已经 ready 的地图和 completed records，只结束当前草稿并交给 HUD 展示。
+    // 测量失败不销毁已经 ready 的地图和 completed records，只结束当前草稿并交给 Popup 展示。
     clearDraft();
     errorMessage = AppError.fromUnknown(error, "measurement_geodesy_failed", "Measure Tool could not calculate the current geometry").message;
     publishState();
@@ -186,8 +200,9 @@ export function createMeasureToolController(options: MeasureToolControllerOption
       publishState();
       return;
     }
-    if (draftPathLayer === null) draftPathLayer = layerRuntime.createDraftPath(previewCoordinates);
-    else draftPathLayer.setLatLngs(previewCoordinates.map((coordinate) => [coordinate.latitude, coordinate.longitude]));
+    const lengthMeters = calculateLineLengthMeters(previewCoordinates);
+    if (draftPathLayers === null) draftPathLayers = layerRuntime.createDraftPath(previewCoordinates, lengthMeters);
+    else layerRuntime.updateDraftPath(draftPathLayers, previewCoordinates, lengthMeters);
     // 鼠标预览只更新尾线；只有已提交顶点数量变化时才重建双圆 Node。
     if (draftVertexLayers.length !== pathVertices.length) {
       for (const {outerLayer, centerLayer} of draftVertexLayers) {
@@ -199,7 +214,7 @@ export function createMeasureToolController(options: MeasureToolControllerOption
     draftMeasurement = Object.freeze({
       kind: "path",
       vertexCount: pathVertices.length,
-      lengthMeters: calculateLineLengthMeters(previewCoordinates),
+      lengthMeters,
     });
     publishState();
   };
@@ -210,6 +225,7 @@ export function createMeasureToolController(options: MeasureToolControllerOption
       publishState();
       return;
     }
+    if (draftCircleCenterLayers.length === 0) draftCircleCenterLayers = layerRuntime.createDraftPathVertices([circleCenter]);
     if (circleRadiusPoint === null) {
       draftMeasurement = Object.freeze({kind: "circle", centerPlaced: true, radiusMeters: null});
       publishState();
@@ -217,8 +233,8 @@ export function createMeasureToolController(options: MeasureToolControllerOption
     }
     const radiusMeters = calculateLineLengthMeters([circleCenter, circleRadiusPoint]);
     if (!Number.isFinite(radiusMeters) || radiusMeters <= 0) return;
-    if (draftCircleLayer === null) draftCircleLayer = layerRuntime.createDraftCircle(circleCenter, radiusMeters);
-    else draftCircleLayer.setRadius(radiusMeters);
+    if (draftCircleLayers === null) draftCircleLayers = layerRuntime.createDraftCircle(circleCenter, radiusMeters);
+    else layerRuntime.updateDraftCircle(draftCircleLayers, radiusMeters);
     draftMeasurement = Object.freeze({kind: "circle", centerPlaced: true, radiusMeters});
     publishState();
   };
@@ -285,6 +301,9 @@ export function createMeasureToolController(options: MeasureToolControllerOption
     removeDeleteMarker(record);
     layerRuntime.removeHitLayer(record.hitLayer);
     layerRuntime.removeVisualLayer(record.visualLayer);
+    if (record.innerBandLayer !== null) layerRuntime.removeVisualLayer(record.innerBandLayer);
+    if (record.radiusLayer !== null) layerRuntime.removeVisualLayer(record.radiusLayer);
+    layerRuntime.removeVisualLayer(record.labelLayer);
     for (const {outerLayer, centerLayer} of record.vertexLayers) {
       layerRuntime.removeVisualLayer(outerLayer);
       layerRuntime.removeVisualLayer(centerLayer);
@@ -367,7 +386,10 @@ export function createMeasureToolController(options: MeasureToolControllerOption
 
   const registerCompletedMeasurement = (measurement: CompletedMeasurementType, geometry: MeasurementGeometryType): void => {
     // 每个 record 只绑定自己的透明 hit Path；可见 Path/Node 始终保持 interactive=false。
-    const layers = layerRuntime.createCompletedLayers(geometry);
+    const labelMeters = measurement.kind === "line"
+      ? measurement.lengthMeters
+      : measurement.kind === "polygon" ? measurement.perimeterMeters : measurement.radiusMeters;
+    const layers = layerRuntime.createCompletedLayers(geometry, labelMeters);
     const handleMouseOver = (): void => {
       overlayInteraction?.clearHover();
       const previousId = hoveredMeasurementId;
@@ -446,9 +468,10 @@ export function createMeasureToolController(options: MeasureToolControllerOption
     publishState();
   };
 
-  const finishSuccessfulMeasurement = (): void => {
-    clearDraft();
+  const finishSuccessfulMeasurement = (measurementId: string): void => {
+    // 完成后先退出 drawing、恢复 interaction，再选中新结果；Popup 因 selection 保持可见。
     transitionMode("idle");
+    selectMeasurement(measurementId);
   };
 
   const finalizePath = (): void => {
@@ -485,7 +508,7 @@ export function createMeasureToolController(options: MeasureToolControllerOption
       });
       registerCompletedMeasurement(measurement, {kind: "polygon", coordinates: classification.coordinates});
     }
-    finishSuccessfulMeasurement();
+    finishSuccessfulMeasurement(measurementId);
   };
 
   const finalizeCircle = (radiusPoint: MeasureCoordinateType): void => {
@@ -501,7 +524,7 @@ export function createMeasureToolController(options: MeasureToolControllerOption
       warning: null,
     });
     registerCompletedMeasurement(measurement, {kind: "circle", center: circleCenter, radiusMeters: geodesy.radiusMeters});
-    finishSuccessfulMeasurement();
+    finishSuccessfulMeasurement(measurementId);
   };
 
   const handleMapClick = (event: LeafletMouseEvent): void => {
@@ -556,12 +579,9 @@ export function createMeasureToolController(options: MeasureToolControllerOption
   const handleWindowKeyDown = (event: KeyboardEvent): void => {
     if (mode === "idle" || isEditableKeyboardTarget(event.target)) return;
     if (event.key === "Escape") {
-      // Esc 重置当前输入但保留工具 mode，便于用户立即重新开始。
+      // Esc 与绘制态 Popup 关闭按钮语义一致：丢弃 draft 并完整退出当前工具。
       event.preventDefault();
-      clearDraft();
-      errorMessage = null;
-      if (mode === "draw_circle") draftMeasurement = Object.freeze({kind: "circle", centerPlaced: false, radiusMeters: null});
-      publishState();
+      transitionMode("idle");
       return;
     }
     if (event.key === "Backspace" && mode === "draw_path") {

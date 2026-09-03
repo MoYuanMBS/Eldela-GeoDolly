@@ -6,4 +6,7 @@
   --geomcp-background-color: #F2EEEA;
   --geomcp-ui-border: #552c22;
   --geomcp-ui-divider: #dc9292;
+  --geomcp-measurement-stroke: #585555;
+  --geomcp-measurement-band: #d8937c;
+  --geomcp-measurement-band-opacity: 0.5;
 }
