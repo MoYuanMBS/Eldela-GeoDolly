@@ -25,8 +25,9 @@ export const UI_BUILT_IN_CONFIG = {
     gapPx: 6,
   },
   popup: {
-    // Feature/Measurement 共用固定宽度；长值换行，大量 records 只滚动内容区。
-    widthPx: 280,
+    // Popup 优先使用窄布局；长单词只在该区间内推动卡片扩宽，超过上限后换行。
+    minWidthPx: 240,
+    maxWidthPx: 320,
     minHeightPx: 160,
     maxHeightPx: 480,
   },

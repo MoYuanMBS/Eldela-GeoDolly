@@ -1,41 +1,52 @@
-/* Feature/Measurement 共享 Popup 外壳；内容状态由 React 保持互斥。 */
-.geomcp-interactive-popup {
+/* Feature/Measurement 共享唯一 Popup 外壳；只有 body 参与滚动。 */
+.geomcp-popup {
   position: absolute;
   z-index: 4;
   top: 12px;
   right: 12px;
   display: grid;
-  width: var(--geomcp-popup-width);
+  width: fit-content;
+  min-width: min(var(--geomcp-popup-min-width), calc(100% - 24px));
+  max-width: min(var(--geomcp-popup-max-width), calc(100% - 24px));
   min-height: min(var(--geomcp-popup-min-height), calc(100% - 24px));
   max-height: min(var(--geomcp-popup-max-height), calc(100% - 24px));
+  padding-bottom: 8px;
   overflow: visible;
-  border: 1px solid var(--geomcp-ui-border);
   border-radius: 8px;
   background: var(--geomcp-ui-surface);
   box-shadow: 0 5px 18px color-mix(in srgb, var(--geomcp-ui-text) 18%, transparent);
   pointer-events: auto;
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+.geomcp-popup-clip {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 8px 8px 0 0;
   grid-template-rows: auto minmax(0, 1fr);
 }
 
-.geomcp-interactive-popup-header {
+.geomcp-popup-header {
   display: flex;
   min-width: 0;
   min-height: 52px;
   padding: 4px 5px 3px 8px;
-  border-bottom: 1px solid var(--geomcp-ui-divider);
   align-items: center;
   justify-content: space-between;
   gap: 8px;
 }
 
-.geomcp-interactive-popup-header-content {
+.geomcp-popup-header-content {
   display: flex;
   min-width: 0;
   height: 100%;
   align-items: center;
 }
 
-.geomcp-interactive-popup-close {
+.geomcp-popup-close {
   position: relative;
   display: block;
   flex: 0 0 auto;
@@ -49,83 +60,117 @@
   cursor: pointer;
 }
 
-.geomcp-interactive-popup-close:hover,
-.geomcp-interactive-popup-close:focus-visible {
+.geomcp-popup-close:hover,
+.geomcp-popup-close:focus-visible {
   background: color-mix(in srgb, var(--geomcp-ui-highlight) 62%, transparent);
 }
 
-.geomcp-interactive-popup-close:focus-visible {
+.geomcp-popup-close:focus-visible {
   outline: 2px solid var(--geomcp-ui-bar-end);
   outline-offset: -2px;
 }
 
-.geomcp-interactive-popup-scroll {
+.geomcp-popup-body {
   min-height: 0;
-  padding: 8px 12px 4px;
+  padding: 0 12px;
   overflow-x: hidden;
   overflow-y: auto;
-  border-radius: 0 0 8px 8px;
   background: var(--geomcp-ui-surface);
   overscroll-behavior: contain;
 }
 
-.geomcp-interactive-popup-footer {
-  position: absolute;
-  z-index: 2;
-  right: -5px;
-  bottom: -8px;
+.geomcp-popup-section {
+  min-width: 0;
+  padding: 7px 0 3px;
+  border-top: 4px solid var(--geomcp-ui-divider);
+}
+
+.geomcp-popup-section-title {
   display: flex;
-  width: 74px;
-  height: 30px;
+  margin: 0 0 3px;
+  align-items: center;
+  gap: 6px;
+}
+
+.geomcp-popup-record {
+  min-width: 0;
+}
+
+/* title 或上一 record 存在时才画 record 分隔，Measurement 的首个无标题 record 不触发。 */
+.geomcp-popup-section > * + .geomcp-popup-record {
+  margin-top: 3px;
+  padding-top: 3px;
+  border-top: 3px dashed var(--geomcp-ui-divider);
+}
+
+.geomcp-popup-record-title {
+  display: block;
+  margin: 0;
+}
+
+.geomcp-popup-footer {
+  position: relative;
+  height: 3px;
+  margin: 0 12px;
   overflow: visible;
   pointer-events: none;
 }
 
-.geomcp-interactive-popup-values {
-  display: grid;
-  min-width: 0;
-  margin: 4px 0 0;
+.geomcp-popup-frame {
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--geomcp-ui-border);
+  border-radius: 8px;
+  pointer-events: none;
 }
 
-.geomcp-interactive-popup-row {
+.geomcp-popup-values {
   display: grid;
   min-width: 0;
-  min-height: 22px;
-  padding: 3px 0;
-  grid-template-columns: 22px minmax(72px, 0.75fr) minmax(0, 1.25fr);
+  margin: 0;
+}
+
+.geomcp-popup-row {
+  display: grid;
+  min-width: 0;
+  min-height: 25px;
+  padding: 2px 0;
+  grid-template-columns: 22px minmax(62px, 0.75fr) minmax(76px, 1.25fr);
   align-items: center;
   gap: 5px;
 }
 
-.geomcp-interactive-popup-row:not(:last-child) {
-  border-bottom: 1px dotted var(--geomcp-ui-divider);
+.geomcp-popup-row + .geomcp-popup-row {
+  border-top: 1px dotted var(--geomcp-ui-divider);
 }
 
-.geomcp-measurement-hud-title-group {
+.geomcp-popup-title-group {
   display: flex;
   min-width: 0;
   align-items: center;
   gap: 7px;
 }
 
-.geomcp-measurement-hud-values {
-  margin-top: 0;
-}
-
-.geomcp-measurement-hud-row {
-  grid-template-columns: 22px minmax(72px, 0.75fr) minmax(0, 1.25fr);
-}
-
-.geomcp-measurement-hud-row-label,
-.geomcp-measurement-hud-row-value {
+.geomcp-popup-row-key,
+.geomcp-popup-row-value {
+  min-width: 0;
   margin: 0;
 }
 
-.geomcp-measurement-hud-empty,
-.geomcp-measurement-hud-error,
-.geomcp-measurement-hud-warning {
+.geomcp-popup-row-value {
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+.geomcp-popup-relation-role-row > .geomcp-popup-row-key {
+  grid-column: 2;
+}
+
+.geomcp-popup-message {
   display: block;
-  margin: 4px 0 8px;
+  margin: 2px 0 4px;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 .geomcp-measurement-delete-marker {
@@ -177,66 +222,6 @@
 .geomcp-measurement-delete-button:focus-visible {
   outline: 2px solid var(--geomcp-ui-bar-end);
   outline-offset: 1px;
-}
-
-.geomcp-osm-tags-popup-title-group {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 7px;
-}
-
-.geomcp-osm-tags-popup-osm-refs,
-.geomcp-osm-tags-popup-empty {
-  margin: 0 0 7px;
-}
-
-.geomcp-osm-tags-popup-tag-group + .geomcp-osm-tags-popup-tag-group,
-.geomcp-osm-tags-popup-relation + .geomcp-osm-tags-popup-relation {
-  margin-top: 8px;
-}
-
-.geomcp-osm-tags-popup-tag-list {
-  margin-top: 2px;
-}
-
-.geomcp-osm-tags-popup-tag-group-title {
-  /* volcano 的可见图形经 placement 裁边后从 section 左缘开始。 */
-  margin-left: 0;
-}
-
-.geomcp-osm-tags-popup-tag-row {
-  grid-template-columns: 22px minmax(72px, 0.75fr) minmax(0, 1.25fr);
-}
-
-.geomcp-osm-tags-popup-tag-key,
-.geomcp-osm-tags-popup-tag-value {
-  min-width: 0;
-  margin: 0;
-}
-
-.geomcp-osm-tags-popup-relations-section {
-  margin-top: 12px;
-  padding-top: 9px;
-  border-top: 1px solid var(--geomcp-ui-divider);
-}
-
-.geomcp-osm-tags-popup-section-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.geomcp-osm-tags-popup-empty-group {
-  margin-top: 5px;
-}
-
-.geomcp-osm-tags-popup-relation-header {
-  display: flex;
-  min-width: 0;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
 }
 
 /* AI Output tree. */

@@ -41,7 +41,8 @@ interface MapPageStyle extends CSSProperties {
   "--geomcp-standard-ui-bar-end-scale-x": string;
   "--geomcp-feature-bar-gap": string;
   "--geomcp-feature-ui-max-height": string;
-  "--geomcp-popup-width": string;
+  "--geomcp-popup-min-width": string;
+  "--geomcp-popup-max-width": string;
   "--geomcp-popup-min-height": string;
   "--geomcp-popup-max-height": string;
   "--geomcp-tool-bar-width": string;
@@ -197,7 +198,8 @@ export function MapPage({mapDataUrl, MapSurfaceComponent}: MapPageProps) {
     "--geomcp-standard-ui-bar-end-scale-x": String(payload.screenshot_size[0] / UI_BUILT_IN_CONFIG.standardUi.barEndVisibleWidthPx),
     "--geomcp-feature-bar-gap": `${UI_BUILT_IN_CONFIG.featureBar.gapPx}px`,
     "--geomcp-feature-ui-max-height": `${__GEOMCP_FEATURE_UI_MAX_HEIGHT_PX__}px`,
-    "--geomcp-popup-width": `${UI_BUILT_IN_CONFIG.popup.widthPx}px`,
+    "--geomcp-popup-min-width": `${UI_BUILT_IN_CONFIG.popup.minWidthPx}px`,
+    "--geomcp-popup-max-width": `${UI_BUILT_IN_CONFIG.popup.maxWidthPx}px`,
     "--geomcp-popup-min-height": `${UI_BUILT_IN_CONFIG.popup.minHeightPx}px`,
     "--geomcp-popup-max-height": `${UI_BUILT_IN_CONFIG.popup.maxHeightPx}px`,
     "--geomcp-tool-bar-width": `${UI_BUILT_IN_CONFIG.toolbar.widthPx}px`,

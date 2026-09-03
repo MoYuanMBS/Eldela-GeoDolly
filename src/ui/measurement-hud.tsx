@@ -1,6 +1,6 @@
 import type {MeasureToolModeType, MeasureToolUiStateType} from "../models/measure-tools/measure-tool-models.js";
 import {UI_SVG_ASSETS} from "../built-in-config/ui-svg.js";
-import {InteractivePopup} from "./interactive-popup.js";
+import {Popup} from "./popup.js";
 import {formatCompletedMeasurementRows, formatDraftMeasurementRows} from "./measurement-formatter.js";
 
 interface MeasurementHudProps {
@@ -21,7 +21,7 @@ const MEASUREMENT_TYPE_ICONS = {
   circle: UI_SVG_ASSETS.icons.roundMeasurement,
 } as const;
 
-/** 高频测量状态的独立 React 子树；米/平方米的原始值在 UI 边界统一格式化。 */
+/** 高频测量状态的独立 React 子树；视觉结构与 Feature Popup 完全共用。 */
 export function MeasurementHUD({state, onClose}: MeasurementHudProps) {
   const rows = state.mode !== "idle" && state.draftMeasurement !== null
     ? formatDraftMeasurementRows(state.draftMeasurement)
@@ -34,38 +34,39 @@ export function MeasurementHUD({state, onClose}: MeasurementHudProps) {
     ? "circle"
     : state.mode === "draw_path" ? "path" : state.selectedMeasurement?.kind ?? "line";
   return (
-    <InteractivePopup
+    <Popup
       variant="measurement"
-      className={`geomcp-measurement-hud geomcp-measurement-hud-mode-${state.mode.replace("_", "-")} geomcp-measurement-hud-state-${measurementState}`}
+      className={`geomcp-popup-measurement-mode-${state.mode.replace("_", "-")} geomcp-popup-state-${measurementState}`}
       ariaLabel="Drawing measurement"
       ariaLive="polite"
       onClose={onClose}
       header={(
-        <span className="geomcp-measurement-hud-title-group">
+        <span className="geomcp-popup-title-group">
           <img className={`geomcp-ui-icon geomcp-ui-icon-popup-measurement geomcp-ui-icon-popup-measurement-${measurementKind}`} src={MEASUREMENT_TYPE_ICONS[measurementKind]} alt="" draggable={false} aria-hidden="true" />
-          <span className="geomcp-measurement-hud-title">Measure</span>
+          <span className="geomcp-popup-title">Measure</span>
         </span>
       )}
     >
-        {state.errorMessage !== null
-          ? <span className="geomcp-measurement-hud-error">{state.errorMessage}</span>
-          : rows.length === 0
-          ? <span className={`geomcp-measurement-hud-empty geomcp-measurement-hud-empty-${state.mode.replace("_", "-")}`}>{MODE_INSTRUCTIONS[state.mode]}</span>
-          : (
-              <>
-                <dl className="geomcp-interactive-popup-values geomcp-measurement-hud-values">
+      <section className="geomcp-popup-section">
+        <section className="geomcp-popup-record">
+          {state.errorMessage !== null
+            ? <p className="geomcp-popup-message geomcp-popup-message-error">{state.errorMessage}</p>
+            : rows.length === 0
+            ? <p className="geomcp-popup-message geomcp-popup-message-muted">{MODE_INSTRUCTIONS[state.mode]}</p>
+            : (
+                <dl className="geomcp-popup-values">
                   {rows.map((row) => (
-                    <div className="geomcp-interactive-popup-row geomcp-measurement-hud-row" key={row.label}>
+                    <div className="geomcp-popup-row" key={row.label}>
                       <img className="geomcp-ui-icon geomcp-ui-icon-popup-row-dot" src={UI_SVG_ASSETS.icons.tagPopupDot} alt="" draggable={false} aria-hidden="true" />
-                      <dt className="geomcp-measurement-hud-row-label">{row.label}</dt>
-                      <dd className="geomcp-measurement-hud-row-value">{row.value}</dd>
+                      <dt className="geomcp-popup-row-key">{row.label}</dt>
+                      <dd className="geomcp-popup-row-value">{row.value}</dd>
                     </div>
                   ))}
                 </dl>
-                <img className="geomcp-ui-decoration geomcp-ui-decoration-popup-record-divider geomcp-ui-decoration-measurement-record-divider" src={UI_SVG_ASSETS.decorations.tagBarEnd} alt="" draggable={false} aria-hidden="true" />
-              </>
-            )}
-        {warning === null ? null : <span className="geomcp-measurement-hud-warning">{warning}</span>}
-    </InteractivePopup>
+              )}
+          {warning === null ? null : <p className="geomcp-popup-message geomcp-popup-message-warning">{warning}</p>}
+        </section>
+      </section>
+    </Popup>
   );
 }
