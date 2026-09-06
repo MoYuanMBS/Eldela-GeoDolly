@@ -8,9 +8,10 @@
 
 /* Icons */
 .geomcp-ui-icon-tool {
-  width: 145%;
+  width: 70%;
   max-width: none;
-  height: auto;
+  height: 70%;
+  object-fit: contain;
 }
 
 .geomcp-ui-icon-standard-target {
@@ -23,7 +24,7 @@
 .geomcp-ui-icon-standard-empty {
   /* empty 与普通 target 共用 28px slot，切换状态时不产生横向跳动。 */
   object-fit: contain;
-  transform: scale(1.4);
+  transform: scale(0.95);
 }
 
 .geomcp-ui-icon-feature-extend {
@@ -55,7 +56,7 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 106px;
+  width: 43px;
   max-width: none;
   height: 43px;
   object-fit: contain;
@@ -64,19 +65,17 @@
 
 .geomcp-ui-icon-popup-section {
   flex: 0 0 auto;
-  width: 40px;
-  height: 25px;
-  margin-right: -15px;
-  margin-left: -16px;
+  width: 18px;
+  height: 18px;
+  margin-right: -1px;
+  margin-left: -1px;
   object-fit: contain;
 }
 
 .geomcp-ui-icon-popup-row-dot {
-  width: 106px;
-  max-width: none;
-  height: 43px;
-  margin-right: -37px;
-  margin-left: -47px;
+  width: 12px;
+  height: 12px;
+  margin: 0;
   align-self: center;
   object-fit: contain;
 }
@@ -86,16 +85,6 @@
   width: 33px;
   height: 33px;
   object-fit: contain;
-}
-
-/* line_measure.svg 的可见图形位于 viewBox 下半部，需要在本 placement 单独校正。 */
-.geomcp-ui-icon-popup-measurement-line,
-.geomcp-ui-icon-popup-measurement-path {
-  transform: translateY(-8px) scale(1.28);
-}
-
-.geomcp-ui-icon-standard-measurement-line {
-  transform: translateY(-5px) scale(1.32);
 }
 
 .geomcp-ui-icon-delete {
@@ -116,42 +105,43 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  width: var(--geomcp-tool-bar-width);
+  width: 16px;
   max-width: none;
-  height: var(--geomcp-tool-bar-height);
+  height: 6px;
   transform: translate(-50%, -50%);
 }
 
 .geomcp-ui-decoration-standard-divider {
   position: absolute;
   top: 50%;
-  width: auto;
-  height: 124px;
+  width: 8px;
+  height: 8px;
   left: 50%;
   transform: translate(-50%, -50%);
 }
 
 .geomcp-ui-decoration-standard-end {
   position: absolute;
-  width: 79px;
+  width: 64px;
   max-width: none;
-  height: 124px;
+  height: 32px;
 }
 
 .geomcp-ui-decoration-standard-end-up {
-  top: -59px;
+  top: -8px;
 }
 
 .geomcp-ui-decoration-standard-end-down {
-  top: -17px;
+  top: auto;
+  bottom: -8px;
 }
 
 .geomcp-ui-decoration-standard-end-left {
-  left: -21px;
+  left: -12px;
 }
 
 .geomcp-ui-decoration-standard-end-right {
-  right: -21px;
+  right: -12px;
 }
 
 .geomcp-ui-decoration-standard-bar-end {
@@ -168,25 +158,25 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 79px;
-  height: 124px;
+  width: 16px;
+  height: 6px;
   transform: translate(-50%, -50%);
 }
 
 .geomcp-ui-decoration-feature-end {
   position: absolute;
-  top: -62px;
-  width: 79px;
+  top: 2px;
+  width: 64px;
   max-width: none;
-  height: 124px;
+  height: 32px;
 }
 
 .geomcp-ui-decoration-feature-end-left {
-  left: -22px;
+  left: -12px;
 }
 
 .geomcp-ui-decoration-feature-end-right {
-  right: -22px;
+  right: -12px;
 }
 
 .geomcp-ui-decoration-popup-footer-line {
@@ -200,9 +190,9 @@
 
 .geomcp-ui-decoration-popup-corner {
   position: absolute;
-  top: -13px;
-  right: -11px;
-  width: 74px;
-  height: 30px;
+  top: -18px;
+  right: -24px;
+  width: 85px;
+  height: 40px;
   object-fit: fill;
 }

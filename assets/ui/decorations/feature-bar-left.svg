@@ -1,154 +1,204 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg id="feature_bar_left" data-name="feature bar left" xmlns="http://www.w3.org/2000/svg" width="78.6465" height="124.0041" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 78.6465 124.0041">
+<svg id="feature_bar_left" data-name="feature bar left" xmlns="http://www.w3.org/2000/svg" width="63.5569" height="31.4533" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 63.5569 31.4533">
   <defs>
-    <linearGradient id="_未命名的渐变_67" data-name="未命名的渐变 67" x1="-213.8389" y1="325.0247" x2="-213.8389" y2="324.9763" gradientTransform="translate(24832.3902 37766.68) scale(116 -116)" gradientUnits="userSpaceOnUse">
+    <linearGradient id="_未命名的渐变_24" data-name="未命名的渐变 24" x1="-36.101" y1="-456.3591" x2="-17.0505" y2="-470.1457" gradientTransform="translate(-138.7918 405.0989) rotate(-162.6154) scale(1.6419 -.9065)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f4f0e9" stop-opacity=".96"/>
+      <stop offset=".55" stop-color="#d9d3cb" stop-opacity=".82"/>
+      <stop offset="1" stop-color="#aaa6a3" stop-opacity=".42"/>
+    </linearGradient>
+    <linearGradient id="_未命名的渐变_24-2" data-name="未命名的渐变 24" x1="-384.0145" y1="21.8352" x2="-366.8302" y2="9.3992" gradientTransform="translate(641.6155 79.9228) rotate(5.0658) scale(1.6419 -.9065)" xlink:href="#_未命名的渐变_24"/>
+    <linearGradient id="_未命名的渐变_67" data-name="未命名的渐变 67" x1="-221.4662" y1="277.7855" x2="-221.4662" y2="277.7283" gradientTransform="translate(25707.4234 32239.8971) scale(116 -116)" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#d7cfca"/>
       <stop offset="1" stop-color="#afa6a2"/>
     </linearGradient>
-    <linearGradient id="_未命名的渐变_67-2" data-name="未命名的渐变 67" x1="-214.2384" y1="325.5614" x2="-214.2384" y2="325.513" gradientTransform="translate(23167.5891 35225.36) scale(108 -108)" xlink:href="#_未命名的渐变_67"/>
-    <linearGradient id="_未命名的渐变_67-3" data-name="未命名的渐变 67" x1="-214.717" y1="327.0433" x2="-214.717" y2="326.9949" gradientTransform="translate(18928.0865 28845.56) scale(88 -88)" xlink:href="#_未命名的渐变_67"/>
-    <linearGradient id="_未命名的渐变_67-4" data-name="未命名的渐变 67" x1="-215.5379" y1="329.1025" x2="-215.5379" y2="329.0541" gradientTransform="translate(15124.0341 23103.84) scale(70 -70)" xlink:href="#_未命名的渐变_67"/>
-    <linearGradient id="_未命名的渐变_55" data-name="未命名的渐变 55" x1="-212.8338" y1="327.3853" x2="-212.8338" y2="327.3369" gradientTransform="translate(16201.3849 24944.08) scale(76 -76)" gradientUnits="userSpaceOnUse">
+    <linearGradient id="_未命名的渐变_67-2" data-name="未命名的渐变 67" x1="-221.8625" y1="278.3205" x2="-221.8625" y2="278.2633" gradientTransform="translate(23981.7505 30076.4768) scale(108 -108)" xlink:href="#_未命名的渐变_67"/>
+    <linearGradient id="_未命名的渐变_67-3" data-name="未命名的渐变 67" x1="-222.3381" y1="279.7995" x2="-222.3381" y2="279.7424" gradientTransform="translate(19590.0682 24641.426) scale(88 -88)" xlink:href="#_未命名的渐变_67"/>
+    <linearGradient id="_未命名的渐变_67-4" data-name="未命名的渐变 67" x1="-223.1533" y1="281.8547" x2="-223.1533" y2="281.7975" gradientTransform="translate(15649.0541 19749.9803) scale(70 -70)" xlink:href="#_未命名的渐变_67"/>
+    <linearGradient id="_未命名的渐变_55" data-name="未命名的渐变 55" x1="-220.4734" y1="280.1476" x2="-220.4734" y2="280.0904" gradientTransform="translate(16772.0588 21306.7955) scale(76 -76)" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#eee8e3"/>
       <stop offset="1" stop-color="#d9d1cc"/>
     </linearGradient>
-    <linearGradient id="_未命名的渐变_55-2" data-name="未命名的渐变 55" x1="-213.5335" y1="325.7458" x2="-213.5335" y2="325.6974" gradientTransform="translate(19245.5368 29377.64) scale(90 -90)" xlink:href="#_未命名的渐变_55"/>
-    <linearGradient id="_未命名的渐变_55-3" data-name="未命名的渐变 55" x1="-214.0853" y1="325.1116" x2="-214.0853" y2="325.0632" gradientTransform="translate(20581.8875 31269.88) scale(96 -96)" xlink:href="#_未命名的渐变_55"/>
-    <linearGradient id="_未命名的渐变_55-4" data-name="未命名的渐变 55" x1="-214.5972" y1="324.9278" x2="-214.5972" y2="324.8794" gradientTransform="translate(21491.7881 32552.04) scale(100 -100)" xlink:href="#_未命名的渐变_55"/>
-    <linearGradient id="_未命名的渐变_55-5" data-name="未命名的渐变 55" x1="-215.0039" y1="326.1218" x2="-215.0039" y2="326.0734" gradientTransform="translate(18524.6362 28107.48) scale(86 -86)" xlink:href="#_未命名的渐变_55"/>
-    <linearGradient id="_未命名的渐变_55-6" data-name="未命名的渐变 55" x1="-215.4275" y1="327.0181" x2="-215.4275" y2="326.9697" gradientTransform="translate(17270.2854 26224.24) scale(80 -80)" xlink:href="#_未命名的渐变_55"/>
-    <linearGradient id="_未命名的渐变_55-7" data-name="未命名的渐变 55" x1="-215.9666" y1="326.7636" x2="-215.9666" y2="326.7152" gradientTransform="translate(18611.6362 28165.48) scale(86 -86)" xlink:href="#_未命名的渐变_55"/>
-    <linearGradient id="_未命名的渐变_55-8" data-name="未命名的渐变 55" x1="-216.7684" y1="328.1883" x2="-216.7684" y2="328.1398" gradientTransform="translate(16081.9346 24351) scale(74 -74)" xlink:href="#_未命名的渐变_55"/>
-    <linearGradient id="_未命名的渐变_55-9" data-name="未命名的渐变 55" x1="-217.8345" y1="330.103" x2="-217.8345" y2="330.0546" gradientTransform="translate(13549.2331 20532.52) scale(62 -62)" xlink:href="#_未命名的渐变_55"/>
-    <linearGradient id="_未命名的渐变_55-10" data-name="未命名的渐变 55" x1="-219.0317" y1="331.4361" x2="-219.0317" y2="331.3876" gradientTransform="translate(12311.8823 18627.28) scale(56 -56)" xlink:href="#_未命名的渐变_55"/>
-    <linearGradient id="_未命名的渐变_55-11" data-name="未命名的渐变 55" x1="-220.5923" y1="333.032" x2="-220.5923" y2="332.9836" gradientTransform="translate(11078.5315 16719.04) scale(50 -50)" xlink:href="#_未命名的渐变_55"/>
-    <linearGradient id="_未命名的渐变_55-12" data-name="未命名的渐变 55" x1="-222.5569" y1="334.9766" x2="-222.5569" y2="334.9282" gradientTransform="translate(9844.1807 14806.8) scale(44 -44)" xlink:href="#_未命名的渐变_55"/>
-    <linearGradient id="_未命名的渐变_55-13" data-name="未命名的渐变 55" x1="-225.6136" y1="338.5338" x2="-225.6136" y2="338.4853" gradientTransform="translate(8176.3796 12255.48) scale(36 -36)" xlink:href="#_未命名的渐变_55"/>
-    <linearGradient id="_未命名的渐变_69" data-name="未命名的渐变 69" x1="-212.1557" y1="328.8137" x2="-212.1557" y2="328.7653" gradientTransform="translate(13179.2331 20448.52) scale(62 -62)" gradientUnits="userSpaceOnUse">
+    <linearGradient id="_未命名的渐变_55-2" data-name="未命名的渐变 55" x1="-221.1653" y1="278.5127" x2="-221.1653" y2="278.4555" gradientTransform="translate(19922.7364 25079.0311) scale(90 -90)" xlink:href="#_未命名的渐变_55"/>
+    <linearGradient id="_未命名的渐变_55-3" data-name="未命名的渐变 55" x1="-221.7116" y1="277.8808" x2="-221.7116" y2="277.8236" gradientTransform="translate(21304.7411 26687.8463) scale(96 -96)" xlink:href="#_未命名的渐变_55"/>
+    <linearGradient id="_未命名的渐变_55-4" data-name="未命名的渐变 55" x1="-222.2185" y1="277.6965" x2="-222.2185" y2="277.6393" gradientTransform="translate(22245.0776 27781.0564) scale(100 -100)" xlink:href="#_未命名的渐变_55"/>
+    <linearGradient id="_未命名的渐变_55-5" data-name="未命名的渐变 55" x1="-222.6225" y1="278.8879" x2="-222.6225" y2="278.8307" gradientTransform="translate(19171.3999 23997.8209) scale(86 -86)" xlink:href="#_未命名的渐变_55"/>
+    <linearGradient id="_未命名的渐变_55-6" data-name="未命名的渐变 55" x1="-223.0427" y1="279.7803" x2="-223.0427" y2="279.7232" gradientTransform="translate(17871.3952 22398.0057) scale(80 -80)" xlink:href="#_未命名的渐变_55"/>
+    <linearGradient id="_未命名的渐变_55-7" data-name="未命名的渐变 55" x1="-223.5763" y1="279.5237" x2="-223.5763" y2="279.4666" gradientTransform="translate(19258.3999 24055.8209) scale(86 -86)" xlink:href="#_未命名的渐变_55"/>
+    <linearGradient id="_未命名的渐变_55-8" data-name="未命名的渐变 55" x1="-224.3719" y1="280.9449" x2="-224.3719" y2="280.8877" gradientTransform="translate(16637.3905 20808.1904) scale(74 -74)" xlink:href="#_未命名的渐变_55"/>
+    <linearGradient id="_未命名的渐变_55-9" data-name="未命名的渐变 55" x1="-225.4299" y1="282.8554" x2="-225.4299" y2="282.7982" gradientTransform="translate(14013.3811 17556.56) scale(62 -62)" xlink:href="#_未命名的渐变_55"/>
+    <linearGradient id="_未命名的渐变_55-10" data-name="未命名的渐变 55" x1="-226.6172" y1="284.1851" x2="-226.6172" y2="284.1279" gradientTransform="translate(12730.3764 15934.7447) scale(56 -56)" xlink:href="#_未命名的渐变_55"/>
+    <linearGradient id="_未命名的渐变_55-11" data-name="未命名的渐变 55" x1="-228.1648" y1="285.7772" x2="-228.1648" y2="285.7201" gradientTransform="translate(11451.3717 14309.9295) scale(50 -50)" xlink:href="#_未命名的渐变_55"/>
+    <linearGradient id="_未命名的渐变_55-12" data-name="未命名的渐变 55" x1="-230.1131" y1="287.7179" x2="-230.1131" y2="287.6608" gradientTransform="translate(10171.367 12681.1143) scale(44 -44)" xlink:href="#_未命名的渐变_55"/>
+    <linearGradient id="_未命名的渐变_55-13" data-name="未命名的渐变 55" x1="-233.1449" y1="291.2682" x2="-233.1449" y2="291.211" gradientTransform="translate(8442.6941 10507.6939) scale(36 -36)" xlink:href="#_未命名的渐变_55"/>
+    <linearGradient id="_未命名的渐变_69" data-name="未命名的渐变 69" x1="-219.8034" y1="281.5781" x2="-219.8034" y2="281.5209" gradientTransform="translate(13643.3811 17472.56) scale(62 -62)" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#fffefa"/>
       <stop offset="1" stop-color="#f5f0eb"/>
     </linearGradient>
-    <linearGradient id="_未命名的渐变_69-2" data-name="未命名的渐变 69" x1="-212.8183" y1="327.4658" x2="-212.8183" y2="327.4174" gradientTransform="translate(14498.5838 22327.76) scale(68 -68)" xlink:href="#_未命名的渐变_69"/>
-    <linearGradient id="_未命名的渐变_69-3" data-name="未命名的渐变 69" x1="-213.4893" y1="326.3751" x2="-213.4893" y2="326.3267" gradientTransform="translate(15826.9346 24210) scale(74 -74)" xlink:href="#_未命名的渐变_69"/>
-    <linearGradient id="_未命名的渐变_69-4" data-name="未命名的渐变 69" x1="-214.2284" y1="325.3943" x2="-214.2284" y2="325.3459" gradientTransform="translate(18026.186 27390.4) scale(84 -84)" xlink:href="#_未命名的渐变_69"/>
-    <linearGradient id="_未命名的渐变_69-5" data-name="未命名的渐变 69" x1="-214.6543" y1="325.8167" x2="-214.6543" y2="325.7683" gradientTransform="translate(17205.2854 26123.24) scale(80 -80)" xlink:href="#_未命名的渐变_69"/>
-    <linearGradient id="_未命名的渐变_69-6" data-name="未命名的渐变 69" x1="-215.0324" y1="326.6966" x2="-215.0324" y2="326.6482" gradientTransform="translate(15946.9346 24235) scale(74 -74)" xlink:href="#_未命名的渐变_69"/>
-    <linearGradient id="_未命名的渐变_69-7" data-name="未命名的渐变 69" x1="-215.3884" y1="327.5799" x2="-215.3884" y2="327.5315" gradientTransform="translate(15113.0341 22991.84) scale(70 -70)" xlink:href="#_未命名的渐变_69"/>
-    <linearGradient id="_未命名的渐变_69-8" data-name="未命名的渐变 69" x1="-215.8889" y1="327.2727" x2="-215.8889" y2="327.2242" gradientTransform="translate(16445.3849 24935.08) scale(76 -76)" xlink:href="#_未命名的渐变_69"/>
-    <linearGradient id="_未命名的渐变_69-9" data-name="未命名的渐变 69" x1="-216.6107" y1="328.4874" x2="-216.6107" y2="328.439" gradientTransform="translate(14769.5838 22400.76) scale(68 -68)" xlink:href="#_未命名的渐变_69"/>
-    <linearGradient id="_未命名的渐变_69-10" data-name="未命名的渐变 69" x1="-217.4968" y1="329.7039" x2="-217.4968" y2="329.6555" gradientTransform="translate(13527.2331 20506.52) scale(62 -62)" xlink:href="#_未命名的渐变_69"/>
-    <linearGradient id="_未命名的渐变_69-11" data-name="未命名的渐变 69" x1="-218.6068" y1="331.0622" x2="-218.6068" y2="331.0138" gradientTransform="translate(12286.8823 18605.28) scale(56 -56)" xlink:href="#_未命名的渐变_69"/>
-    <linearGradient id="_未命名的渐变_69-12" data-name="未命名的渐变 69" x1="-219.8186" y1="332.1846" x2="-219.8186" y2="332.1362" gradientTransform="translate(11477.9817 17340.12) scale(52 -52)" xlink:href="#_未命名的渐变_69"/>
-    <linearGradient id="_未命名的渐变_69-13" data-name="未命名的渐变 69" x1="-221.011" y1="332.8226" x2="-221.011" y2="332.7742" gradientTransform="translate(11100.5315 16708.04) scale(50 -50)" xlink:href="#_未命名的渐变_69"/>
-    <linearGradient id="_未命名的渐变_69-14" data-name="未命名的渐变 69" x1="-222.6519" y1="334.0583" x2="-222.6519" y2="334.0099" gradientTransform="translate(10294.6309 15433.88) scale(46 -46)" xlink:href="#_未命名的渐变_69"/>
-    <linearGradient id="_未命名的渐变_70" data-name="未命名的渐变 70" x1="-215.1811" y1="321.5195" x2="-215.1811" y2="321.471" gradientTransform="translate(97726.4848 91980.0586) scale(454 -285.9054)" gradientUnits="userSpaceOnUse">
+    <linearGradient id="_未命名的渐变_69-2" data-name="未命名的渐变 69" x1="-220.4591" y1="280.2353" x2="-220.4591" y2="280.1781" gradientTransform="translate(15008.3858 19068.3752) scale(68 -68)" xlink:href="#_未命名的渐变_69"/>
+    <linearGradient id="_未命名的渐变_69-3" data-name="未命名的渐变 69" x1="-221.123" y1="279.1485" x2="-221.123" y2="279.0913" gradientTransform="translate(16382.3905 20667.1904) scale(74 -74)" xlink:href="#_未命名的渐变_69"/>
+    <linearGradient id="_未命名的渐变_69-4" data-name="未命名的渐变 69" x1="-221.8543" y1="278.1685" x2="-221.8543" y2="278.1114" gradientTransform="translate(18657.7317 23375.2158) scale(84 -84)" xlink:href="#_未命名的渐变_69"/>
+    <linearGradient id="_未命名的渐变_69-5" data-name="未命名的渐变 69" x1="-222.2767" y1="278.59" x2="-222.2767" y2="278.5329" gradientTransform="translate(17806.3952 22297.0057) scale(80 -80)" xlink:href="#_未命名的渐变_69"/>
+    <linearGradient id="_未命名的渐变_69-6" data-name="未命名的渐变 69" x1="-222.6519" y1="279.467" x2="-222.6519" y2="279.4098" gradientTransform="translate(16502.3905 20692.1904) scale(74 -74)" xlink:href="#_未命名的渐变_69"/>
+    <linearGradient id="_未命名的渐变_69-7" data-name="未命名的渐变 69" x1="-223.0052" y1="280.3462" x2="-223.0052" y2="280.289" gradientTransform="translate(15638.0541 19637.9803) scale(70 -70)" xlink:href="#_未命名的渐变_69"/>
+    <linearGradient id="_未命名的渐变_69-8" data-name="未命名的渐变 69" x1="-223.5003" y1="280.036" x2="-223.5003" y2="279.9788" gradientTransform="translate(17016.0588 21297.7955) scale(76 -76)" xlink:href="#_未命名的渐变_69"/>
+    <linearGradient id="_未命名的渐变_69-9" data-name="未命名的渐变 69" x1="-224.2165" y1="281.2474" x2="-224.2165" y2="281.1902" gradientTransform="translate(15279.3858 19141.3752) scale(68 -68)" xlink:href="#_未命名的渐变_69"/>
+    <linearGradient id="_未命名的渐变_69-10" data-name="未命名的渐变 69" x1="-225.0954" y1="282.4601" x2="-225.0954" y2="282.4029" gradientTransform="translate(13991.3811 17530.56) scale(62 -62)" xlink:href="#_未命名的渐变_69"/>
+    <linearGradient id="_未命名的渐变_69-11" data-name="未命名的渐变 69" x1="-226.1963" y1="283.8147" x2="-226.1963" y2="283.7575" gradientTransform="translate(12705.3764 15912.7447) scale(56 -56)" xlink:href="#_未命名的渐变_69"/>
+    <linearGradient id="_未命名的渐变_69-12" data-name="未命名的渐变 69" x1="-227.3977" y1="284.9337" x2="-227.3977" y2="284.8765" gradientTransform="translate(11866.04 14836.5346) scale(52 -52)" xlink:href="#_未命名的渐变_69"/>
+    <linearGradient id="_未命名的渐变_69-13" data-name="未命名的渐变 69" x1="-228.5796" y1="285.5698" x2="-228.5796" y2="285.5126" gradientTransform="translate(11473.3717 14298.9295) scale(50 -50)" xlink:href="#_未命名的渐变_69"/>
+    <linearGradient id="_未命名的渐变_69-14" data-name="未命名的渐变 69" x1="-230.2065" y1="286.803" x2="-230.2065" y2="286.7458" gradientTransform="translate(10637.0353 13213.7193) scale(46 -46)" xlink:href="#_未命名的渐变_69"/>
+    <linearGradient id="_未命名的渐变_17" data-name="未命名的渐变 17" x1="-222.792" y1="274.2863" x2="-222.792" y2="274.2291" gradientTransform="translate(101173.3549 78427.3762) scale(454 -285.9054)" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#ff9a8f"/>
       <stop offset=".48" stop-color="#ff6a61"/>
       <stop offset="1" stop-color="#c93e39"/>
     </linearGradient>
-    <linearGradient id="_未命名的渐变_73" data-name="未命名的渐变 73" x1="-214.3244" y1="336.4218" x2="-214.276" y2="336.3734" gradientTransform="translate(28959.1677 10840.2318) scale(135 -32.0403)" gradientUnits="userSpaceOnUse">
+    <linearGradient id="_未命名的渐变_3" data-name="未命名的渐变 3" x1="-221.9515" y1="289.1929" x2="-221.8943" y2="289.1357" gradientTransform="translate(29978.7716 9279.4898) scale(135 -32.0403)" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#a9312e"/>
       <stop offset="1" stop-color="#e65049"/>
     </linearGradient>
-    <linearGradient id="_未命名的渐变_73-2" data-name="未命名的渐变 73" x1="-214.3405" y1="325.9519" x2="-214.292" y2="325.9035" gradientTransform="translate(10748.5315 31028.84) scale(50 -95)" xlink:href="#_未命名的渐变_73"/>
-    <linearGradient id="_未命名的渐变_73-3" data-name="未命名的渐变 73" x1="-215.7688" y1="336.1337" x2="-215.7204" y2="336.0853" gradientTransform="translate(22475.6886 13517.1327) scale(104 -40.014)" xlink:href="#_未命名的渐变_73"/>
-    <linearGradient id="_未命名的渐变_77" data-name="未命名的渐变 77" x1="-210.6898" y1="329.1465" x2="-210.6414" y2="329.0981" gradientTransform="translate(9746.7975 16308.1532) scale(46.1491 -49.3735)" gradientUnits="userSpaceOnUse">
+    <linearGradient id="_未命名的渐变_3-2" data-name="未命名的渐变 3" x1="-221.9761" y1="278.713" x2="-221.9189" y2="278.6559" gradientTransform="translate(11121.3717 26494.0438) scale(50 -95)" xlink:href="#_未命名的渐变_3"/>
+    <linearGradient id="_未命名的渐变_3-3" data-name="未命名的渐变 3" x1="-223.3832" y1="288.8764" x2="-223.326" y2="288.8192" gradientTransform="translate(23259.414 11579.7337) scale(104 -40.014)" xlink:href="#_未命名的渐变_3"/>
+    <linearGradient id="_未命名的渐变_11" data-name="未命名的渐变 11" x1="-218.3585" y1="281.9297" x2="-218.3013" y2="281.8726" gradientTransform="translate(10090.3364 13928.6382) scale(46.1491 -49.3735)" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#ffd1ca"/>
       <stop offset="1" stop-color="#ff857b"/>
     </linearGradient>
-    <linearGradient id="_未命名的渐变_77-2" data-name="未命名的渐变 77" x1="-214.2845" y1="337.7939" x2="-214.2361" y2="337.7454" gradientTransform="translate(27240.3666 10195.24) scale(127 -30)" xlink:href="#_未命名的渐变_77"/>
-    <linearGradient id="_未命名的渐变_77-3" data-name="未命名的渐变 77" x1="-214.0231" y1="326.637" x2="-213.9747" y2="326.5885" gradientTransform="translate(7308.9294 28154.48) scale(34 -86)" xlink:href="#_未命名的渐变_77"/>
-    <linearGradient id="_未命名的渐变_77-4" data-name="未命名的渐变 77" x1="-216.1106" y1="338.3227" x2="-216.0622" y2="338.2743" gradientTransform="translate(19703.2619 11996.374) scale(91 -35.2599)" xlink:href="#_未命名的渐变_77"/>
+    <linearGradient id="_未命名的渐变_11-2" data-name="未命名的渐变 11" x1="-221.9115" y1="290.564" x2="-221.8543" y2="290.5068" gradientTransform="translate(28199.0987 8730.8787) scale(127 -30)" xlink:href="#_未命名的渐变_11"/>
+    <linearGradient id="_未命名的渐变_11-3" data-name="未命名的渐变 11" x1="-221.6678" y1="279.3973" x2="-221.6107" y2="279.3401" gradientTransform="translate(7560.0259 24044.8209) scale(34 -86)" xlink:href="#_未命名的渐变_11"/>
+    <linearGradient id="_未命名的渐变_11-4" data-name="未命名的渐变 11" x1="-223.7229" y1="291.0623" x2="-223.6658" y2="291.0051" gradientTransform="translate(20388.0705 10283.5461) scale(91 -35.2599)" xlink:href="#_未命名的渐变_11"/>
   </defs>
+  <g>
+    <g id="fragments">
+      <path id="fragment_1" data-name="fragment 1" d="M50.8647,15.9883l-1.9784-.7681-.1672-2.4912,3.1029,1.118-.9573,2.1412Z" style="fill: #292a31;"/>
+      <path id="fragment_1-2" data-name="fragment 1" d="M40.065,8.8544l1.7697-1.1713,2.1302,1.3024-2.7049,1.8872-1.195-2.0183Z" style="fill: #44464f;"/>
+      <path id="fragment_2" data-name="fragment 2" d="M47.5638,10.4293l-1.0057-1.9344,2.7751-.4115-1.7694,2.3459Z" style="fill: rgba(69, 70, 78, .88);"/>
+      <path id="fragment_3" data-name="fragment 3" d="M51.3497,5.4399l-2.5338-.6123,1.6722-1.6257.8616,2.238Z" style="fill: rgba(30, 32, 38, .8);"/>
+      <path id="fragment_4" data-name="fragment 4" d="M51.0098,21.1335l-.2882-2.0576,1.7473.3081-1.4591,1.7495Z" style="fill: rgba(98, 97, 105, .7);"/>
+      <path id="fragment_5" data-name="fragment 5" d="M43.2393,5.2197l-1.8205-.9031,1.9246-.8943-.1041,1.7974Z" style="fill: rgba(45, 47, 54, .64);"/>
+      <path id="fragment_5-2" data-name="fragment 5" d="M44.7461,13.5257l-1.9553-.5539,1.728-1.2321.2273,1.7861Z" style="fill: rgba(41, 42, 49, .64);"/>
+    </g>
+    <g id="wool_light" data-name="wool light" style="opacity: .27;">
+      <g>
+        <path id="wool_light_back" data-name="wool light back" d="M49.4475,21.0252c2.9718.513,2.6233,1.562-.2249,3.185,1.4294.9979-1.5739,3.8641-5.1761,4.3796-1.3154,2.5319-5.9286,4.0757-8.0704,1.6344-2.8231,2.7626-8.332,1.2603-9.5233-2.6006-3.5058.9177-7.5891-2.8568-7.4013-6.2853-4.3187-1.7475-6.9593-6.4783-4.9707-8.4706-3.7744-3.0481-4.1158-7.0806-.4639-6.9311,4.4918-.0003,10.5858,3.6237,16.0278,7.1387,7.21,2.5106,14.7108,6.5513,19.8027,7.9499Z" style="fill: url(#_未命名的渐变_24);"/>
+        <g id="wool_light_puff_left" data-name="wool light puff left">
+          <path d="M49.815,22.3453c1.2434.5475-.2063,2.1432-2.5797,2.7983.1439,1.1874-2.4736,3.0607-4.645,2.5656-1.9333,1.7021-5.4707,1.0877-5.5239-1.0312-2.6784.0853-4.3476-2.3088-2.9703-3.6505-2.2178-1.7528-.8102-4.1504,2.1447-3.5431,5.2474.7412,10.5008,2.2845,13.5741,2.8609Z" style="fill: #f8f4ec; opacity: .74;"/>
+        </g>
+        <g id="wool_light_puff_top" data-name="wool light puff top">
+          <path d="M38.8493,27.5589c-.2367,2.0136-3.8468,3.3968-6.1005,1.5577-1.9389,1.9122-6.0677.4036-6.6679-2.6415-2.9046-.1273-5.6723-3.538-4.6872-5.6624-2.3308-1.9173-2.6517-4.8198-.6717-5.303,4.9907,3.9399,10.5273,7.7538,16.939,8.2271,1.4733,1.3121,2.0277,2.541,1.1884,3.8221Z" style="fill: #eeeae4; opacity: .66;"/>
+        </g>
+      </g>
+    </g>
+    <g id="wool_light-2" data-name="wool light" style="opacity: .27;">
+      <g>
+        <path id="wool_light_back-2" data-name="wool light back" d="M13.6548,14.1944c-3.4785-2.7738-4.0155-5.7376-1.2232-6.4197-2.4082-3.6814.3122-5.867,4.4298-4.5394.7293-3.3421,5.702-3.0703,8.4224.1082,2.4389-2.8794,8.4434-.804,10.1784,2.3654,3.3982-1.2784,7.9922.8462,8.1598,3.1321,4.4868-.115,7.3652,1.0823,5.5971,3.0084,3.7943-.3299,4.1384.5818.9118,3.0732-3.9692,3.1245-9.845,5.8256-15.5006,5.5989-7.1385,2.1564-14.8503-.5042-20.9754-6.3271Z" style="fill: url(#_未命名的渐变_24-2);"/>
+        <g id="wool_light_puff_left-2" data-name="wool light puff left">
+          <path d="M12.6291,11.2233c-1.7645-2.2147-.8132-4.2908,1.7596-3.8536-.6937-2.418,1.8284-3.6716,4.3957-2.0733,1.6942-1.7326,5.6506-.0939,6.1242,2.455,2.7529.0447,4.8437,2.3856,3.7319,4.1691,2.5064,1.447,1.5503,4.4159-1.3998,4.6938-5.2023.8123-10.7353-1.7493-14.6116-5.3911Z" style="fill: #f8f4ec; opacity: .74;"/>
+        </g>
+        <g id="wool_light_puff_top-2" data-name="wool light puff top">
+          <path d="M22.8542,6.4401c-.2447-2.773,3.3502-3.6527,5.9962-1.6145,1.6501-2.0887,6.1274-.6516,7.1557,1.8776,2.9326-.3594,6.104,1.4969,5.3878,3.3654,2.5116.6009,3.1025,2.2197,1.2855,3.5802-5.1932-.185-11.1775-1.8673-17.7331-2.101-1.7672-1.5949-2.6732-3.4971-2.0922-5.1078Z" style="fill: #eeeae4; opacity: .66;"/>
+        </g>
+      </g>
+    </g>
+    <g id="layer-tiny-glints">
+      <g id="tiny-glint-set-01">
+        <path id="tiny-glint-01" d="M27.8137,3.3824c2.1779,1.7262,3.4685,1.7908,5.8078.2905-1.7262,2.1779-1.7908,3.4685-.2905,5.8078-2.1779-1.7262-3.4685-1.7908-5.8078-.2905,1.7262-2.1779,1.7908-3.4685.2905-5.8078Z" style="fill: #f4d6d6; stroke: #5b5659; stroke-width: .1px;"/>
+        <path id="tiny-glint-03" d="M42.4774,15.6112c3.3947.6526,4.84-.0688,6.3592-3.1739-.6526,3.3947.0688,4.84,3.1739,6.3592-3.3947-.6526-4.84.0688-6.3592,3.1739.6526-3.3947-.0688-4.84-3.1739-6.3592Z" style="fill: #d8797c;"/>
+        <circle id="tiny-glint-dot-01" cx="47.244" cy="6.4315" r=".9137" style="fill: #d47779;"/>
+        <g>
+          <path id="tiny-glint-04" d="M37.7168,9.1154c-.6497,2.47-.2086,3.6846,1.8746,5.1621-2.47-.6497-3.6846-.2086-5.1621,1.8746.6497-2.47.2086-3.6846-1.8746-5.1621,2.47.6497,3.6846.2086,5.1621-1.8746Z" style="fill: #4b484c;"/>
+          <circle id="tiny-glint-dot-02" cx="43.6932" cy="7.117" r=".6853" style="fill: #a49b9d;"/>
+        </g>
+      </g>
+    </g>
+  </g>
   <g id="left_corner_ornament" data-name="left corner ornament">
     <g id="left_smoke" data-name="left smoke">
-      <circle cx="27.0829" cy="66.6187" r="2.808" style="fill: url(#_未命名的渐变_67);"/>
-      <circle cx="29.8425" cy="67.3449" r="2.6144" style="fill: url(#_未命名的渐变_67-2);"/>
-      <circle cx="32.9895" cy="67.8775" r="2.1302" style="fill: url(#_未命名的渐变_67-3);"/>
-      <circle cx="36.3785" cy="68.3616" r="1.6945" style="fill: url(#_未命名的渐变_67-4);"/>
+      <circle cx="17.3411" cy="20.0955" r="3.3167" style="fill: url(#_未命名的渐变_67);"/>
+      <circle cx="20.6007" cy="20.9533" r="3.088" style="fill: url(#_未命名的渐变_67-2);"/>
+      <circle cx="24.3177" cy="21.5823" r="2.5161" style="fill: url(#_未命名的渐变_67-3);"/>
+      <circle cx="28.3206" cy="22.1542" r="2.0015" style="fill: url(#_未命名的渐变_67-4);"/>
     </g>
     <g id="left_wool_mid" data-name="left wool mid">
-      <circle cx="26.0178" cy="64.6337" r="1.8397" style="fill: url(#_未命名的渐变_55); stroke: #cfc5bf; stroke-width: .5px;"/>
-      <circle cx="27.5187" cy="62.6971" r="2.1786" style="fill: url(#_未命名的渐变_55-2); stroke: #cfc5bf; stroke-width: .5px;"/>
-      <circle cx="29.6973" cy="61.4868" r="2.3239" style="fill: url(#_未命名的渐变_55-3); stroke: #cfc5bf; stroke-width: .5px;"/>
-      <circle cx="32.0696" cy="61.6804" r="2.4207" style="fill: url(#_未命名的渐变_55-4); stroke: #cfc5bf; stroke-width: .5px;"/>
-      <circle cx="34.2966" cy="63.0845" r="2.0818" style="fill: url(#_未命名的渐变_55-5); stroke: #cfc5bf; stroke-width: .5px;"/>
-      <circle cx="36.088" cy="64.7305" r="1.9366" style="fill: url(#_未命名的渐变_55-6); stroke: #cfc5bf; stroke-width: .5px;"/>
-      <circle cx="38.5087" cy="65.8925" r="2.0818" style="fill: url(#_未命名的渐变_55-7); stroke: #cfc5bf; stroke-width: .5px;"/>
-      <circle cx="41.0746" cy="66.8608" r="1.7913" style="fill: url(#_未命名的渐变_55-8); stroke: #cfc5bf; stroke-width: .5px;"/>
-      <circle cx="43.4953" cy="67.6354" r="1.5008" style="fill: url(#_未命名的渐变_55-9); stroke: #cfc5bf; stroke-width: .5px;"/>
-      <circle cx="46.1097" cy="68.2164" r="1.3556" style="fill: url(#_未命名的渐变_55-10); stroke: #cfc5bf; stroke-width: .5px;"/>
-      <circle cx="48.9177" cy="68.6521" r="1.2104" style="fill: url(#_未命名的渐变_55-11); stroke: #cfc5bf; stroke-width: .5px;"/>
-      <circle cx="51.6773" cy="68.8942" r="1.0651" style="fill: url(#_未命名的渐变_55-12); stroke: #cfc5bf; stroke-width: .5px;"/>
-      <circle cx="54.2917" cy="69.1362" r=".8715" style="fill: url(#_未命名的渐变_55-13); stroke: #cfc5bf; stroke-width: .5px;"/>
+      <circle cx="16.0831" cy="17.7509" r="2.173" style="fill: url(#_未命名的渐变_55); stroke: #cfc5bf; stroke-width: .5px;"/>
+      <circle cx="17.8558" cy="15.4636" r="2.5733" style="fill: url(#_未命名的渐变_55-2); stroke: #cfc5bf; stroke-width: .5px;"/>
+      <circle cx="20.4291" cy="14.0339" r="2.7449" style="fill: url(#_未命名的渐变_55-3); stroke: #cfc5bf; stroke-width: .5px;"/>
+      <circle cx="23.2311" cy="14.2627" r="2.8592" style="fill: url(#_未命名的渐变_55-4); stroke: #cfc5bf; stroke-width: .5px;"/>
+      <circle cx="25.8616" cy="15.921" r="2.4589" style="fill: url(#_未命名的渐变_55-5); stroke: #cfc5bf; stroke-width: .5px;"/>
+      <circle cx="27.9775" cy="17.8653" r="2.2874" style="fill: url(#_未命名的渐变_55-6); stroke: #cfc5bf; stroke-width: .5px;"/>
+      <circle cx="30.8367" cy="19.2377" r="2.4589" style="fill: url(#_未命名的渐变_55-7); stroke: #cfc5bf; stroke-width: .5px;"/>
+      <circle cx="33.8675" cy="20.3814" r="2.1158" style="fill: url(#_未命名的渐变_55-8); stroke: #cfc5bf; stroke-width: .5px;"/>
+      <circle cx="36.7267" cy="21.2964" r="1.7727" style="fill: url(#_未命名的渐变_55-9); stroke: #cfc5bf; stroke-width: .5px;"/>
+      <circle cx="39.8147" cy="21.9826" r="1.6012" style="fill: url(#_未命名的渐变_55-10); stroke: #cfc5bf; stroke-width: .5px;"/>
+      <circle cx="43.1314" cy="22.4973" r="1.4296" style="fill: url(#_未命名的渐变_55-11); stroke: #cfc5bf; stroke-width: .5px;"/>
+      <circle cx="46.3909" cy="22.7832" r="1.2581" style="fill: url(#_未命名的渐变_55-12); stroke: #cfc5bf; stroke-width: .5px;"/>
+      <circle cx="49.4789" cy="23.0691" r="1.0293" style="fill: url(#_未命名的渐变_55-13); stroke: #cfc5bf; stroke-width: .5px;"/>
     </g>
     <g id="left_wool_light" data-name="left wool light">
-      <circle cx="25.5821" cy="63.5686" r="1.5008" style="fill: url(#_未命名的渐变_69); stroke: #decfc6; stroke-width: .25px;"/>
-      <circle cx="26.9377" cy="61.7289" r="1.6461" style="fill: url(#_未命名的渐变_69-2); stroke: #decfc6; stroke-width: .25px;"/>
-      <circle cx="28.729" cy="60.0344" r="1.7913" style="fill: url(#_未命名的渐变_69-3); stroke: #decfc6; stroke-width: .25px;"/>
-      <circle cx="31.0045" cy="59.3082" r="2.0334" style="fill: url(#_未命名的渐变_69-4); stroke: #decfc6; stroke-width: .25px;"/>
-      <circle cx="32.941" cy="59.8407" r="1.9366" style="fill: url(#_未命名的渐变_69-5); stroke: #decfc6; stroke-width: .25px;"/>
-      <circle cx="34.5387" cy="61.2447" r="1.7913" style="fill: url(#_未命名的渐变_69-6); stroke: #decfc6; stroke-width: .25px;"/>
-      <circle cx="35.8459" cy="62.9392" r="1.6945" style="fill: url(#_未命名的渐变_69-7); stroke: #decfc6; stroke-width: .25px;"/>
-      <circle cx="37.8309" cy="64.198" r="1.8397" style="fill: url(#_未命名的渐变_69-8); stroke: #decfc6; stroke-width: .25px;"/>
-      <circle cx="40.0579" cy="65.2631" r="1.6461" style="fill: url(#_未命名的渐变_69-9); stroke: #decfc6; stroke-width: .25px;"/>
-      <circle cx="42.4302" cy="66.3766" r="1.5008" style="fill: url(#_未命名的渐变_69-10); stroke: #decfc6; stroke-width: .25px;"/>
-      <circle cx="44.8994" cy="67.1513" r="1.3556" style="fill: url(#_未命名的渐变_69-11); stroke: #decfc6; stroke-width: .25px;"/>
-      <circle cx="47.4169" cy="67.7806" r="1.2588" style="fill: url(#_未命名的渐变_69-12); stroke: #decfc6; stroke-width: .25px;"/>
-      <circle cx="49.9828" cy="68.1195" r="1.2104" style="fill: url(#_未命名的渐变_69-13); stroke: #decfc6; stroke-width: .25px;"/>
-      <circle cx="52.6456" cy="68.3132" r="1.1135" style="fill: url(#_未命名的渐变_69-14); stroke: #decfc6; stroke-width: .25px;"/>
+      <circle cx="15.5684" cy="16.4929" r="1.7727" style="fill: url(#_未命名的渐变_69); stroke: #decfc6; stroke-width: .25px;"/>
+      <circle cx="17.1696" cy="14.3199" r="1.9443" style="fill: url(#_未命名的渐变_69-2); stroke: #decfc6; stroke-width: .25px;"/>
+      <circle cx="19.2854" cy="12.3184" r="2.1158" style="fill: url(#_未命名的渐变_69-3); stroke: #decfc6; stroke-width: .25px;"/>
+      <circle cx="21.9731" cy="11.4606" r="2.4018" style="fill: url(#_未命名的渐变_69-4); stroke: #decfc6; stroke-width: .25px;"/>
+      <circle cx="24.2605" cy="12.0897" r="2.2874" style="fill: url(#_未命名的渐变_69-5); stroke: #decfc6; stroke-width: .25px;"/>
+      <circle cx="26.1476" cy="13.748" r="2.1158" style="fill: url(#_未命名的渐变_69-6); stroke: #decfc6; stroke-width: .25px;"/>
+      <circle cx="27.6916" cy="15.7495" r="2.0015" style="fill: url(#_未命名的渐变_69-7); stroke: #decfc6; stroke-width: .25px;"/>
+      <circle cx="30.0361" cy="17.2363" r="2.173" style="fill: url(#_未命名的渐变_69-8); stroke: #decfc6; stroke-width: .25px;"/>
+      <circle cx="32.6666" cy="18.4943" r="1.9443" style="fill: url(#_未命名的渐变_69-9); stroke: #decfc6; stroke-width: .25px;"/>
+      <circle cx="35.4687" cy="19.8096" r="1.7727" style="fill: url(#_未命名的渐变_69-10); stroke: #decfc6; stroke-width: .25px;"/>
+      <circle cx="38.3851" cy="20.7245" r="1.6012" style="fill: url(#_未命名的渐变_69-11); stroke: #decfc6; stroke-width: .25px;"/>
+      <circle cx="41.3587" cy="21.4679" r="1.4868" style="fill: url(#_未命名的渐变_69-12); stroke: #decfc6; stroke-width: .25px;"/>
+      <circle cx="44.3895" cy="21.8682" r="1.4296" style="fill: url(#_未命名的渐变_69-13); stroke: #decfc6; stroke-width: .25px;"/>
+      <circle cx="47.5346" cy="22.097" r="1.3152" style="fill: url(#_未命名的渐变_69-14); stroke: #decfc6; stroke-width: .25px;"/>
     </g>
     <g id="left_wool_highlights" data-name="left wool highlights" style="opacity: .78;">
-      <circle cx="29.1163" cy="62.213" r="1.3556" style="fill: #fffefa;"/>
-      <circle cx="31.7791" cy="61.4868" r="1.5977" style="fill: #fffefa;"/>
-      <circle cx="34.0062" cy="62.794" r="1.404" style="fill: #fffefa;"/>
-      <circle cx="27.906" cy="64.4885" r="1.5008" style="fill: #fffefa;"/>
-      <circle cx="30.8108" cy="64.6337" r="1.8397" style="fill: #fffefa;"/>
-      <circle cx="33.4252" cy="65.6504" r="1.6461" style="fill: #fffefa;"/>
-      <circle cx="36.8626" cy="65.9893" r="1.5493" style="fill: #fffefa;"/>
-      <circle cx="39.9611" cy="67.006" r="1.404" style="fill: #fffefa;"/>
-      <circle cx="43.4953" cy="67.9259" r="1.1619" style="fill: #fffefa;"/>
+      <circle cx="19.7429" cy="14.8917" r="1.6012" style="fill: #fffefa;"/>
+      <circle cx="22.888" cy="14.0339" r="1.8871" style="fill: #fffefa;"/>
+      <circle cx="25.5185" cy="15.5779" r="1.6584" style="fill: #fffefa;"/>
+      <circle cx="18.3133" cy="17.5794" r="1.7727" style="fill: #fffefa;"/>
+      <circle cx="21.7443" cy="17.7509" r="2.173" style="fill: #fffefa;"/>
+      <circle cx="24.8323" cy="18.9518" r="1.9443" style="fill: #fffefa;"/>
+      <circle cx="28.8924" cy="19.3521" r="1.8299" style="fill: #fffefa;"/>
+      <circle cx="32.5522" cy="20.553" r="1.6584" style="fill: #fffefa;"/>
+      <circle cx="36.7267" cy="21.6395" r="1.3724" style="fill: #fffefa;"/>
     </g>
     <g id="left_texture" data-name="left texture" style="opacity: .55;">
-      <circle cx="29.5036" cy="64.2464" r=".2421" style="fill: #cfc3bc;"/>
-      <circle cx="32.8442" cy="61.6804" r=".3873" style="fill: #cfc3bc;"/>
-      <circle cx="34.8292" cy="64.6337" r=".1937" style="fill: #cfc3bc;"/>
-      <circle cx="38.7507" cy="67.1028" r=".2421" style="fill: #cfc3bc;"/>
-      <circle cx="42.1882" cy="67.7322" r=".1452" style="fill: #cfc3bc;"/>
-      <path d="M32.4569,61.5352l.6294-.3873.581.4357-.3873.581-.823-.6294ZM27.0829,65.6504l.6294-.2905.4357.4841-.3873.4841-.6778-.6778Z" style="fill: #cfc3bc;"/>
+      <circle cx="20.2004" cy="17.2935" r=".2859" style="fill: #cfc3bc;"/>
+      <circle cx="24.1461" cy="14.2627" r=".4575" style="fill: #cfc3bc;"/>
+      <circle cx="26.4907" cy="17.7509" r=".2287" style="fill: #cfc3bc;"/>
+      <circle cx="31.1226" cy="20.6674" r=".2859" style="fill: #cfc3bc;"/>
+      <circle cx="35.1827" cy="21.4108" r=".1716" style="fill: #cfc3bc;"/>
+      <path d="M23.6886,14.0911l.7434-.4575.6862.5147-.4575.6862-.9721-.7434ZM17.3411,18.9518l.7434-.3431.5147.5718-.4575.5718-.8006-.8006Z" style="fill: #cfc3bc;"/>
     </g>
     <g id="left_ribbon_main" data-name="left ribbon main">
-      <path d="M23.2582,57.1779c.9683-.581,2.1302-.3873,2.6628.4357.6294.9683-.2421,1.6461-.0968,2.566.1937,1.2588,1.8397,1.2104,3.5342,1.1619,2.6628-.0484,3.4858,1.1619,3.7279,3.0501.2905,2.0818,1.5977,3.4858,3.6795,3.7279,2.566.3389,3.9216-1.4524,5.7129-.7746,1.2588.4841,1.0651,2.0334,2.7596,2.3239-1.7913.3389-2.808-.3873-3.2922-1.2104-.581-.9683-1.1619-.6778-2.2755.1452-1.7913,1.3556-4.4057.5326-5.7613-1.1619-1.5008-1.8882-.7262-3.9216-2.566-4.4541-1.7913-.4841-3.8731.581-5.3256-.823-1.3556-1.3072-.823-3.2922.3873-3.7279,1.3556-.4841,1.5977-1.7429.6294-2.3239-.5326-.3389-1.3072-.2421-1.9366.2421l-1.8397.823Z" style="fill: url(#_未命名的渐变_70); stroke: #e14841; stroke-width: 1.3px;"/>
+      <path d="M12.8235,8.9445c1.1437-.6862,2.5161-.4575,3.1452.5147.7434,1.1437-.2859,1.9443-.1144,3.0308.2287,1.4868,2.173,1.4296,4.1745,1.3724,3.1452-.0572,4.1173,1.3724,4.4032,3.6026.3431,2.4589,1.8871,4.1173,4.346,4.4032,3.0308.4003,4.632-1.7155,6.7478-.915,1.4868.5718,1.2581,2.4018,3.2595,2.7449-2.1158.4003-3.3167-.4575-3.8886-1.4296-.6862-1.1437-1.3724-.8006-2.6877.1716-2.1158,1.6012-5.2038.629-6.805-1.3724-1.7727-2.2302-.8578-4.632-3.0308-5.261-2.1158-.5718-4.5748.6862-6.2903-.9721-1.6012-1.544-.9721-3.8886.4575-4.4032,1.6012-.5718,1.8871-2.0586.7434-2.7449-.629-.4003-1.544-.2859-2.2874.2859l-2.173.9721Z" style="fill: url(#_未命名的渐变_17); stroke: #e14841; stroke-width: 1.3px;"/>
     </g>
     <g id="left_ribbon_shadow" data-name="left ribbon shadow">
-      <path d="M25.6305,61.0995c1.0167.9683,2.1302.2905,3.6795.2421,1.2104-.0484,2.2271.1937,2.8564.9683-1.5008-.4841-2.7596.3873-4.4057.3389-1.0167-.0484-1.7913-.4841-2.1302-1.5493Z" style="fill: url(#_未命名的渐变_73);"/>
-      <path d="M31.7307,62.9876c1.2104.9683,1.1135,2.808,2.4207,4.1636l-1.0651.4357c-1.2104-1.5977-.8715-3.1953-1.3556-4.5993Z" style="fill: url(#_未命名的渐变_73-2);"/>
-      <path d="M35.507,67.9743c2.1302.6778,3.389-.6294,5.0351-.823-1.6461.7262-2.1786,2.2271-4.2605,1.8882l-.7746-1.0651Z" style="fill: url(#_未命名的渐变_73-3);"/>
+      <path d="M15.6256,13.5765c1.2009,1.1437,2.5161.3431,4.346.2859,1.4296-.0572,2.6305.2287,3.3739,1.1437-1.7727-.5718-3.2595.4575-5.2038.4003-1.2009-.0572-2.1158-.5718-2.5161-1.8299Z" style="fill: url(#_未命名的渐变_3);"/>
+      <path d="M22.8309,15.8067c1.4296,1.1437,1.3152,3.3167,2.8592,4.9179l-1.2581.5147c-1.4296-1.8871-1.0293-3.7742-1.6012-5.4325Z" style="fill: url(#_未命名的渐变_3-2);"/>
+      <path d="M27.2913,21.6967c2.5161.8006,4.0029-.7434,5.9472-.9721-1.9443.8578-2.5733,2.6305-5.0322,2.2302l-.915-1.2581Z" style="fill: url(#_未命名的渐变_3-3);"/>
     </g>
     <g id="left_ribbon_highlight" data-name="left ribbon highlight">
-      <path d="M23.4519,57.3716c.823-.2905,1.6461,0,2.0334.5326.4357.6294.0484,1.2588-.0968,1.7429-.0484-.9683-.7262-1.5977-1.9366-1.6945v-.581Z" style="fill: url(#_未命名的渐变_77);"/>
-      <path d="M25.9694,61.4868c1.4524.581,2.566-.0968,4.1152.1452,1.0167.1452,1.6461.581,2.0334,1.3072-1.1135-.823-2.5175-.3873-3.97-.4357-.9199,0-1.6461-.3389-2.1786-1.0167Z" style="fill: url(#_未命名的渐变_77-2);"/>
-      <path d="M32.3117,63.2781c.7262,1.0651.4841,2.808,1.6461,3.9216l-.4357.2421c-1.3556-1.2588-.9683-2.9533-1.2104-4.1636Z" style="fill: url(#_未命名的渐变_77-3);"/>
-      <path d="M37.0562,68.1195c1.7429.0968,2.9049-1.0651,4.4057-.9199-1.404.2905-2.1786,1.5977-3.8247,1.6945l-.581-.7746Z" style="fill: url(#_未命名的渐变_77-4);"/>
+      <path d="M13.0523,9.1732c.9721-.3431,1.9443,0,2.4018.629.5147.7434.0572,1.4868-.1144,2.0586-.0572-1.1437-.8578-1.8871-2.2874-2.0015v-.6862Z" style="fill: url(#_未命名的渐变_11);"/>
+      <path d="M16.0259,14.0339c1.7155.6862,3.0308-.1144,4.8607.1716,1.2009.1716,1.9443.6862,2.4018,1.544-1.3152-.9721-2.9736-.4575-4.6891-.5147-1.0865,0-1.9443-.4003-2.5733-1.2009Z" style="fill: url(#_未命名的渐变_11-2);"/>
+      <path d="M23.5171,16.1498c.8578,1.2581.5718,3.3167,1.9443,4.632l-.5147.2859c-1.6012-1.4868-1.1437-3.4883-1.4296-4.9179Z" style="fill: url(#_未命名的渐变_11-3);"/>
+      <path d="M29.1212,21.8682c2.0586.1144,3.4311-1.2581,5.2038-1.0865-1.6584.3431-2.5733,1.8871-4.5176,2.0015l-.6862-.915Z" style="fill: url(#_未命名的渐变_11-4);"/>
     </g>
     <g id="left_sparkles" data-name="left sparkles">
       <g id="star">
-        <path d="M27.5187,57.388c.0513.4106.154.5132.5645.5645-.4106.0513-.5132.154-.5645.5645-.0513-.4106-.154-.5132-.5645-.5645.4106-.0513.5132-.154.5645-.5645Z" style="fill: #ff6a61;"/>
+        <path d="M17.8558,9.1927c.0606.4849.1818.6062.6668.6668-.4849.0606-.6062.1818-.6668.6668-.0606-.4849-.1818-.6062-.6668-.6668.4849-.0606.6062-.1818.6668-.6668Z" style="fill: #ff6a61;"/>
       </g>
       <g id="smallStar">
-        <path d="M29.6973,57.2612c.0232.1859.0697.2324.2556.2556-.1859.0232-.2324.0697-.2556.2556-.0232-.1859-.0697-.2324-.2556-.2556.1859-.0232.2324-.0697.2556-.2556Z" style="fill: #c0aea6;"/>
+        <path d="M20.4291,9.0429c.0274.2196.0823.2745.3019.3019-.2196.0274-.2745.0823-.3019.3019-.0274-.2196-.0823-.2745-.3019-.3019.2196-.0274.2745-.0823.3019-.3019Z" style="fill: #c0aea6;"/>
       </g>
       <g id="smallStar-2" data-name="smallStar">
-        <path d="M40.2516,60.0925c.0387.3099.1162.3873.426.426-.3099.0387-.3873.1162-.426.426-.0387-.3099-.1162-.3873-.426-.426.3099-.0387.3873-.1162.426-.426Z" style="fill: #efb3a9;"/>
+        <path d="M32.8954,12.387c.0457.366.1372.4575.5032.5032-.366.0457-.4575.1372-.5032.5032-.0457-.366-.1372-.4575-.5032-.5032.366-.0457.4575-.1372.5032-.5032Z" style="fill: #efb3a9;"/>
       </g>
       <g id="star-2" data-name="star">
-        <path d="M43.3985,61.5565c.0465.3718.1394.4648.5113.5113-.3718.0465-.4648.1394-.5113.5113-.0465-.3718-.1394-.4648-.5113-.5113.3718-.0465.4648-.1394.5113-.5113Z" style="fill: #ff796f;"/>
+        <path d="M36.6124,14.1163c.0549.4392.1647.549.6039.6039-.4392.0549-.549.1647-.6039.6039-.0549-.4392-.1647-.549-.6039-.6039.4392-.0549.549-.1647.6039-.6039Z" style="fill: #ff796f;"/>
       </g>
       <g id="smallStar-3" data-name="smallStar">
-        <path d="M45.8676,64.2285c.0324.2595.0973.3244.3568.3568-.2595.0324-.3244.0973-.3568.3568-.0324-.2595-.0973-.3244-.3568-.3568.2595-.0324.3244-.0973.3568-.3568Z" style="fill: #efb3a9;"/>
+        <path d="M39.5288,17.2723c.0383.3065.1149.3831.4215.4215-.3065.0383-.3831.1149-.4215.4215-.0383-.3065-.1149-.3831-.4215-.4215.3065-.0383.3831-.1149.4215-.4215Z" style="fill: #efb3a9;"/>
       </g>
       <g id="smallStar-4" data-name="smallStar">
-        <path d="M49.4019,65.4326c.0242.1937.0726.2421.2663.2663-.1937.0242-.2421.0726-.2663.2663-.0242-.1937-.0726-.2421-.2663-.2663.1937-.0242.2421-.0726.2663-.2663Z" style="fill: #d0beb6;"/>
+        <path d="M43.7032,18.6945c.0286.2287.0858.2859.3145.3145-.2287.0286-.2859.0858-.3145.3145-.0286-.2287-.0858-.2859-.3145-.3145.2287-.0286.2859-.0858.3145-.3145Z" style="fill: #d0beb6;"/>
       </g>
     </g>
   </g>

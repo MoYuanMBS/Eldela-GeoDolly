@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="stand_bar" data-name="stand bar" xmlns="http://www.w3.org/2000/svg" width="32.0009" height="3.0811" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 32.0009 3.0811">
+  <line x1="31.9981" y1="2.3438" y2="2.3438" style="fill: none; stroke: #917c7b; stroke-miterlimit: 10; stroke-width: 1.25px;"/>
+  <rect x="0" y=".3373" width="31.9981" height="2.0064" style="fill: #f1e9ea;"/>
+  <g style="opacity: .6;">
+    <image width="131" height="13" transform="translate(.0009) scale(.2443)" xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIQAAAALCAYAAAC+oiWqAAAACXBIWXMAAC1eAAAtXgFmJoIWAAAA/UlEQVRYhe3XMU7DUBCE4X/WDxehCCUXoKThYvQ5QFpOw0lIR41EE0UWECm23w4Fd8CR/L4TTDHSzuplt3vqpBIRykzRrEZEODNd7TlgfN7vD0XSg6FPamdFK8SKJNVGVdKozt/AoUh6BDa2iuRWiBWxw4hZcM7UCXgttu8VugXfYLVCrIls0OT0j4IOIJbO1FyXIukTswEV2slYF8vALOlscwIott8EvcKd3Ublmkhpp6phjL9RSbH9HlIJOqXb27kmoc5JOu3ZMyNAEXxUO3S5SJulIzb/yWeopViQU99XgLLt++E0DJoAhmUDNguYJu62W38dj146SnOFfgEOJHsILoJdDwAAAABJRU5ErkJggg==" style="isolation: isolate;"/>
+  </g>
+  <line x1="32" y1=".7004" x2=".0019" y2=".7003" style="fill: none; stroke: #917c7b; stroke-miterlimit: 10; stroke-width: .75px;"/>
+</svg>

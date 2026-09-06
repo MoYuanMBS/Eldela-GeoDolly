@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="body" xmlns="http://www.w3.org/2000/svg" width="32" height="16" viewBox="0 0 32 16">
+  <g>
+    <rect x="2.5339" width="26.9321" height="16" style="fill: #fff6f3;"/>
+    <line x1="29.4661" y1="16" x2="29.4661" style="fill: #fff6f3; stroke: #fde9e4; stroke-miterlimit: 10;"/>
+    <line x1="2.5339" x2="2.5339" y2="16" style="fill: #fff6f3; stroke: #fde9e4; stroke-miterlimit: 10;"/>
+  </g>
+  <rect width="32" height="16" style="fill: #fff6f3; isolation: isolate; opacity: .35;"/>
+</svg>

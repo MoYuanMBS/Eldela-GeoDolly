@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="top" data-name="top" xmlns="http://www.w3.org/2000/svg" width="32" height="16" viewBox="0 0 32 16">
+  <path d="M32,16V7.6254c0-4.2114-3.414-7.6254-7.6254-7.6254H7.6254C3.414,0,0,3.414,0,7.6254v8.3746h32Z" style="fill: #fff6f3; isolation: isolate; opacity: .35;"/>
+  <path d="M29.4661,16v-5.2793c0-1.9028-2.0402-1.9028-2.0402-1.9028,0-4.3047-2.1288-6.301-6.7856-6.301h-9.2805c-4.6569,0-6.7856,1.9963-6.7856,6.301,0,0-2.0402,0-2.0402,1.9028v5.2793" style="fill: #fff6f3; stroke: #fde9e4; stroke-miterlimit: 10;"/>
+</svg>

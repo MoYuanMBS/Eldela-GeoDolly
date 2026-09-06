@@ -1,22 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg id="volcano" xmlns="http://www.w3.org/2000/svg" width="52.9401" height="21.3545" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 52.9401 21.3545">
+<svg id="volcano" xmlns="http://www.w3.org/2000/svg" width="15.6517" height="15.9484" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 15.6517 15.9484">
   <defs>
-    <linearGradient id="_未命名的渐变_102" data-name="未命名的渐变 102" x1="27.4893" y1="0" x2="27.4893" y2="3.0506" gradientUnits="userSpaceOnUse">
-      <stop offset=".1714" stop-color="#fad6d1"/>
-      <stop offset=".2482" stop-color="#f8cecb"/>
-      <stop offset=".3642" stop-color="#f6b9bd"/>
-      <stop offset=".5051" stop-color="#f197a6"/>
-      <stop offset=".6643" stop-color="#eb6885"/>
-      <stop offset=".6727" stop-color="#eb6684"/>
+    <linearGradient id="_未命名的渐变_102" data-name="未命名的渐变 102" x1="8.5871" y1="0" x2="8.5871" y2="2.2783" gradientUnits="userSpaceOnUse">
+      <stop offset=".1714" stop-color="#f9d4d0"/>
+      <stop offset=".2487" stop-color="#f7ccca"/>
+      <stop offset=".3654" stop-color="#f5b7bc"/>
+      <stop offset=".5072" stop-color="#f095a4"/>
+      <stop offset=".6674" stop-color="#ea6684"/>
+      <stop offset=".6727" stop-color="#ea6583"/>
     </linearGradient>
-    <linearGradient id="_未命名的渐变_102-2" data-name="未命名的渐变 102" x1="29.2355" y1="1.5253" x2="29.2355" y2="4.576" xlink:href="#_未命名的渐变_102"/>
-    <linearGradient id="_未命名的渐变_102-3" data-name="未命名的渐变 102" x1="26.9044" y1="1.5253" x2="26.9044" y2="8.3893" xlink:href="#_未命名的渐变_102"/>
+    <linearGradient id="_未命名的渐变_102-2" data-name="未命名的渐变 102" x1="9.8912" y1="1.1392" x2="9.8912" y2="3.4175" xlink:href="#_未命名的渐变_102"/>
+    <linearGradient id="_未命名的渐变_102-3" data-name="未命名的渐变 102" x1="8.1502" y1="1.1392" x2="8.1502" y2="6.2654" xlink:href="#_未命名的渐变_102"/>
   </defs>
-  <path d="M27.4893,3.0506c.9644,0,1.7461-.6829,1.7461-1.5253s-.7818-1.5253-1.7461-1.5253-1.7461.6829-1.7461,1.5253.7818,1.5253,1.7461,1.5253Z" style="fill: url(#_未命名的渐变_102);"/>
-  <path d="M29.2355,4.576c.9644,0,1.7461-.6829,1.7461-1.5253s-.7818-1.5253-1.7461-1.5253-1.7461.6829-1.7461,1.5253.7818,1.5253,1.7461,1.5253Z" style="fill: url(#_未命名的渐变_102-2);"/>
-  <path d="M29.8292,3.0506h-3.2129c0-.8424-.7818-1.5253-1.7461-1.5253s-1.7461.6829-1.7461,1.5253h-1.0215c-.9644,0-1.7461.6829-1.7461,1.5253s.7818,1.5253,1.7461,1.5253h1.338c.2585,0,.4082.1499.4082.3565v1.9314h5.2384v-1.9314c0-.2032.1815-.3565.4082-.3565h2.2111c.9644,0,1.7461-.6829,1.7461-1.5253s-.7817-1.5253-1.7461-1.5253h-1.8771Z" style="fill: url(#_未命名的渐变_102-3);"/>
-  <path d="M29.6225,9.432l-8.2771.4767-5.2301,9.8192c-.4039.7584.2299,1.6266,1.1874,1.6266h17.4617s-4.2945-10.7111-5.1419-11.9225Z" style="fill: #723435;"/>
-  <path d="M34.4225,21.3545l-2.1713-4.8774c-.3285-.7379-1.1419-1.2239-2.0482-1.2239-.6739,0-1.28-.3584-1.5303-.905l-1.3317-2.9082v-1.8164l4.0278-.1915,5.4572,10.298c.4018.7582-.2321,1.6245-1.1884,1.6245h-1.215Z" style="fill: #9a5e66;"/>
-  <path d="M21.2294,10.6772v-.4243c0-.1648.2222-.5654.2222-.5654,0,0,.6726-1.2714.8928-1.7254.1219-.2513.335-.684.6666-.9241.2673-.1936.6388-.2243.8928-.2243.3393,0,3.0508.0178,5.1833.0323.5733.0039.8719.1249,1.2415.6174.5245.9853,1.0488,1.9706,1.0488,1.9706,0,0,.3289.6914.3289,1.0545v1.714c0,.4212-.3909.7627-.8731.7627s-.8731-.3414-.8731-.7627-.3909-.7627-.8731-.7627-.8731.3414-.8731.7627v1.5253c0,.4212-.3909.7627-.8731.7627s-.8731-.3414-.8731-.7627v-.7627c0-.4212-.3909-.7627-.8731-.7627s-.8731.3414-.8731.7627v5.3386c0,.4212-.3909.7627-.8731.7627s-.8731-.3414-.8731-.7627v-6.1013c0-.4908-.338-.7627-.8731-.7627s-.8731-.3414-.8731-.7627Z" style="fill: #dc9292;"/>
-  <image width="23" height="20" transform="translate(23.6701 1.8772) scale(.24)" xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAARCAYAAADdRIy+AAAACXBIWXMAAC4jAAAuIwF4pT92AAACp0lEQVQ4jXWUzYplRRCEIzKrzr3t+AKDOKjvI65cKAo6MgPSDIiICL6AG9GFDMIgs1LX4gMpupg3aO45VRnh4lzH7qYNKGpTfJU/kck/v/3xh8hY0LIzojOzM7MF2ZiRJgKZBEAAgG1IglyQStJ87dGH7+KsFsfl1chcmLlExIKldWY0JhvJxH7OMACwIMtSuTSjNF789Mtv9z95/x0AaLn0e9HagT0PzFjYsrNlZ0ZHRPIG0DYslKal6VHD0qahfPH819/vf/ze2y2O/R6zHaLnkUtf2OLAyCUyO5IJRCL+TVeCMF01PWtzxKZREZg08pzy0l9ha8dY2pGtHaK3I1ssbLkwsiMjz+na3qPCiI2MEEkahiSHCwAaWzvGoV9Eb0f2vGDrx1j60T0PaLngumZtwTgJgClRUQymI4Ks2CPse0PY8sDWD3HoF17aBeMc2XUFO4jJQBjguRCA/bJlgYiMZENEY2ZzRN4J231TMCakglAuleWCXDZqB+7/GILhEqWCNG/DPGvDOq+0jZNmrZ61umrzmNv5HgDQUCqHJlnDEwEALNW5GQHssUBzaNbmqdVjrBp10jZOrjppasWsFQCaS5tYpIGwyqUBVDJ3uA3DKkxPS0M1d+g2Vo1aPeZpv8cJAJrGPLEkdk8XG6MSZFwfNcOF0nRp99+s4dLqdW5SrdrG+vrlww924FZXDA1WNTLOowaCJGzv1ZVsl8vTpYFtDkmb59wkbQ8uH370cpZ12q6CbMhIJQLMIPyfIQyzVC6V7H1KqoalgVnjwWePH99yAvD30+c/MyJABoM3NosNQdqXAVCYNVUakOYbX3z65A5r7frr+2fPzhYiIgBpN6stAFKpYJen5ptfXX5+l09vAG/rj2+efgfbAGRJb3395Mv/e3td/wBJTfVRWldh2wAAAABJRU5ErkJggg=="/>
+  <path d="M8.5871,2.2783c.7203,0,1.3041-.51,1.3041-1.1392s-.5838-1.1392-1.3041-1.1392-1.3041.51-1.3041,1.1392.5839,1.1392,1.3041,1.1392Z" style="fill: url(#_未命名的渐变_102);"/>
+  <path d="M9.8912,3.4175c.7203,0,1.3041-.51,1.3041-1.1392s-.5838-1.1392-1.3041-1.1392-1.3041.51-1.3041,1.1392.5839,1.1392,1.3041,1.1392Z" style="fill: url(#_未命名的渐变_102-2);"/>
+  <path d="M10.3346,2.2783h-2.3995c0-.6291-.5838-1.1392-1.3041-1.1392s-1.3041.51-1.3041,1.1392h-.7629c-.7202,0-1.3041.51-1.3041,1.1392s.5839,1.1392,1.3041,1.1392h.9993c.1931,0,.3048.112.3048.2663v1.4425h3.9123v-1.4425c0-.1518.1356-.2663.3048-.2663h1.6513c.7203,0,1.3041-.51,1.3041-1.1392s-.5838-1.1392-1.3041-1.1392h-1.4019Z" style="fill: url(#_未命名的渐变_102-3);"/>
+  <path d="M10.1802,7.0442l-6.1817.356L.0925,14.7336c-.3017.5664.1717,1.2148.8868,1.2148h13.0412s-3.2073-7.9995-3.8402-8.9042Z" style="fill: #713434;"/>
+  <path d="M13.7651,15.9484l-1.6216-3.6426c-.2454-.5511-.8528-.9141-1.5297-.9141-.5033,0-.956-.2677-1.1429-.6759l-.9946-2.172v-1.3566l3.0081-.143,4.0757,7.691c.3001.5662-.1733,1.2133-.8876,1.2133h-.9074Z" style="fill: #995d66;"/>
+  <path d="M3.9119,7.9742v-.3169c0-.1231.1659-.4223.1659-.4223,0,0,.5023-.9495.6668-1.2886.091-.1877.2502-.5109.4978-.6902.1997-.1446.4771-.1675.6668-.1675.2534,0,2.2785.0133,3.8711.0242.4282.0029.6512.0933.9272.4611.3917.7358.7833,1.4718.7833,1.4718,0,0,.2456.5164.2456.7875v1.2801c0,.3146-.2919.5696-.652.5696s-.652-.255-.652-.5696-.2919-.5696-.652-.5696-.652.255-.652.5696v1.1392c0,.3146-.2919.5696-.652.5696s-.652-.255-.652-.5696v-.5696c0-.3146-.2919-.5696-.652-.5696s-.652.255-.652.5696v3.9871c0,.3146-.2919.5696-.652.5696s-.652-.255-.652-.5696v-4.5567c0-.3665-.2524-.5696-.652-.5696s-.652-.255-.652-.5696Z" style="fill: #db9091;"/>
+  <image width="17" height="15" transform="translate(5.8258 1.4142) scale(.24)" xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABEAAAANCAYAAABPeYUaAAAACXBIWXMAAC4jAAAuIwF4pT92AAAB4klEQVQokW2SzWpUQRSEq7pP952Zm/hqikIiRDDoPhvBV3Ah4iJLRVTQhQEhS18rmtyZ7vPj4l7HEaxlc6jT56siANy8fv+KJa9Q8kDJAyRX5lSRkzBRQCaQREQgwsNDYa7j+ckpAPDm7Yc3rLJmySsWWc9GsoKkypwKUsogEwAC4fCwMO9Qa1Dbbc4ePZC0KseoZc0qm9lM1ih5TZEBkipSksUk4G74a7CNrgIAwqGMHMqIWjasMrKWDapsUGTNkoe9SYTDvIfqlk2nIMmIuPt2/UNQZY0qGw4ycqhHGMoRaxkxyIhS1kjMAIAIR9OJBMPDad5jWSCUPzBlBckrFFmhygZDPcKhyITEDJLLSwDhiPAEMoMpcR5KJNJ+86HMG7pN0XUHtV2oNag3mHcB4IjwCDea91DbcWZgSEkAAO4KtV00ndB0itZv0fptNJ2i6yRQ75GsMTEHCHp4qLUFKIEIeBjUWqjt0G0bTSd0vYvW78anJ6cEgLsv36/3RVtKtsSKpWA2JzN3I7pt0XUanz1+AgACAJuzh/dvP19dIactUpI9wFjYRFiYK8xaqC9GutszP2T3693Xj0jMnBPg/I/lHA9dmtqPL84v/gkO/9HPy0+XB6d4RBgs7N6L5y//N/8big4tnfWDfSEAAAAASUVORK5CYII="/>
 </svg>

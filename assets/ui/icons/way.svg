@@ -1,23 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg id="way" xmlns="http://www.w3.org/2000/svg" width="32.4089" height="22.3471" viewBox="0 0 32.4089 22.3471">
-  <g id="_图层_1" data-name=" 图层 1">
-    <g id="way-2" data-name="way">
-      <g id="way-wool-cloud-details">
-        <path d="M3.3044,21.0879c-1.8846-1.0398-3.0544-3.0544-3.0544-5.264,0-3.1844,2.5345-5.8489,5.7839-5.9789.6499-2.7295,3.1194-4.7441,5.9789-4.7441s2.4695.3249,3.4443,1.0398c1.2998-2.2746,3.7043-3.8343,6.4988-3.8343s7.0187,2.9894,7.3436,6.7587c1.7547,1.1698,2.8595,3.1844,2.8595,5.524,0,3.6393-2.9894,6.6287-6.6287,6.6287H3.1744l.13-.13Z" style="fill: #fff8ed; stroke: #2f2f31; stroke-width: .5px;"/>
-        <path d="M5.8389,11.5347c2.0146-1.1698,4.0292-1.2998,6.1088-.4549M18.7065,7.8304c2.0796-1.3647,4.2892-1.4297,6.4988-.3249" style="fill: none; stroke: #f2e6d5; stroke-linecap: round; stroke-width: 2.1px;"/>
-      </g>
-      <g>
-        <path d="M6.2289,16.9937l5.524-5.459,6.2388,3.9642,7.0187-6.9537" style="fill: none; stroke: #3e4553; stroke-linecap: round; stroke-linejoin: round;"/>
-        <g id="way-coral-active-node-accents">
-          <circle cx="6.2289" cy="16.9937" r="2.3396" style="fill: #f06b61; stroke: #3e4553;"/>
-          <circle cx="11.8178" cy="11.5347" r="2.3396" style="fill: #f06b61; stroke: #3e4553;"/>
-          <circle cx="18.0566" cy="15.499" r="2.3396" style="fill: #f06b61; stroke: #3e4553;"/>
-          <circle cx="25.0103" cy="8.5453" r="2.3396" style="fill: #f06b61; stroke: #3e4553;"/>
-        </g>
-      </g>
-      <g id="way-optional-sparkles">
-        <path d="M29.4295.8768v3.1844M27.8698,2.5015h3.1844" style="fill: none; stroke: #f06b61; stroke-linecap: round;"/>
-      </g>
+<svg id="way" xmlns="http://www.w3.org/2000/svg" width="31.493" height="31.3284" viewBox="0 0 31.493 31.3284">
+  <g id="way-wool-cloud-details">
+    <path d="M15.4226,25.919c-1.1292,1.6769-6.8794,4.2591-9.4676.4298-5.5522-.8096-6.9972-7.5187-2.2885-9.8963-1.691-2.3437-.758-6.5118,2.8225-6.741.1546-4.3531,5.1063-5.2621,8.9336-2.4156h0c1.1292-1.6769,6.8794-4.259,9.4676-.4298,5.5522.8096,6.9972,7.5187,2.2885,9.8963,1.691,2.3437.758,6.5118-2.8225,6.741-.1547,4.3531-5.1063,5.2621-8.9336,2.4156h0Z" style="fill: #fff8ed; stroke: #5f5e5f; stroke-width: .5px;"/>
+    <path d="M7.0218,13.7777c1.9573-1.1744,3.9146-1.2723,5.9698-.4893M19.6465,10.1566c2.0552-1.3701,4.2082-1.3701,6.3613-.2936" style="fill: none; stroke: #f2e6d5; stroke-linecap: round; stroke-width: 2.1px;"/>
+    <path d="M22.4109,18.3486c-1.4691,1.1297-3.1142,1.75-4.9863,1.9824M11.1155,24.1767c-2.1567.7946-4.0116.2498-5.5631-1.3279" style="fill: none; stroke: #f2e6d5; stroke-linecap: round; stroke-width: 2.1px;"/>
+  </g>
+  <g>
+    <path d="M4.9606,21.8907l6.6204-7.0939,7.2451,4.6767,6.6686-8.1444" style="fill: none; stroke: #3e4553; stroke-linecap: round; stroke-linejoin: round;"/>
+    <g id="way-coral-active-node-accents">
+      <circle cx="4.9606" cy="21.8907" r="2.2509" style="fill: #f06b61; stroke: #3e4553;"/>
+      <circle cx="11.581" cy="14.7968" r="2.2509" style="fill: #f06b61; stroke: #3e4553;"/>
+      <circle cx="18.7896" cy="19.411" r="2.2509" style="fill: #f06b61; stroke: #3e4553;"/>
+      <circle cx="25.4947" cy="11.3291" r="2.2509" style="fill: #f06b61; stroke: #3e4553;"/>
     </g>
+  </g>
+  <g id="node-optional-sparkles">
+    <path d="M27.0136,3.0256v2.6618M25.6827,4.3565h2.6618" style="fill: none; stroke: #f06b61; stroke-linecap: round;"/>
+    <circle cx="29.2761" cy="2.4932" r=".5324" style="fill: #f06b61;"/>
   </g>
 </svg>

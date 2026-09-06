@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="feature" xmlns="http://www.w3.org/2000/svg" width="32.5897" height="32" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 32.5897 32">
+  <defs>
+    <radialGradient id="_未命名的渐变_126" data-name="未命名的渐变 126" cx="-225.226" cy="259.152" fx="-225.226" fy="259.152" r="1.4737" gradientTransform="translate(2445.9381 2848.3532) scale(10.7863 -10.9293)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f06b61" stop-opacity=".9"/>
+      <stop offset=".133" stop-color="#f06c62" stop-opacity=".8829"/>
+      <stop offset=".2691" stop-color="#f06f65" stop-opacity=".8317"/>
+      <stop offset=".4067" stop-color="#f0756a" stop-opacity=".7462"/>
+      <stop offset=".5454" stop-color="#f17c72" stop-opacity=".6263"/>
+      <stop offset=".6849" stop-color="#f1877c" stop-opacity=".4719"/>
+      <stop offset=".8252" stop-color="#f29388" stop-opacity=".2829"/>
+      <stop offset=".9635" stop-color="#f3a196" stop-opacity=".0634"/>
+      <stop offset="1" stop-color="#f4a69b" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <path d="M15.9802.1935c8.7112-1.5676,16.6096,6.6406,16.6096,15.5944s-7.1634,16.2122-16,16.2122S.5897,24.7416.5897,15.7878,7.9366,1.6409,15.9802.1935Z" style="fill: url(#_未命名的渐变_126);"/>
+  <g id="smallStar">
+    <path d="M5.7435,7.5669c0,.6061.1679.7793.8393.8659-.5875,0-.7554.1732-.8393.8659,0-.6061-.1679-.7793-.8393-.8659.5875,0,.7554-.1732.8393-.8659Z" style="fill: #e7705d;"/>
+  </g>
+  <g id="smallStar1">
+    <path d="M8.373,3.3404c.1289,1.1774.5155,1.4391,1.5465,1.5699-1.1599.1308-1.4176.5233-1.5465,1.5699-.1289-1.1774-.5155-1.4391-1.5465-1.5699,1.1599-.1308,1.4176-.5233,1.5465-1.5699Z" style="fill: #e7705d;"/>
+  </g>
+  <g id="smallStar2">
+    <path d="M24.9823,26.182c.0839.6927.2518.8659.9233.9524-.6715.0866-.8393.2597-.9233.9524-.0839-.6927-.2518-.8659-.9233-.9524.6715-.0866.8393-.2597.9233-.9524Z" style="fill: #e7705d;"/>
+  </g>
+</svg>

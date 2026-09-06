@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="tool_hover" data-name="tool hover" xmlns="http://www.w3.org/2000/svg" width="32.5897" height="32" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 32.5897 32">
+  <defs>
+    <linearGradient id="_未命名的渐变_10" data-name="未命名的渐变 10" x1="1.7447" y1="21.9731" x2="30.3766" y2="12.1963" gradientTransform="translate(0 33) scale(1 -1)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f8d9d2" stop-opacity=".34"/>
+      <stop offset=".52" stop-color="#f7c6c0" stop-opacity=".46"/>
+      <stop offset="1" stop-color="#f2b8b3" stop-opacity=".3"/>
+    </linearGradient>
+    <linearGradient id="_未命名的渐变_22" data-name="未命名的渐变 22" x1="21.2556" y1="29.5433" x2="39.4965" y2="18.0436" gradientTransform="translate(-9.1099 24.8936) rotate(-4.3639) scale(.9063 -.6359)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff8f3" stop-opacity=".7"/>
+      <stop offset=".9948" stop-color="#fce6e1"/>
+    </linearGradient>
+    <radialGradient id="_未命名的渐变_15" data-name="未命名的渐变 15" cx="-225.0443" cy="259.4997" fx="-225.0443" fy="259.4997" r="1.9403" gradientTransform="translate(1893.9623 2088.5908) scale(8.3435 -7.9892)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f4a69b" stop-opacity=".46"/>
+      <stop offset=".1855" stop-color="#f4a69b" stop-opacity=".4432"/>
+      <stop offset=".3754" stop-color="#f4a69b" stop-opacity=".3928"/>
+      <stop offset=".5672" stop-color="#f4a69b" stop-opacity=".3089"/>
+      <stop offset=".7605" stop-color="#f4a69b" stop-opacity=".1913"/>
+      <stop offset=".9532" stop-color="#f4a69b" stop-opacity=".0414"/>
+      <stop offset="1" stop-color="#f4a69b" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <g>
+    <path d="M.8617,15.2505C2.6223,7.6287,6.0906,3.7659,10.9323,1.7334c6.4069-2.5406,11.8931.0661,16.0746,2.6067,2.641,2.0325,4.4016,5.0812,4.8417,9.1462.4402,4.065-.6602,8.638-3.0811,11.6868-2.861,3.5568-7.5708,5.7269-12.4125,5.9188-4.618.183-7.7651-1.3855-11.1316-4.748C2.8025,24.3112.1993,20.3498.8617,15.2505Z" style="fill: url(#_未命名的渐变_10);"/>
+    <path d="M5.0569,8.1591c2.5855-3.6629,6.4762-5.8124,11.2934-5.8943,4.2401.2907,5.9384.8203,8.1846,2.9765.544.6023,1.085,1.5813,1.2862,2.4461.2197.9447-.838,1.6734-1.679,1.1884-2.4534-1.4148-4.5628-1.7737-8.0487-1.9218-5.7334-.2583-6.1968,1.9721-8.6396,2.7825-.7256.2407-1.5403.168-2.1957-.2253-.5337-.3202-.6753-.6951-.2011-1.352Z" style="fill: url(#_未命名的渐变_22);"/>
+    <path d="M29.4844,21.1443c-3.9098,6.7857-7.7097,7.4555-13.9872,7.7044-3.0739,0-11.1945-1.2863-12.9877-6.8644" style="fill: none; stroke: rgba(246, 215, 207, .55); stroke-linecap: round; stroke-width: 2px;"/>
+  </g>
+  <path d="M15.6741.1862c8.8718-1.5086,16.9157,6.391,16.9157,15.0082s-7.2955,15.6028-16.2949,15.6028S0,23.8116,0,15.1944,7.4823,1.5792,15.6741.1862Z" style="fill: url(#_未命名的渐变_15);"/>
+</svg>
