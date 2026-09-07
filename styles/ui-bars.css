@@ -1,7 +1,7 @@
 /* Tool UI：布局和按钮状态。SVG 与文字分别由 ui-assets.css / ui-typography.css 管理。 */
 .geomcp-tool-bar {
   position: absolute;
-  top: 0;
+  top: var(--geomcp-overlay-top-offset);
   left: var(--geomcp-tool-bar-left-offset);
   width: var(--geomcp-tool-bar-width);
   overflow: visible;
@@ -105,20 +105,24 @@
 .geomcp-standard-scale-label {
   position: absolute;
   top: 0;
-  left: 0;
+  left: 50%;
   width: max(var(--geomcp-metric-scale-width), 44px);
   overflow: hidden;
+  transform: translateX(-50%);
 }
 
 .geomcp-standard-scale-rule {
   position: relative;
   display: block;
   top: 18px;
+  left: 50%;
   width: var(--geomcp-metric-scale-width);
   height: 6px;
   border-right: 1px solid var(--geomcp-ui-text);
   border-bottom: 1px solid var(--geomcp-ui-text);
   border-left: 1px solid var(--geomcp-ui-text);
+  /* 刻度长度变化时仍与标签共用 block 中心，不把刻度线拉伸到预留宽度。 */
+  transform: translateX(-50%);
 }
 
 .geomcp-standard-bar-divider {
@@ -250,20 +254,11 @@
 
 .geomcp-feature-bar-divider {
   position: relative;
-  align-self: stretch;
+  display: grid;
+  align-self: center;
+  place-items: center;
   overflow: visible;
   pointer-events: none;
-}
-
-.geomcp-feature-bar-divider::before {
-  position: absolute;
-  top: 4px;
-  bottom: 4px;
-  left: 50%;
-  width: 1px;
-  background: var(--geomcp-ui-divider);
-  content: "";
-  transform: translateX(-50%);
 }
 
 .geomcp-feature-bar-end {

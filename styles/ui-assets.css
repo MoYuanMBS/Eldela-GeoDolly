@@ -8,6 +8,22 @@
 }
 
 /* Icons */
+/* close/delete 使用完整状态图；原生 :active 跟随真实按住状态，无计时器、无 select。 */
+.geomcp-ui-image-button > .geomcp-ui-image-hover,
+.geomcp-ui-image-button > .geomcp-ui-image-pressed {
+  display: none;
+}
+
+.geomcp-ui-image-button:hover > .geomcp-ui-image-normal,
+.geomcp-ui-image-button:active > .geomcp-ui-image-normal {
+  display: none;
+}
+
+.geomcp-ui-image-button:hover:not(:active) > .geomcp-ui-image-hover,
+.geomcp-ui-image-button:active > .geomcp-ui-image-pressed {
+  display: block;
+}
+
 .geomcp-ui-icon-slot {
   position: relative;
   isolation: isolate;
@@ -185,26 +201,44 @@
 
 .geomcp-ui-decoration-standard-end {
   position: absolute;
-  width: 64px;
   max-width: none;
-  height: 32px;
 }
 
+/* 尺寸/缩放分 up、down 两组；四个角的位置分别在下面调整，互不联动。 */
 .geomcp-ui-decoration-standard-end-up {
-  top: -8px;
+  width: 70px;
+  height: 35px;
+  transform: scale(1);
 }
 
 .geomcp-ui-decoration-standard-end-down {
-  top: auto;
-  bottom: -8px;
+  width: 80px;
+  height: 40px;
+  transform: scale(1);
 }
 
-.geomcp-ui-decoration-standard-end-left {
-  left: -12px;
+.geomcp-ui-decoration-standard-end-left-up {
+  top: -3px;
+  left: -13px;
+  transform-origin: top left;
 }
 
-.geomcp-ui-decoration-standard-end-right {
+.geomcp-ui-decoration-standard-end-right-up {
+  top: -2px;
   right: -12px;
+  transform-origin: top right;
+}
+
+.geomcp-ui-decoration-standard-end-left-down {
+  bottom: -6px;
+  left: -22px;
+  transform-origin: bottom left;
+}
+
+.geomcp-ui-decoration-standard-end-right-down {
+  bottom: -10px;
+  right: -5px;
+  transform-origin: bottom right;
 }
 
 .geomcp-ui-decoration-standard-bar-end {
@@ -219,28 +253,33 @@
 }
 
 .geomcp-ui-decoration-feature-divider {
-  position: absolute;
-  top: 50%;
-  left: 50%;
+  /* Feature divider 仅用 SVG，在固定分隔槽中自然居中，不绘制贯穿栏高的 CSS 竖线。 */
   width: 16px;
   height: 6px;
-  transform: translate(-50%, -50%);
 }
 
 .geomcp-ui-decoration-feature-end {
   position: absolute;
-  top: 2px;
-  width: 64px;
   max-width: none;
-  height: 32px;
 }
 
+/* 左右装饰各自保留完整 placement，调整任一侧不会改变另一侧。 */
 .geomcp-ui-decoration-feature-end-left {
+  top: 2px;
   left: -12px;
+  width: 64px;
+  height: 32px;
+  transform: scale(1);
+  transform-origin: top left;
 }
 
 .geomcp-ui-decoration-feature-end-right {
+  top: 2px;
   right: -12px;
+  width: 64px;
+  height: 32px;
+  transform: scale(1);
+  transform-origin: top right;
 }
 
 .geomcp-ui-decoration-popup-footer-line {

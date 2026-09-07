@@ -320,17 +320,24 @@ export function createMeasureToolController(options: MeasureToolControllerOption
     const anchor = layerRuntime.getVisualNorthEast(record.visualLayer);
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "geomcp-measurement-delete-button";
+    button.className = "geomcp-measurement-delete-button geomcp-ui-image-button";
     button.setAttribute("aria-label", `Delete ${record.measurement.kind} measurement`);
     DomEvent.disableClickPropagation(button);
     DomEvent.disableScrollPropagation(button);
-    const deleteImage = document.createElement("img");
-    deleteImage.className = "geomcp-ui-icon geomcp-ui-icon-delete";
-    deleteImage.src = UI_SVG_ASSETS.icons.delete;
-    deleteImage.alt = "";
-    deleteImage.draggable = false;
-    deleteImage.setAttribute("aria-hidden", "true");
-    button.append(deleteImage);
+    // 仅挂载素材；与 Popup close 共用 UI CSS 的原生 hover/active 切换，不在 Controller 维护按钮状态。
+    for (const [state, url] of [
+      ["normal", UI_SVG_ASSETS.icons.delete],
+      ["hover", UI_SVG_ASSETS.hover.deleteHover],
+      ["pressed", UI_SVG_ASSETS.hover.deletePressed],
+    ] as const) {
+      const deleteImage = document.createElement("img");
+      deleteImage.className = `geomcp-ui-icon geomcp-ui-icon-delete geomcp-ui-image-${state}`;
+      deleteImage.src = url;
+      deleteImage.alt = "";
+      deleteImage.draggable = false;
+      deleteImage.setAttribute("aria-hidden", "true");
+      button.append(deleteImage);
+    }
     button.addEventListener("click", () => deleteMeasurement(record.measurement.measurementId), {once: true});
     const icon = divIcon({
       className: "geomcp-measurement-delete-marker",

@@ -39,8 +39,11 @@ export function Popup({variant, className, ariaLabel, ariaLive = "off", header, 
       <div className="geomcp-popup-clip">
         <header className="geomcp-popup-header">
           <div className="geomcp-popup-header-content">{header}</div>
-          <button className="geomcp-popup-close" type="button" aria-label={`Close ${variant} popup`} onClick={onClose}>
-            <img className="geomcp-ui-icon geomcp-ui-icon-popup-close" src={UI_SVG_ASSETS.icons.close} alt="" draggable={false} aria-hidden="true" />
+          <button className="geomcp-popup-close geomcp-ui-image-button" type="button" aria-label={`Close ${variant} popup`} onClick={onClose}>
+            {/* 三张都是完整按钮图，CSS 仅显示当前状态的一张，不叠加在普通 icon 下。 */}
+            <img className="geomcp-ui-icon geomcp-ui-icon-popup-close geomcp-ui-image-normal" src={UI_SVG_ASSETS.icons.close} alt="" draggable={false} aria-hidden="true" />
+            <img className="geomcp-ui-icon geomcp-ui-icon-popup-close geomcp-ui-image-hover" src={UI_SVG_ASSETS.hover.closeHover} alt="" draggable={false} aria-hidden="true" />
+            <img className="geomcp-ui-icon geomcp-ui-icon-popup-close geomcp-ui-image-pressed" src={UI_SVG_ASSETS.hover.closePressed} alt="" draggable={false} aria-hidden="true" />
           </button>
         </header>
         <div className="geomcp-popup-body">{children}</div>

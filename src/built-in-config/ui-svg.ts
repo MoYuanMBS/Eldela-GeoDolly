@@ -13,6 +13,10 @@ import tagPopupDotIconUrl from "../../assets/ui/icons/tag-popup-dot.svg";
 import tagIconUrl from "../../assets/ui/icons/tag.svg";
 import volcanoIconUrl from "../../assets/ui/icons/volcano.svg";
 import wayIconUrl from "../../assets/ui/icons/way.svg";
+import closeHoverUrl from "../../assets/ui/hover/close-hover.svg";
+import closePressedUrl from "../../assets/ui/hover/close-pressed.svg";
+import deleteHoverUrl from "../../assets/ui/hover/delete-hover.svg";
+import deletePressedUrl from "../../assets/ui/hover/delete-pressed.svg";
 import featureHoverUrl from "../../assets/ui/hover/feature.svg";
 import measureHoverUrl from "../../assets/ui/hover/measure.svg";
 import toolHoverUrl from "../../assets/ui/hover/tool-hover.svg";
@@ -54,6 +58,10 @@ export const UI_SVG_ASSETS = {
     way: wayIconUrl
   },
   hover: {
+    closeHover: closeHoverUrl,
+    closePressed: closePressedUrl,
+    deleteHover: deleteHoverUrl,
+    deletePressed: deletePressedUrl,
     feature: featureHoverUrl,
     measure: measureHoverUrl,
     toolHover: toolHoverUrl,

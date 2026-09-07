@@ -31,6 +31,7 @@ interface MapPageProps {
 
 interface MapPageStyle extends CSSProperties {
   "--geomcp-ui-frame-width": string;
+  "--geomcp-overlay-top-offset": string;
   "--geomcp-map-width": string;
   "--geomcp-standard-ui-min-width": string;
   "--geomcp-standard-ui-min-height": string;
@@ -177,6 +178,10 @@ export function MapPage({mapDataUrl, MapSurfaceComponent}: MapPageProps) {
   const standardMeasurement = activeMeasurementTarget?.interactionState === "selected" || selectedFeature === null
     ? activeMeasurementTarget?.measurement ?? null
     : null;
+  // 只判断最终展示目标，避免别的对象被选中时给当前 hover 图标错误地加上特效。
+  const standardTargetSelected = standardMeasurement !== null
+    ? activeMeasurementTarget?.interactionState === "selected"
+    : selectedFeature !== null && activeFeatureDetails !== null;
 
   if (loadState.status === "loading") {
     return <main className="geomcp-map-page-state" role="status">Loading map data…</main>;
@@ -189,6 +194,7 @@ export function MapPage({mapDataUrl, MapSurfaceComponent}: MapPageProps) {
   const payload = data.map_payload;
   const pageStyle: MapPageStyle = {
     "--geomcp-ui-frame-width": `${UI_BUILT_IN_CONFIG.frameBorderWidthPx}px`,
+    "--geomcp-overlay-top-offset": `${UI_BUILT_IN_CONFIG.overlayTopOffsetPx}px`,
     "--geomcp-map-width": `${payload.screenshot_size[0]}px`,
     "--geomcp-standard-ui-min-width": `${UI_BUILT_IN_CONFIG.standardUi.minWidth}px`,
     "--geomcp-standard-ui-min-height": `${UI_BUILT_IN_CONFIG.standardUi.minHeight}px`,
@@ -265,6 +271,7 @@ export function MapPage({mapDataUrl, MapSurfaceComponent}: MapPageProps) {
             name: activeFeatureDetails.name,
           }}
           measurement={standardMeasurement}
+          targetSelected={standardTargetSelected}
           onReady={handleStandardUiReady}
           onError={handleStandardUiError}
         />

@@ -7,6 +7,8 @@
 export const UI_BUILT_IN_CONFIG = {
   // 地图、Popup、Feature Bar 的外框共用线宽；内部 divider 保持独立。
   frameBorderWidthPx: 1.5,
+  // Toolbar 与 Popup 共用顶部基线；不要求两者的总高度相同。
+  overlayTopOffsetPx: 12,
   referenceUi: {
     minWidth: 600,
     minHeight: 50,

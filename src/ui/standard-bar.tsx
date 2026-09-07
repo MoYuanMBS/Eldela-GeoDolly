@@ -15,6 +15,8 @@ interface StandardBarProps {
   metricScale: MetricScaleViewType | null;
   feature: InteractiveFeatureSummaryType | null;
   measurement: CompletedMeasurementType | null;
+  // 当前展示目标的选中态由页面派生；hover 只更新摘要，不挂载类型特效。
+  targetSelected: boolean;
   onReady(measuredHeight: number): void;
   onError(message: string): void;
 }
@@ -138,7 +140,7 @@ function hasLayoutOverflow(element: HTMLElement, content: HTMLElement): boolean 
 }
 
 /** Interactive MapSurface 外部的实时 Scale / Feature / Attribution，并负责锁定自身高度。 */
-export function StandardBar({logicalWidth, attributionText, attributionUrl, attributionDescription, metricScale, feature, measurement, onReady, onError}: StandardBarProps) {
+export function StandardBar({logicalWidth, attributionText, attributionUrl, attributionDescription, metricScale, feature, measurement, targetSelected, onReady, onError}: StandardBarProps) {
   const elementRef = useRef<HTMLElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const [layoutStatus, setLayoutStatus] = useState<StandardUiStatus>("pending");
@@ -236,8 +238,8 @@ export function StandardBar({logicalWidth, attributionText, attributionUrl, attr
     <footer ref={elementRef} className={`geomcp-standard-bar geomcp-standard-bar-status-${layoutStatus} ${featureTypeClass}`} aria-label="Interactive map standard information" data-standard-ui-status={layoutStatus}>
       <div ref={contentRef} className="geomcp-standard-bar-content">
         <span className="geomcp-standard-bar-block geomcp-standard-bar-block-end geomcp-standard-bar-block-end-left" aria-hidden="true">
-          <img className="geomcp-ui-decoration geomcp-ui-decoration-standard-end geomcp-ui-decoration-standard-end-up geomcp-ui-decoration-standard-end-left" src={UI_SVG_ASSETS.decorations.leftUp} alt="" draggable={false} />
-          <img className="geomcp-ui-decoration geomcp-ui-decoration-standard-end geomcp-ui-decoration-standard-end-down geomcp-ui-decoration-standard-end-left" src={UI_SVG_ASSETS.decorations.leftDown} alt="" draggable={false} />
+          <img className="geomcp-ui-decoration geomcp-ui-decoration-standard-end geomcp-ui-decoration-standard-end-up geomcp-ui-decoration-standard-end-left-up" src={UI_SVG_ASSETS.decorations.leftUp} alt="" draggable={false} />
+          <img className="geomcp-ui-decoration geomcp-ui-decoration-standard-end geomcp-ui-decoration-standard-end-down geomcp-ui-decoration-standard-end-left-down" src={UI_SVG_ASSETS.decorations.leftDown} alt="" draggable={false} />
         </span>
         <section className="geomcp-standard-bar-block geomcp-standard-bar-block-scale geomcp-standard-scale" style={scaleStyle} aria-label={metricScale === null ? "Map scale loading" : `Map scale ${metricScale.label}`}>
           <span className="geomcp-standard-scale-label">{metricScale?.label ?? "Scale"}</span>
@@ -250,11 +252,12 @@ export function StandardBar({logicalWidth, attributionText, attributionUrl, attr
           aria-live="polite"
           data-feature-state={measurement === null && feature === null ? "empty" : "ready"}
           data-live-target={measurement !== null ? "measurement" : feature === null ? "empty" : "feature"}
+          data-target-selected={targetSelected}
         >
           {measurement !== null ? (
             <>
               <span className="geomcp-ui-icon-slot geomcp-ui-icon-slot-standard" aria-hidden="true">
-                <img className="geomcp-ui-effect geomcp-ui-effect-measurement" src={UI_SVG_ASSETS.hover.measure} alt="" draggable={false} />
+                {targetSelected ? <img className="geomcp-ui-effect geomcp-ui-effect-measurement" src={UI_SVG_ASSETS.hover.measure} alt="" draggable={false} /> : null}
                 <img className={`geomcp-ui-icon geomcp-ui-icon-standard-target geomcp-ui-icon-standard-measurement geomcp-ui-icon-standard-measurement-${measurement.kind}`} src={MEASUREMENT_TYPE_ICONS[measurement.kind]} alt="" draggable={false} />
               </span>
               <span className="geomcp-standard-live-feature-id geomcp-standard-live-measurement-kind">测量 {measurement.kind[0].toUpperCase() + measurement.kind.slice(1)}</span>
@@ -269,7 +272,7 @@ export function StandardBar({logicalWidth, attributionText, attributionUrl, attr
             <>
               {/* 摘要 target 来自地图 hover/selection；非点击图标本身不另建交互状态。 */}
               <span className="geomcp-ui-icon-slot geomcp-ui-icon-slot-standard" aria-hidden="true">
-                <img className="geomcp-ui-effect geomcp-ui-effect-feature" src={UI_SVG_ASSETS.hover.feature} alt="" draggable={false} />
+                {targetSelected ? <img className="geomcp-ui-effect geomcp-ui-effect-feature" src={UI_SVG_ASSETS.hover.feature} alt="" draggable={false} /> : null}
                 <img className={`geomcp-ui-icon geomcp-ui-icon-standard-target geomcp-ui-icon-standard-feature-${feature.featureType}`} src={FEATURE_TYPE_ICONS[feature.featureType]} alt="" draggable={false} />
               </span>
               <span className="geomcp-standard-live-feature-id">{feature.displayId}</span>
@@ -289,8 +292,8 @@ export function StandardBar({logicalWidth, attributionText, attributionUrl, attr
           ))}
         </div>
         <span className="geomcp-standard-bar-block geomcp-standard-bar-block-end geomcp-standard-bar-block-end-right" aria-hidden="true">
-          <img className="geomcp-ui-decoration geomcp-ui-decoration-standard-end geomcp-ui-decoration-standard-end-up geomcp-ui-decoration-standard-end-right" src={UI_SVG_ASSETS.decorations.rightUp} alt="" draggable={false} />
-          <img className="geomcp-ui-decoration geomcp-ui-decoration-standard-end geomcp-ui-decoration-standard-end-down geomcp-ui-decoration-standard-end-right" src={UI_SVG_ASSETS.decorations.rightDown} alt="" draggable={false} />
+          <img className="geomcp-ui-decoration geomcp-ui-decoration-standard-end geomcp-ui-decoration-standard-end-up geomcp-ui-decoration-standard-end-right-up" src={UI_SVG_ASSETS.decorations.rightUp} alt="" draggable={false} />
+          <img className="geomcp-ui-decoration geomcp-ui-decoration-standard-end geomcp-ui-decoration-standard-end-down geomcp-ui-decoration-standard-end-right-down" src={UI_SVG_ASSETS.decorations.rightDown} alt="" draggable={false} />
         </span>
       </div>
       <span className="geomcp-standard-bar-end" aria-hidden="true">

@@ -2,14 +2,14 @@
 .geomcp-popup {
   position: absolute;
   z-index: 4;
-  top: 12px;
+  top: var(--geomcp-overlay-top-offset);
   right: 12px;
   display: grid;
   width: fit-content;
   min-width: min(var(--geomcp-popup-min-width), calc(100% - 24px));
   max-width: min(var(--geomcp-popup-max-width), calc(100% - 24px));
-  min-height: min(var(--geomcp-popup-min-height), calc(100% - 24px));
-  max-height: min(var(--geomcp-popup-max-height), calc(100% - 24px));
+  min-height: min(var(--geomcp-popup-min-height), calc(100% - var(--geomcp-overlay-top-offset) - 12px));
+  max-height: min(var(--geomcp-popup-max-height), calc(100% - var(--geomcp-overlay-top-offset) - 12px));
   padding-bottom: 8px;
   overflow: visible;
   border-radius: 8px;
@@ -58,11 +58,6 @@
   border-radius: 5px;
   background: transparent;
   cursor: pointer;
-}
-
-.geomcp-popup-close:hover,
-.geomcp-popup-close:focus-visible {
-  background: color-mix(in srgb, var(--geomcp-ui-highlight) 62%, transparent);
 }
 
 .geomcp-popup-close:focus-visible {
@@ -211,11 +206,6 @@
   background-color: color-mix(in srgb, var(--geomcp-ui-surface) 92%, transparent);
   box-shadow: 0 2px 8px color-mix(in srgb, var(--geomcp-ui-text) 18%, transparent);
   cursor: pointer;
-}
-
-.geomcp-measurement-delete-button:hover,
-.geomcp-measurement-delete-button:focus-visible {
-  background-color: var(--geomcp-ui-highlight);
 }
 
 .geomcp-measurement-delete-button:focus-visible {
