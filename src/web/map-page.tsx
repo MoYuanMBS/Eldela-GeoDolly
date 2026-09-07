@@ -30,6 +30,7 @@ interface MapPageProps {
 }
 
 interface MapPageStyle extends CSSProperties {
+  "--geomcp-ui-frame-width": string;
   "--geomcp-map-width": string;
   "--geomcp-standard-ui-min-width": string;
   "--geomcp-standard-ui-min-height": string;
@@ -46,7 +47,7 @@ interface MapPageStyle extends CSSProperties {
   "--geomcp-popup-min-height": string;
   "--geomcp-popup-max-height": string;
   "--geomcp-tool-bar-width": string;
-  "--geomcp-tool-bar-height": string;
+  "--geomcp-tool-bar-control-height": string;
   "--geomcp-tool-bar-left-offset": string;
   "--geomcp-scale-max-width": string;
 }
@@ -187,6 +188,7 @@ export function MapPage({mapDataUrl, MapSurfaceComponent}: MapPageProps) {
   const {data} = loadState;
   const payload = data.map_payload;
   const pageStyle: MapPageStyle = {
+    "--geomcp-ui-frame-width": `${UI_BUILT_IN_CONFIG.frameBorderWidthPx}px`,
     "--geomcp-map-width": `${payload.screenshot_size[0]}px`,
     "--geomcp-standard-ui-min-width": `${UI_BUILT_IN_CONFIG.standardUi.minWidth}px`,
     "--geomcp-standard-ui-min-height": `${UI_BUILT_IN_CONFIG.standardUi.minHeight}px`,
@@ -195,7 +197,7 @@ export function MapPage({mapDataUrl, MapSurfaceComponent}: MapPageProps) {
     "--geomcp-standard-ui-divider-width": `${UI_BUILT_IN_CONFIG.standardUi.dividerWidth}px`,
     "--geomcp-standard-ui-bar-end-width": `${UI_BUILT_IN_CONFIG.standardUi.barEndSourceWidthPx}px`,
     "--geomcp-standard-ui-bar-end-height": `${UI_BUILT_IN_CONFIG.standardUi.barEndHeightPx}px`,
-    "--geomcp-standard-ui-bar-end-scale-x": String(payload.screenshot_size[0] / UI_BUILT_IN_CONFIG.standardUi.barEndVisibleWidthPx),
+    "--geomcp-standard-ui-bar-end-scale-x": String(payload.screenshot_size[0] / UI_BUILT_IN_CONFIG.standardUi.barEndSourceWidthPx),
     "--geomcp-feature-bar-gap": `${UI_BUILT_IN_CONFIG.featureBar.gapPx}px`,
     "--geomcp-feature-ui-max-height": `${__GEOMCP_FEATURE_UI_MAX_HEIGHT_PX__}px`,
     "--geomcp-popup-min-width": `${UI_BUILT_IN_CONFIG.popup.minWidthPx}px`,
@@ -203,7 +205,7 @@ export function MapPage({mapDataUrl, MapSurfaceComponent}: MapPageProps) {
     "--geomcp-popup-min-height": `${UI_BUILT_IN_CONFIG.popup.minHeightPx}px`,
     "--geomcp-popup-max-height": `${UI_BUILT_IN_CONFIG.popup.maxHeightPx}px`,
     "--geomcp-tool-bar-width": `${UI_BUILT_IN_CONFIG.toolbar.widthPx}px`,
-    "--geomcp-tool-bar-height": `${UI_BUILT_IN_CONFIG.toolbar.heightPx}px`,
+    "--geomcp-tool-bar-control-height": `${UI_BUILT_IN_CONFIG.toolbar.controlHeightPx}px`,
     "--geomcp-tool-bar-left-offset": `${UI_BUILT_IN_CONFIG.toolbar.leftOffsetPx}px`,
     "--geomcp-scale-max-width": `${__GEOMCP_MAX_SCALE_WIDTH_PX__}px`,
   };
@@ -225,19 +227,22 @@ export function MapPage({mapDataUrl, MapSurfaceComponent}: MapPageProps) {
     >
       <div className="geomcp-map-capture-frame">
         <div className="geomcp-interactive-map-frame">
-          <MapSurfaceComponent
-            mapPayload={payload}
-            stylePayload={data.style_payload}
-            onMetricScaleChange={handleMetricScaleChange}
-            onZoomCommandsChange={handleZoomCommandsChange}
-            onInteractionCommandsChange={handleInteractionCommandsChange}
-            onMeasureToolPortChange={handleMeasureToolPortChange}
-            onActiveMeasurementChange={handleActiveMeasurementChange}
-            onHoveredFeatureChange={setHoveredFeature}
-            onSelectedFeatureChange={setSelectedFeature}
-            onMapRuntimeReady={handleMapRuntimeReady}
-            onMapRuntimeError={handleMapRuntimeError}
-          />
+          {/* 只裁地图内容；UI 为同级覆盖层，装饰可以越过地图边框且不改变 logical size。 */}
+          <div className="geomcp-interactive-map-clip">
+            <MapSurfaceComponent
+              mapPayload={payload}
+              stylePayload={data.style_payload}
+              onMetricScaleChange={handleMetricScaleChange}
+              onZoomCommandsChange={handleZoomCommandsChange}
+              onInteractionCommandsChange={handleInteractionCommandsChange}
+              onMeasureToolPortChange={handleMeasureToolPortChange}
+              onActiveMeasurementChange={handleActiveMeasurementChange}
+              onHoveredFeatureChange={setHoveredFeature}
+              onSelectedFeatureChange={setSelectedFeature}
+              onMapRuntimeReady={handleMapRuntimeReady}
+              onMapRuntimeError={handleMapRuntimeError}
+            />
+          </div>
           <div className="geomcp-interactive-ui-root">
             <MeasureToolUi
               port={measureToolPort}

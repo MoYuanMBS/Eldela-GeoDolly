@@ -13,6 +13,16 @@ import tagPopupDotIconUrl from "../../assets/ui/icons/tag-popup-dot.svg";
 import tagIconUrl from "../../assets/ui/icons/tag.svg";
 import volcanoIconUrl from "../../assets/ui/icons/volcano.svg";
 import wayIconUrl from "../../assets/ui/icons/way.svg";
+import featureHoverUrl from "../../assets/ui/hover/feature.svg";
+import measureHoverUrl from "../../assets/ui/hover/measure.svg";
+import toolHoverUrl from "../../assets/ui/hover/tool-hover.svg";
+import toolPressedUrl from "../../assets/ui/hover/tool-pressed.svg";
+import toolSelectUrl from "../../assets/ui/hover/tool-select.svg";
+import standardEndBarUrl from "../../assets/ui/bar/stander-end.svg";
+import tagEndBarUrl from "../../assets/ui/bar/tag-end.svg";
+import toolBottomBarUrl from "../../assets/ui/bar/tool-bottom.svg";
+import toolBodyBarUrl from "../../assets/ui/bar/tool-body.svg";
+import toolTopBarUrl from "../../assets/ui/bar/tool-top.svg";
 import featureBarDividerDecorationUrl from "../../assets/ui/decorations/feature-bar-divider.svg";
 import featureBarLeftDecorationUrl from "../../assets/ui/decorations/feature-bar-left.svg";
 import featureBarRightDecorationUrl from "../../assets/ui/decorations/feature-bar-right.svg";
@@ -22,10 +32,7 @@ import popupDecorationUrl from "../../assets/ui/decorations/popup-decoration.svg
 import referenceBarDividerDecorationUrl from "../../assets/ui/decorations/reference-bar-divider.svg";
 import rightDownDecorationUrl from "../../assets/ui/decorations/right-down.svg";
 import rightUpDecorationUrl from "../../assets/ui/decorations/right-up.svg";
-import tagBarEndDecorationUrl from "../../assets/ui/decorations/tag-bar-end.svg";
 import toolBarDividerDecorationUrl from "../../assets/ui/decorations/tool-bar-divider.svg";
-import toolBarDecorationUrl from "../../assets/ui/decorations/tool-bar.svg";
-import uiBarEndDecorationUrl from "../../assets/ui/decorations/ui-bar-end.svg";
 
 /** UI SVG 只从 assets/ui 导入；icons 固定排在 decorations 之前。 */
 export const UI_SVG_ASSETS = {
@@ -46,6 +53,20 @@ export const UI_SVG_ASSETS = {
     volcano: volcanoIconUrl,
     way: wayIconUrl
   },
+  hover: {
+    feature: featureHoverUrl,
+    measure: measureHoverUrl,
+    toolHover: toolHoverUrl,
+    toolPressed: toolPressedUrl,
+    toolSelect: toolSelectUrl
+  },
+  bar: {
+    standardEnd: standardEndBarUrl,
+    tagEnd: tagEndBarUrl,
+    toolTop: toolTopBarUrl,
+    toolBody: toolBodyBarUrl,
+    toolBottom: toolBottomBarUrl
+  },
   decorations: {
     featureBarDivider: featureBarDividerDecorationUrl,
     featureBarLeft: featureBarLeftDecorationUrl,
@@ -56,9 +77,6 @@ export const UI_SVG_ASSETS = {
     referenceBarDivider: referenceBarDividerDecorationUrl,
     rightDown: rightDownDecorationUrl,
     rightUp: rightUpDecorationUrl,
-    tagBarEnd: tagBarEndDecorationUrl,
-    toolBarDivider: toolBarDividerDecorationUrl,
-    toolBar: toolBarDecorationUrl,
-    uiBarEnd: uiBarEndDecorationUrl
+    toolBarDivider: toolBarDividerDecorationUrl
   }
 } as const;

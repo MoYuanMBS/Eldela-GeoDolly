@@ -4,19 +4,20 @@
   top: 0;
   left: var(--geomcp-tool-bar-left-offset);
   width: var(--geomcp-tool-bar-width);
-  height: var(--geomcp-tool-bar-height);
+  overflow: visible;
   pointer-events: auto;
   user-select: none;
 }
 
+.geomcp-tool-bar-body {
+  position: relative;
+}
+
 .geomcp-tool-bar-controls {
-  position: absolute;
-  top: 4.03%;
-  left: 29.24%;
+  position: relative;
   display: grid;
-  width: 41.95%;
-  height: 88.71%;
-  grid-template-rows: repeat(4, 1fr);
+  width: 100%;
+  grid-auto-rows: var(--geomcp-tool-bar-control-height);
 }
 
 .geomcp-tool-bar-control {
@@ -31,11 +32,13 @@
   left: 0;
   width: 100%;
   height: 2px;
-  overflow: hidden;
+  overflow: visible;
   pointer-events: none;
 }
 
 .geomcp-tool-bar-button {
+  position: relative;
+  isolation: isolate;
   display: grid;
   width: 100%;
   height: 100%;
@@ -47,13 +50,9 @@
   place-items: center;
 }
 
-.geomcp-tool-bar-button:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--geomcp-ui-highlight) 42%, transparent);
-}
-
-.geomcp-tool-bar-button-active {
-  background: color-mix(in srgb, var(--geomcp-ui-highlight) 74%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--geomcp-ui-bar-end) 48%, transparent);
+.geomcp-tool-bar-zoom-symbol {
+  position: relative;
+  z-index: 1;
 }
 
 .geomcp-tool-bar-button:focus-visible {
@@ -125,7 +124,7 @@
 .geomcp-standard-bar-divider {
   position: relative;
   align-self: stretch;
-  overflow: hidden;
+  overflow: visible;
   pointer-events: none;
 }
 
@@ -143,20 +142,19 @@
 .geomcp-standard-bar-block-end {
   position: relative;
   align-self: stretch;
-  overflow-x: clip;
-  overflow-y: visible;
+  overflow: visible;
   pointer-events: none;
   user-select: none;
 }
 
-.geomcp-standard-bar-end-clip {
+.geomcp-standard-bar-end {
   position: absolute;
   z-index: 2;
   right: 0;
-  bottom: -4px;
+  bottom: 0;
   left: 0;
-  height: 8px;
-  overflow: hidden;
+  height: var(--geomcp-standard-ui-bar-end-height);
+  overflow: visible;
   pointer-events: none;
   user-select: none;
 }
@@ -193,7 +191,7 @@
   position: relative;
   width: min(720px, calc(100% - 32px));
   margin: var(--geomcp-feature-bar-gap) auto 0;
-  border: 1px solid var(--geomcp-ui-border);
+  border: var(--geomcp-ui-frame-width) solid var(--geomcp-ui-border);
   border-radius: 7px;
   background: color-mix(in srgb, var(--geomcp-ui-surface) 94%, transparent);
   box-shadow: 0 3px 14px color-mix(in srgb, var(--geomcp-ui-text) 14%, transparent);
@@ -253,7 +251,7 @@
 .geomcp-feature-bar-divider {
   position: relative;
   align-self: stretch;
-  overflow: hidden;
+  overflow: visible;
   pointer-events: none;
 }
 
@@ -274,8 +272,7 @@
   top: 0;
   width: 44px;
   height: 36px;
-  overflow-x: clip;
-  overflow-y: visible;
+  overflow: visible;
   pointer-events: none;
   user-select: none;
 }

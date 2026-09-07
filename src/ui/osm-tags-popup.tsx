@@ -18,6 +18,11 @@ function osmRef(osmType: InteractiveOsmTagGroupType["osmType"], osmId: number): 
   return `${prefix}/${osmId}`;
 }
 
+function formatTagText(text: string): string {
+  // 只转换显示文本；AI record、React key 和 OSM identity 始终保留原值，星号不替换。
+  return text.replace(/_/g, "-").replace(/[-:]/g, "$&\u200b");
+}
+
 function SectionTitle({children}: {children: string}) {
   return (
     <h3 className="geomcp-popup-section-title">
@@ -42,7 +47,7 @@ function TagGroup({record, role = "", emptyMessage = "No tags"}: TagGroupProps) 
         <dl className="geomcp-popup-values geomcp-popup-relation-role-values">
           <div className="geomcp-popup-row geomcp-popup-relation-role-row">
             <dt className="geomcp-popup-row-key">role</dt>
-            <dd className="geomcp-popup-row-value">{role}</dd>
+            <dd className="geomcp-popup-row-value">{formatTagText(role)}</dd>
           </div>
         </dl>
       )}
@@ -52,8 +57,8 @@ function TagGroup({record, role = "", emptyMessage = "No tags"}: TagGroupProps) 
           {tags.map(([key, value]) => (
             <div className="geomcp-popup-row" key={key}>
               <img className="geomcp-ui-icon geomcp-ui-icon-popup-row-dot" src={UI_SVG_ASSETS.icons.tagPopupDot} alt="" draggable={false} aria-hidden="true" />
-              <dt className="geomcp-popup-row-key">{key}</dt>
-              <dd className="geomcp-popup-row-value">{value}</dd>
+              <dt className="geomcp-popup-row-key">{formatTagText(key)}</dt>
+              <dd className="geomcp-popup-row-value">{formatTagText(value)}</dd>
             </div>
           ))}
         </dl>
@@ -91,7 +96,10 @@ export function OsmTagsPopup({details, onClose}: OsmTagsPopupProps) {
       onClose={onClose}
       header={(
         <span className="geomcp-popup-title-group">
-          <img className={`geomcp-ui-icon geomcp-ui-icon-osm-feature geomcp-ui-icon-osm-feature-${details.featureType}`} src={FEATURE_TYPE_ICONS[details.featureType]} alt="" draggable={false} aria-hidden="true" />
+          <span className="geomcp-ui-icon-slot geomcp-ui-icon-slot-popup-feature" aria-hidden="true">
+            <img className="geomcp-ui-effect geomcp-ui-effect-feature" src={UI_SVG_ASSETS.hover.feature} alt="" draggable={false} />
+            <img className={`geomcp-ui-icon geomcp-ui-icon-osm-feature geomcp-ui-icon-osm-feature-${details.featureType}`} src={FEATURE_TYPE_ICONS[details.featureType]} alt="" draggable={false} />
+          </span>
           <span className="geomcp-popup-title">{details.displayId}</span>
           <img className="geomcp-ui-icon geomcp-ui-icon-osm-tag" src={UI_SVG_ASSETS.icons.tag} alt="" draggable={false} aria-hidden="true" />
         </span>

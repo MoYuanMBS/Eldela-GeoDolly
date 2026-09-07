@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="close_pressed" data-name="close pressed" xmlns="http://www.w3.org/2000/svg" width="30.9505" height="30.9505" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 30.9505 30.9505">
+  <defs>
+    <radialGradient id="_未命名的渐变_319" data-name="未命名的渐变 319" cx="15.4753" cy="15.4753" fx="15.4753" fy="15.4753" r="14.3253" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#9d312c"/>
+      <stop offset="0" stop-color="#a43e39"/>
+      <stop offset=".1842" stop-color="#a6413c"/>
+      <stop offset=".356" stop-color="#ac4c47"/>
+      <stop offset=".523" stop-color="#b65f59"/>
+      <stop offset=".6869" stop-color="#c47a73"/>
+      <stop offset=".847" stop-color="#d79c94"/>
+      <stop offset="1" stop-color="#edc4bb"/>
+    </radialGradient>
+  </defs>
+  <rect x="1.15" y="1.15" width="28.6505" height="28.6505" rx="7.6973" ry="7.6973" style="fill: url(#_未命名的渐变_319); stroke: #f6c3bb; stroke-miterlimit: 10; stroke-width: 2.3px;"/>
+  <path d="M22.5787,20.7199l-4.4494-4.4494c-.4411-.4411-.4422-1.156-.0024-1.5984,1.4778-1.4867,2.9555-2.9733,4.4333-4.46,1.194-1.2012-.664-3.0608-1.8588-1.8588-1.4762,1.4851-2.9523,2.9701-4.4285,4.4552-.4417.4443-1.1602.4454-1.6032.0024l-4.439-4.439c-1.1977-1.1977-3.057.6605-1.8588,1.8588l4.4494,4.4494c.4411.4411.4422,1.156.0024,1.5984-1.4778,1.4867-2.9555,2.9733-4.4332,4.46-1.194,1.2012.664,3.0608,1.8588,1.8588,1.4761-1.4851,2.9523-2.9701,4.4284-4.4552.4417-.4443,1.1602-.4454,1.6032-.0024,1.4797,1.4797,2.9594,2.9594,4.4391,4.439,1.1977,1.1978,3.057-.6605,1.8588-1.8588Z" style="fill: #9d312c;"/>
+</svg>

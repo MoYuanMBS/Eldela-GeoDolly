@@ -42,7 +42,10 @@ export function MeasurementHUD({state, onClose}: MeasurementHudProps) {
       onClose={onClose}
       header={(
         <span className="geomcp-popup-title-group">
-          <img className={`geomcp-ui-icon geomcp-ui-icon-popup-measurement geomcp-ui-icon-popup-measurement-${measurementKind}`} src={MEASUREMENT_TYPE_ICONS[measurementKind]} alt="" draggable={false} aria-hidden="true" />
+          <span className="geomcp-ui-icon-slot geomcp-ui-icon-slot-popup-measurement" aria-hidden="true">
+            <img className="geomcp-ui-effect geomcp-ui-effect-measurement" src={UI_SVG_ASSETS.hover.measure} alt="" draggable={false} />
+            <img className={`geomcp-ui-icon geomcp-ui-icon-popup-measurement geomcp-ui-icon-popup-measurement-${measurementKind}`} src={MEASUREMENT_TYPE_ICONS[measurementKind]} alt="" draggable={false} />
+          </span>
           <span className="geomcp-popup-title">Measure</span>
         </span>
       )}

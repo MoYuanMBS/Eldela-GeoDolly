@@ -1,5 +1,6 @@
 /* SVG 素材的尺寸与定位；实际文件导入统一由 src/built-in-config/ui-svg.ts 管理。 */
 .geomcp-ui-icon,
+.geomcp-ui-effect,
 .geomcp-ui-decoration {
   display: block;
   pointer-events: none;
@@ -7,6 +8,36 @@
 }
 
 /* Icons */
+.geomcp-ui-icon-slot {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  pointer-events: none;
+}
+
+.geomcp-ui-icon-slot-standard {
+  width: 28px;
+  height: 28px;
+}
+
+.geomcp-ui-icon-slot-popup-feature {
+  width: 34px;
+  height: 38px;
+}
+
+.geomcp-ui-icon-slot-popup-measurement {
+  width: 33px;
+  height: 33px;
+}
+
+.geomcp-ui-icon-slot > .geomcp-ui-icon,
+.geomcp-ui-icon-tool {
+  position: relative;
+  z-index: 1;
+}
+
 .geomcp-ui-icon-tool {
   width: 70%;
   max-width: none;
@@ -56,9 +87,9 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 43px;
+  width: 35px;
   max-width: none;
-  height: 43px;
+  height: 35px;
   object-fit: contain;
   transform: translate(-50%, -50%);
 }
@@ -93,12 +124,44 @@
   object-fit: contain;
 }
 
-/* Decorations */
-.geomcp-ui-decoration-tool-bar {
+/* Hover/pressed/select 是图标下方独立的一层，不改 SVG 自带颜色。 */
+.geomcp-ui-effect {
   position: absolute;
-  inset: 0;
+  z-index: 0;
+  top: 50%;
+  left: 50%;
   width: 100%;
   height: 100%;
+  object-fit: contain;
+  transform: translate(-50%, -50%);
+}
+
+.geomcp-ui-effect-tool {
+  width: 90%;
+  height: 90%;
+}
+
+.geomcp-ui-effect-feature,
+.geomcp-ui-effect-measurement {
+  width: 125%;
+  height: 125%;
+}
+
+/* Decorations */
+.geomcp-ui-decoration-tool-top,
+.geomcp-ui-decoration-tool-bottom {
+  width: 100%;
+  height: auto;
+}
+
+.geomcp-ui-decoration-tool-body {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: auto;
+  transform: scaleY(var(--geomcp-tool-bar-body-scale-y));
+  transform-origin: top;
 }
 
 .geomcp-ui-decoration-tool-divider {
@@ -146,12 +209,13 @@
 
 .geomcp-ui-decoration-standard-bar-end {
   position: absolute;
-  top: 50%;
-  left: 50%;
+  top: 0;
+  left: 0;
   width: var(--geomcp-standard-ui-bar-end-width);
   max-width: none;
   height: var(--geomcp-standard-ui-bar-end-height);
-  transform: translate(-50%, -50%) scaleX(var(--geomcp-standard-ui-bar-end-scale-x));
+  transform: scaleX(var(--geomcp-standard-ui-bar-end-scale-x));
+  transform-origin: left;
 }
 
 .geomcp-ui-decoration-feature-divider {
@@ -183,14 +247,17 @@
   position: absolute;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 2px;
-  display: block;
+  width: 32px;
+  height: 8px;
+  max-width: none;
+  transform: scaleX(var(--geomcp-popup-footer-scale-x, 1));
+  transform-origin: left;
 }
 
 .geomcp-ui-decoration-popup-corner {
   position: absolute;
-  top: -18px;
+  z-index: 4;
+  top: -14px;
   right: -24px;
   width: 85px;
   height: 40px;

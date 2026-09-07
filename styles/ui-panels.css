@@ -110,7 +110,7 @@
 
 .geomcp-popup-footer {
   position: relative;
-  height: 3px;
+  height: 8px;
   margin: 0 12px;
   overflow: visible;
   pointer-events: none;
@@ -118,8 +118,9 @@
 
 .geomcp-popup-frame {
   position: absolute;
+  z-index: 3;
   inset: 0;
-  border: 1px solid var(--geomcp-ui-border);
+  border: var(--geomcp-ui-frame-width) solid var(--geomcp-ui-border);
   border-radius: 8px;
   pointer-events: none;
 }
@@ -155,9 +156,7 @@
 .geomcp-popup-row-value {
   min-width: 0;
   margin: 0;
-}
-
-.geomcp-popup-row-value {
+  /* key/value 同时接受展示文本的零宽断点；连续长词仍可在宽度上限处应急换行。 */
   overflow-wrap: break-word;
   word-break: normal;
 }

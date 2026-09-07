@@ -30,10 +30,6 @@
   text-overflow: ellipsis;
 }
 
-.geomcp-standard-live-measurement-values {
-  font-variant-numeric: tabular-nums;
-}
-
 .geomcp-standard-live-feature-id,
 .geomcp-standard-live-feature-empty-prompt {
   flex: 0 0 auto;

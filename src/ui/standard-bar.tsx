@@ -253,9 +253,12 @@ export function StandardBar({logicalWidth, attributionText, attributionUrl, attr
         >
           {measurement !== null ? (
             <>
-              <img className={`geomcp-ui-icon geomcp-ui-icon-standard-target geomcp-ui-icon-standard-measurement geomcp-ui-icon-standard-measurement-${measurement.kind}`} src={MEASUREMENT_TYPE_ICONS[measurement.kind]} alt="" draggable={false} aria-hidden="true" />
+              <span className="geomcp-ui-icon-slot geomcp-ui-icon-slot-standard" aria-hidden="true">
+                <img className="geomcp-ui-effect geomcp-ui-effect-measurement" src={UI_SVG_ASSETS.hover.measure} alt="" draggable={false} />
+                <img className={`geomcp-ui-icon geomcp-ui-icon-standard-target geomcp-ui-icon-standard-measurement geomcp-ui-icon-standard-measurement-${measurement.kind}`} src={MEASUREMENT_TYPE_ICONS[measurement.kind]} alt="" draggable={false} />
+              </span>
               <span className="geomcp-standard-live-feature-id geomcp-standard-live-measurement-kind">测量 {measurement.kind[0].toUpperCase() + measurement.kind.slice(1)}</span>
-              <span className="geomcp-standard-live-feature-name geomcp-standard-live-measurement-values">{measurementRows.map((row) => `${row.label}: ${row.value}`).join(" · ")}</span>
+              {/* name 槽位不显示测量数值；详细数值保留在 Popup 和可访问摘要中。 */}
             </>
           ) : feature === null ? (
             <>
@@ -264,7 +267,11 @@ export function StandardBar({logicalWidth, attributionText, attributionUrl, attr
             </>
           ) : (
             <>
-              <img className={`geomcp-ui-icon geomcp-ui-icon-standard-target geomcp-ui-icon-standard-feature-${feature.featureType}`} src={FEATURE_TYPE_ICONS[feature.featureType]} alt="" draggable={false} aria-hidden="true" />
+              {/* 摘要 target 来自地图 hover/selection；非点击图标本身不另建交互状态。 */}
+              <span className="geomcp-ui-icon-slot geomcp-ui-icon-slot-standard" aria-hidden="true">
+                <img className="geomcp-ui-effect geomcp-ui-effect-feature" src={UI_SVG_ASSETS.hover.feature} alt="" draggable={false} />
+                <img className={`geomcp-ui-icon geomcp-ui-icon-standard-target geomcp-ui-icon-standard-feature-${feature.featureType}`} src={FEATURE_TYPE_ICONS[feature.featureType]} alt="" draggable={false} />
+              </span>
               <span className="geomcp-standard-live-feature-id">{feature.displayId}</span>
               {feature.name === null ? null : <span className="geomcp-standard-live-feature-name">{feature.name}</span>}
             </>
@@ -286,8 +293,8 @@ export function StandardBar({logicalWidth, attributionText, attributionUrl, attr
           <img className="geomcp-ui-decoration geomcp-ui-decoration-standard-end geomcp-ui-decoration-standard-end-down geomcp-ui-decoration-standard-end-right" src={UI_SVG_ASSETS.decorations.rightDown} alt="" draggable={false} />
         </span>
       </div>
-      <span className="geomcp-standard-bar-end-clip" aria-hidden="true">
-        <img className="geomcp-ui-decoration geomcp-ui-decoration-standard-bar-end" src={UI_SVG_ASSETS.decorations.uiBarEnd} alt="" draggable={false} />
+      <span className="geomcp-standard-bar-end" aria-hidden="true">
+        <img className="geomcp-ui-decoration geomcp-ui-decoration-standard-bar-end" src={UI_SVG_ASSETS.bar.standardEnd} alt="" draggable={false} />
       </span>
     </footer>
   );

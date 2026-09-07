@@ -5,6 +5,8 @@
  */
 
 export const UI_BUILT_IN_CONFIG = {
+  // 地图、Popup、Feature Bar 的外框共用线宽；内部 divider 保持独立。
+  frameBorderWidthPx: 1.5,
   referenceUi: {
     minWidth: 600,
     minHeight: 50,
@@ -12,14 +14,13 @@ export const UI_BUILT_IN_CONFIG = {
   standardUi: {
     minWidth: 600,
     minHeight: 50,
-    endBlockRatio: 0.065,
+    endBlockRatio: 0.02,
     liveFeatureMinWidth: 160,
     dividerWidth: 32,
     emptyPrompt: "Hover or select a feature",
-    // ui-bar-end.svg 保持素材原始纵向尺寸，只按 MapSurface 宽度计算横向 placement scale。
-    barEndSourceWidthPx: 142.08,
-    barEndVisibleWidthPx: 69.8592,
-    barEndHeightPx: 73.2,
+    // 新素材已收紧画板；仅横向拉伸整幅 stander-end，不再放大后裁出局部。
+    barEndSourceWidthPx: 32,
+    barEndHeightPx: 3,
   },
   featureBar: {
     gapPx: 6,
@@ -34,10 +35,10 @@ export const UI_BUILT_IN_CONFIG = {
   toolbar: {
     minWidth: 600,
     minHeight: 50,
-    // Toolbar 背景、控制槽、divider 和 icon 按同一个外框比例一起缩放。
-    widthPx: 96,
-    heightPx: 151,
-    leftOffsetPx: -13,
+    // 三段背景使用实际栏宽；body 高度由按钮行数和行高决定，端帽保持素材比例。
+    widthPx: 40,
+    controlHeightPx: 34,
+    leftOffsetPx: 15,
   },
   attribution: {
     separator: " | ",
