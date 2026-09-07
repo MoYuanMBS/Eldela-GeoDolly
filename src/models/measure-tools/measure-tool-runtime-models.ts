@@ -53,8 +53,8 @@ export interface MeasurementLayerRuntime {
   updateDraftCircle(layers: MeasurementCircleVisualLayers, radiusMeters: number): void;
   createCompletedLayers(geometry: MeasurementGeometryType, labelMeters: number): CompletedMeasurementLayers;
   setVisualState(layers: Pick<CompletedMeasurementLayers, "visualLayer" | "radiusLayer" | "vertexLayers">, state: "base" | "hover" | "selected"): void;
-  /** 返回主几何包围范围右上角，作为 selection 删除按钮的地图锚点。 */
-  getVisualNorthEast(layer: Path): MeasureCoordinateType;
+  /** 返回主几何左上方附近的实际边界点，不把包围盒角当作图形边界。 */
+  getDeleteAnchor(layer: Path): MeasureCoordinateType;
   /** 绘制 mode 中只暂停命中，不删除已完成的可见 Geometry。 */
   setCompletedInteractionEnabled(enabled: boolean): void;
   getCompletedInteractionEnabled(): boolean;

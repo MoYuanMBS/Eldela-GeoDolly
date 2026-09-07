@@ -8,9 +8,10 @@ export const MEASURE_TOOL_BUILT_IN_CONFIG = Object.freeze({
   // 连续点击落在半像素内视为同一点，避免双击事件产生重复末点。
   duplicateVertexThresholdPx: 0.5,
   panes: Object.freeze({
-    // visual 高于普通地图标签；hit 高于 Overlay interaction；delete 始终位于两者之上。
+    // label 独立于 Canvas 排序且不参与命中；delete 始终位于测量各层之上。
     visual: Object.freeze({name: "measurement-visual", zIndex: 485}),
     hit: Object.freeze({name: "measurement-hit", zIndex: 500}),
+    label: Object.freeze({name: "measurement-label", zIndex: 505}),
     deleteMarker: Object.freeze({name: "measurement-delete", zIndex: 510}),
   }),
   visual: Object.freeze({
@@ -27,6 +28,9 @@ export const MEASURE_TOOL_BUILT_IN_CONFIG = Object.freeze({
   hit: Object.freeze({lineWidthPx: 16, circleWidthPx: 16}),
   // DivIcon 与原生 button 共用尺寸，CSS 内部 SVG 只比该命中框小 2px。
   deleteMarkerSizePx: 26,
+  // 屏幕像素留白，不随地图 zoom 放大，也不进入测地计算。
+  deleteMarkerGapPx: 4,
+  labelGapPx: 6,
   circle: Object.freeze({
     coarseSampleCount: 256,
     fineSampleCount: 512,

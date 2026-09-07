@@ -207,13 +207,16 @@
   z-index: 1;
   display: grid;
   width: 100%;
-  height: 36px;
+  height: 44px;
   padding: 3px 44px;
   align-items: center;
 }
 
 .geomcp-feature-bar-content-expandable {
-  grid-template-columns: auto 24px 32px 24px minmax(0, 1fr);
+  /* 两侧等宽，不让地点名长度推动中央展开图标。 */
+  grid-template-columns:0.6fr auto auto auto 1.4fr;
+  column-gap: 8px; 
+  align-items: center;
 }
 
 .geomcp-feature-bar-content-static {
@@ -221,13 +224,14 @@
 }
 
 .geomcp-feature-bar-toggle {
-  display: grid;
-  width: 100%;
-  height: 100%;
-  padding: 0;
   border: 0;
+  border-radius: inherit;
   background: transparent;
   cursor: pointer;
+}
+
+.geomcp-feature-bar-toggle-icon {
+  display: grid;
   place-items: center;
 }
 
@@ -236,12 +240,15 @@
   outline-offset: -3px;
 }
 
-.geomcp-feature-bar-title,
-.geomcp-feature-bar-location-name {
+.geomcp-feature-bar-title {
   padding: 0 10px;
+  text-align: right;
+  white-space: nowrap;
 }
 
 .geomcp-feature-bar-location-name {
+  padding: 0 10px;
+  text-align: left;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -257,6 +264,7 @@
   display: grid;
   align-self: center;
   place-items: center;
+  width: 32px;
   overflow: visible;
   pointer-events: none;
 }

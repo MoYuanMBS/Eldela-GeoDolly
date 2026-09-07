@@ -1,20 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg id="close_hover" data-name="close hover" xmlns="http://www.w3.org/2000/svg" width="30.9505" height="30.9505" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 30.9505 30.9505">
   <defs>
-    <radialGradient id="_未命名的渐变_513" data-name="未命名的渐变 513" cx="15.4753" cy="15.4753" fx="15.4753" fy="15.4753" r="14.3253" gradientUnits="userSpaceOnUse">
+    <radialGradient id="_未命名的渐变_594" data-name="未命名的渐变 594" cx="15.4753" cy="15.4753" fx="15.4753" fy="15.4753" r="14.3253" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#9d312c"/>
       <stop offset="0" stop-color="#a43e39"/>
-      <stop offset=".0741" stop-color="#a94a44"/>
-      <stop offset=".2098" stop-color="#b86b64"/>
-      <stop offset=".3918" stop-color="#d1a098"/>
-      <stop offset=".6109" stop-color="#f3eade"/>
-      <stop offset=".6331" stop-color="#f7f2e6"/>
-      <stop offset=".6695" stop-color="#fdfff2"/>
-      <stop offset=".7659" stop-color="#f7e9de"/>
-      <stop offset=".9136" stop-color="#efcec4"/>
+      <stop offset=".1417" stop-color="#a33d38" stop-opacity=".9703"/>
+      <stop offset=".3147" stop-color="#a13a35" stop-opacity=".8846"/>
+      <stop offset=".5033" stop-color="#9f3530" stop-opacity=".7437"/>
+      <stop offset=".6539" stop-color="#9d312c" stop-opacity=".6"/>
+      <stop offset=".6888" stop-color="#ad4f49" stop-opacity=".6832"/>
+      <stop offset=".7363" stop-color="#c0726c" stop-opacity=".7795"/>
+      <stop offset=".7852" stop-color="#d09088" stop-opacity=".8593"/>
+      <stop offset=".8351" stop-color="#dda79e" stop-opacity=".9212"/>
+      <stop offset=".8865" stop-color="#e6b7ae" stop-opacity=".9652"/>
+      <stop offset=".9402" stop-color="#ebc0b7" stop-opacity=".9915"/>
       <stop offset="1" stop-color="#edc4bb"/>
     </radialGradient>
   </defs>
-  <rect x="1.15" y="1.15" width="28.6505" height="28.6505" rx="7.6973" ry="7.6973" style="fill: url(#_未命名的渐变_513); stroke: #f6c3bb; stroke-miterlimit: 10; stroke-width: 2.3px;"/>
+  <rect x="1.15" y="1.15" width="28.6505" height="28.6505" rx="7.6973" ry="7.6973" style="fill: url(#_未命名的渐变_594); stroke: #f6c3bb; stroke-miterlimit: 10; stroke-width: 2.3px;"/>
   <path d="M24.6806,22.2718l-5.7661-5.7661c-.5716-.5716-.573-1.498-.0031-2.0714,1.915-1.9266,3.8301-3.8531,5.7451-5.7797,1.5473-1.5566-.8604-3.9664-2.4088-2.4088-1.913,1.9245-3.8259,3.849-5.7389,5.7735-.5723.5758-1.5035.5772-2.0776.0031l-5.7526-5.7526c-1.5521-1.5521-3.9616.856-2.4088,2.4088l5.7661,5.7661c.5716.5716.573,1.498.0031,2.0714-1.915,1.9266-3.83,3.8531-5.745,5.7797-1.5473,1.5566.8604,3.9664,2.4088,2.4088,1.9129-1.9245,3.8259-3.849,5.7388-5.7734.5723-.5758,1.5035-.5772,2.0776-.0031,1.9175,1.9175,3.8351,3.835,5.7526,5.7525,1.5521,1.5522,3.9616-.856,2.4088-2.4088Z" style="fill: #9d312c;"/>
 </svg>

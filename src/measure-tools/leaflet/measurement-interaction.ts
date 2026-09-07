@@ -10,15 +10,15 @@ import {
   polygon,
   polyline,
   svg,
-  type Circle,
+  Circle,
   type LatLng,
-  type LatLngBounds,
   type Layer,
   type LayerGroup,
   type Map as LeafletMap,
   type Marker,
   type Path,
-  type Polyline,
+  Polygon,
+  Polyline,
   type Renderer,
 } from "leaflet";
 import {MEASURE_TOOL_BUILT_IN_CONFIG} from "../../built-in-config/measure-tool.js";
@@ -33,8 +33,6 @@ import type {
   MeasurementVertexLayers,
 } from "../../models/measure-tools/measure-tool-runtime-models.js";
 import {AppError} from "../../utils/app-error.js";
-
-type BoundedMeasurementPath = Path & {getBounds(): LatLngBounds};
 
 function ensurePane(map: LeafletMap, name: string, zIndex: number, pointerEvents: "none" | "auto"): void {
   const pane = map.getPane(name) ?? map.createPane(name);
@@ -64,11 +62,12 @@ function formatLinearMeasurement(value: number): string {
   return `${value.toFixed(2)} m`;
 }
 
-/** 找到当前屏幕投影下的累计长度中点，使标签始终压在可见虚线上。 */
-function pathMidpoint(map: LeafletMap, coordinates: readonly MeasureCoordinateType[], closed: boolean): LatLng {
+/** 累计长度中点提供锚点，所在边的屏幕法线决定文字放在线的哪一侧。 */
+function pathLabelPosition(map: LeafletMap, coordinates: readonly MeasureCoordinateType[], closed: boolean) {
   if (coordinates.length === 0) throw new AppError("measurement_geometry_failed", "Measurement label requires at least one coordinate");
   const pathCoordinates = closed && coordinates.length > 1 ? [...coordinates, coordinates[0]] : [...coordinates];
-  if (pathCoordinates.length === 1) return latLng(toLatLngTuple(pathCoordinates[0]));
+  const fallback = {coordinate: latLng(toLatLngTuple(pathCoordinates[0])), normal: point(0, -1)};
+  if (pathCoordinates.length === 1) return fallback;
   const layerPoints = pathCoordinates.map((coordinate) => map.latLngToLayerPoint(toLatLngTuple(coordinate)));
   const segmentLengths: number[] = [];
   let totalLength = 0;
@@ -77,21 +76,25 @@ function pathMidpoint(map: LeafletMap, coordinates: readonly MeasureCoordinateTy
     segmentLengths.push(segmentLength);
     totalLength += segmentLength;
   }
-  if (totalLength <= 0) return latLng(toLatLngTuple(pathCoordinates[0]));
+  if (totalLength <= 0) return fallback;
   const targetLength = totalLength / 2;
   let traversed = 0;
   for (let index = 0; index < segmentLengths.length; index += 1) {
     const segmentLength = segmentLengths[index];
+    if (segmentLength === 0) continue;
     if (traversed + segmentLength < targetLength) {
       traversed += segmentLength;
       continue;
     }
-    const ratio = segmentLength === 0 ? 0 : (targetLength - traversed) / segmentLength;
+    const ratio = (targetLength - traversed) / segmentLength;
     const start = layerPoints[index];
     const end = layerPoints[index + 1];
-    return map.layerPointToLatLng(point(start.x + (end.x - start.x) * ratio, start.y + (end.y - start.y) * ratio));
+    let normal = point((end.y - start.y) / segmentLength, -(end.x - start.x) / segmentLength);
+    // 优先上侧；竖直边固定用右侧，不因绘制方向反转而翻到另一边。
+    if (normal.y > 0 || (normal.y === 0 && normal.x < 0)) normal = normal.multiplyBy(-1);
+    return {coordinate: map.layerPointToLatLng(start.add(end.subtract(start).multiplyBy(ratio))), normal};
   }
-  return latLng(toLatLngTuple(pathCoordinates.at(-1) ?? pathCoordinates[0]));
+  return fallback;
 }
 
 function createMeasurementLabelIcon(label: string) {
@@ -114,6 +117,7 @@ export function createMeasurementLayerRuntime(map: LeafletMap): MeasurementLayer
   const {panes, visual, vertex, hit} = MEASURE_TOOL_BUILT_IN_CONFIG;
   ensurePane(map, panes.visual.name, panes.visual.zIndex, "none");
   ensurePane(map, panes.hit.name, panes.hit.zIndex, "auto");
+  ensurePane(map, panes.label.name, panes.label.zIndex, "none");
   ensurePane(map, panes.deleteMarker.name, panes.deleteMarker.zIndex, "auto");
 
   const strokeColor = readRequiredCssColor(map, "--geomcp-measurement-stroke");
@@ -131,6 +135,12 @@ export function createMeasurementLayerRuntime(map: LeafletMap): MeasurementLayer
   if (hitPane === undefined) throw new AppError("measurement_style_failed", "Measure Tool hit pane was not created");
   let hitEnabled = true;
   let disposed = false;
+  // 只重投影标签；zoom 不重新算长度/面积，也不触发 React 状态发布。
+  const labelPositions = new Map<Layer, () => void>();
+  const refreshLabelPositions = (): void => {
+    for (const refresh of labelPositions.values()) refresh();
+  };
+  map.on("zoomend", refreshLabelPositions);
 
   const outlineOptions = {
     renderer: visualRenderer,
@@ -170,21 +180,36 @@ export function createMeasurementLayerRuntime(map: LeafletMap): MeasurementLayer
     lineJoin: "round" as const,
   };
 
-  const createLabelLayer = (coordinate: LatLng, label: string, visible = true): Marker => {
-    const labelLayer = marker(coordinate, {
+  const positionLabelLayer = (labelLayer: Marker, coordinates: readonly MeasureCoordinateType[], closed: boolean): void => {
+    const {coordinate, normal} = pathLabelPosition(map, coordinates, closed);
+    labelLayer.setLatLng(coordinate);
+    const element = labelLayer.getElement();
+    if (element === undefined) return;
+    const gap = MEASURE_TOOL_BUILT_IN_CONFIG.labelGapPx + visual.selectedWeightPx / 2;
+    element.style.setProperty("--geomcp-measurement-label-offset-x", `${normal.x * gap}px`);
+    element.style.setProperty("--geomcp-measurement-label-offset-y", `${normal.y * gap}px`);
+    // 让整个文字框位于法线一侧，而非仅偏移中心；长数字和斜线也不会互相穿过。
+    element.style.setProperty("--geomcp-measurement-label-anchor-x", `${normal.x === 0 ? -50 : normal.x > 0 ? 0 : -100}%`);
+    element.style.setProperty("--geomcp-measurement-label-anchor-y", `${normal.y === 0 ? -50 : normal.y > 0 ? 0 : -100}%`);
+  };
+  const createLabelLayer = (coordinates: readonly MeasureCoordinateType[], closed: boolean, label: string, visible = true): Marker => {
+    const labelLayer = marker(toLatLngTuple(coordinates[0]), {
       icon: createMeasurementLabelIcon(label),
-      pane: panes.visual.name,
+      pane: panes.label.name,
       interactive: false,
       keyboard: false,
       opacity: visible ? 1 : 0,
     });
     visualRoot.addLayer(labelLayer);
+    labelPositions.set(labelLayer, () => positionLabelLayer(labelLayer, coordinates, closed));
+    positionLabelLayer(labelLayer, coordinates, closed);
     return labelLayer;
   };
-  const updateLabelLayer = (labelLayer: Marker, coordinate: LatLng, label: string, visible = true): void => {
-    labelLayer.setLatLng(coordinate);
+  const updateLabelLayer = (labelLayer: Marker, coordinates: readonly MeasureCoordinateType[], closed: boolean, label: string, visible = true): void => {
     labelLayer.setIcon(createMeasurementLabelIcon(label));
     labelLayer.setOpacity(visible ? 1 : 0);
+    labelPositions.set(labelLayer, () => positionLabelLayer(labelLayer, coordinates, closed));
+    positionLabelLayer(labelLayer, coordinates, closed);
   };
   const createPathVertices = (coordinates: readonly MeasureCoordinateType[], opacity: number): readonly MeasurementVertexLayers[] => Object.freeze(coordinates.map((coordinate) => {
     // 双圆结构与内建 node-default 一致：外圈负责轮廓，中心点负责在复杂底图上保持辨识度。
@@ -222,12 +247,12 @@ export function createMeasurementLayerRuntime(map: LeafletMap): MeasurementLayer
     const pathLayer = polyline(coordinates.map(toLatLngTuple), {...outlineOptions, opacity: visual.draftOpacity});
     visualRoot.addLayer(pathLayer);
     const visible = coordinates.length > 1 && lengthMeters > 0;
-    const labelLayer = createLabelLayer(pathMidpoint(map, coordinates, false), formatLinearMeasurement(lengthMeters), visible);
+    const labelLayer = createLabelLayer(coordinates, false, formatLinearMeasurement(lengthMeters), visible);
     return Object.freeze({pathLayer, labelLayer});
   };
   const updateDraftPath = (layers: MeasurementDraftPathLayers, coordinates: readonly MeasureCoordinateType[], lengthMeters: number): void => {
     layers.pathLayer.setLatLngs(coordinates.map(toLatLngTuple));
-    updateLabelLayer(layers.labelLayer, pathMidpoint(map, coordinates, false), formatLinearMeasurement(lengthMeters), coordinates.length > 1 && lengthMeters > 0);
+    updateLabelLayer(layers.labelLayer, coordinates, false, formatLinearMeasurement(lengthMeters), coordinates.length > 1 && lengthMeters > 0);
   };
   const createDraftPathVertices = (coordinates: readonly MeasureCoordinateType[]): readonly MeasurementVertexLayers[] => createPathVertices(coordinates, visual.draftOpacity);
 
@@ -244,7 +269,7 @@ export function createMeasurementLayerRuntime(map: LeafletMap): MeasurementLayer
     const radiusCoordinates = circleRadiusCoordinates(center, outlineLayer);
     const radiusLayer = polyline(radiusCoordinates.map(toLatLngTuple), {...outlineOptions, opacity});
     visualRoot.addLayer(radiusLayer);
-    const labelLayer = createLabelLayer(pathMidpoint(map, radiusCoordinates, false), formatLinearMeasurement(radiusMeters));
+    const labelLayer = createLabelLayer(radiusCoordinates, false, formatLinearMeasurement(radiusMeters));
     return Object.freeze({outlineLayer, innerBandLayer, radiusLayer, labelLayer});
   };
   const createDraftCircle = (center: MeasureCoordinateType, radiusMeters: number): MeasurementCircleVisualLayers => createCircleVisual(center, radiusMeters, visual.draftOpacity);
@@ -255,7 +280,7 @@ export function createMeasurementLayerRuntime(map: LeafletMap): MeasurementLayer
     const center = Object.freeze({latitude: centerLatLng.lat, longitude: centerLatLng.lng});
     const radiusCoordinates = circleRadiusCoordinates(center, layers.outlineLayer);
     layers.radiusLayer.setLatLngs(radiusCoordinates.map(toLatLngTuple));
-    updateLabelLayer(layers.labelLayer, pathMidpoint(map, radiusCoordinates, false), formatLinearMeasurement(radiusMeters));
+    updateLabelLayer(layers.labelLayer, radiusCoordinates, false, formatLinearMeasurement(radiusMeters));
   };
 
   const createCompletedLayers = (geometry: MeasurementGeometryType, labelMeters: number): CompletedMeasurementLayers => {
@@ -268,7 +293,7 @@ export function createMeasurementLayerRuntime(map: LeafletMap): MeasurementLayer
       const latLngs = geometry.coordinates.map(toLatLngTuple);
       visualLayer = polyline(latLngs, outlineOptions);
       visualRoot.addLayer(visualLayer);
-      labelLayer = createLabelLayer(pathMidpoint(map, geometry.coordinates, false), formatLinearMeasurement(labelMeters));
+      labelLayer = createLabelLayer(geometry.coordinates, false, formatLinearMeasurement(labelMeters));
       hitLayer = polyline(latLngs, hitLineOptions);
     } else if (geometry.kind === "polygon") {
       const latLngs = geometry.coordinates.map(toLatLngTuple);
@@ -277,7 +302,7 @@ export function createMeasurementLayerRuntime(map: LeafletMap): MeasurementLayer
       visualRoot.addLayer(innerBandLayer);
       visualLayer = polygon(latLngs, outlineOptions);
       visualRoot.addLayer(visualLayer);
-      labelLayer = createLabelLayer(pathMidpoint(map, geometry.coordinates, true), formatLinearMeasurement(labelMeters));
+      labelLayer = createLabelLayer(geometry.coordinates, true, formatLinearMeasurement(labelMeters));
       hitLayer = polygon(latLngs, hitLineOptions);
     } else {
       const circleVisual = createCircleVisual(geometry.center, geometry.radiusMeters, 1);
@@ -301,12 +326,36 @@ export function createMeasurementLayerRuntime(map: LeafletMap): MeasurementLayer
       centerLayer.setStyle({fillColor: strokeColor});
     }
   };
-  const getVisualNorthEast = (layer: Path): MeasureCoordinateType => {
-    if (!("getBounds" in layer) || typeof layer.getBounds !== "function") {
-      throw new AppError("measurement_geometry_failed", "Measurement visual layer does not expose bounds");
+  const getDeleteAnchor = (layer: Path): MeasureCoordinateType => {
+    if (!(layer instanceof Circle) && !(layer instanceof Polyline)) {
+      throw new AppError("measurement_geometry_failed", "Measurement delete anchor requires a Circle or Path");
     }
-    const northEast = (layer as BoundedMeasurementPath).getBounds().getNorthEast();
-    return Object.freeze({latitude: northEast.lat, longitude: northEast.lng});
+    const bounds = layer.getBounds();
+    const northWest = map.latLngToLayerPoint(bounds.getNorthWest());
+    let anchor = northWest;
+    if (layer instanceof Circle) {
+      // 由 Leaflet 可见椭圆的包围范围求左上圆周点，不使用离圆周较远的方框角。
+      const southEast = map.latLngToLayerPoint(bounds.getSouthEast());
+      const center = northWest.add(southEast).divideBy(2);
+      anchor = center.add(northWest.subtract(center).multiplyBy(Math.SQRT1_2));
+    } else {
+      // 本工具只创建单条 Line / 单外环 Polygon；沿实际边找距左上角最近的点，包含闭合边。
+      const coordinates = (layer instanceof Polygon ? layer.getLatLngs()[0] : layer.getLatLngs()) as LatLng[];
+      const points = coordinates.map((coordinate) => map.latLngToLayerPoint(coordinate));
+      if (layer instanceof Polygon && points.length > 1) points.push(points[0]);
+      if (points.length === 0) throw new AppError("measurement_geometry_failed", "Measurement delete anchor requires a non-empty path");
+      anchor = points[0];
+      for (let index = 1; index < points.length; index += 1) {
+        const start = points[index - 1];
+        const delta = points[index].subtract(start);
+        const squaredLength = delta.x * delta.x + delta.y * delta.y;
+        const ratio = squaredLength === 0 ? 0 : Math.max(0, Math.min(1, ((northWest.x - start.x) * delta.x + (northWest.y - start.y) * delta.y) / squaredLength));
+        const candidate = start.add(delta.multiplyBy(ratio));
+        if (candidate.distanceTo(northWest) < anchor.distanceTo(northWest)) anchor = candidate;
+      }
+    }
+    const coordinate = map.layerPointToLatLng(anchor);
+    return Object.freeze({latitude: coordinate.lat, longitude: coordinate.lng});
   };
   const setCompletedInteractionEnabled = (enabled: boolean): void => {
     if (disposed || enabled === hitEnabled) return;
@@ -316,6 +365,7 @@ export function createMeasurementLayerRuntime(map: LeafletMap): MeasurementLayer
   };
   const getCompletedInteractionEnabled = (): boolean => !disposed && hitEnabled;
   const removeVisualLayer = (layer: Layer): void => {
+    labelPositions.delete(layer);
     visualRoot.removeLayer(layer);
   };
   const removeHitLayer = (layer: Path): void => {
@@ -324,6 +374,8 @@ export function createMeasurementLayerRuntime(map: LeafletMap): MeasurementLayer
   const dispose = (): void => {
     if (disposed) return;
     disposed = true;
+    map.off("zoomend", refreshLabelPositions);
+    labelPositions.clear();
     // 先移除 hit，确保 teardown 期间不会再把 hover/click 发布给已卸载的 React 订阅者。
     hitRoot.remove();
     visualRoot.remove();
@@ -337,7 +389,7 @@ export function createMeasurementLayerRuntime(map: LeafletMap): MeasurementLayer
     updateDraftCircle,
     createCompletedLayers,
     setVisualState,
-    getVisualNorthEast,
+    getDeleteAnchor,
     setCompletedInteractionEnabled,
     getCompletedInteractionEnabled,
     removeVisualLayer,

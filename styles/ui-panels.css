@@ -180,11 +180,13 @@
 
 .geomcp-measurement-map-label {
   position: absolute;
+  left: var(--geomcp-measurement-label-offset-x);
+  top: var(--geomcp-measurement-label-offset-y);
   display: block;
   padding: 1px 5px;
   border: 1px solid var(--geomcp-ui-divider);
   border-radius: 4px;
-  background: color-mix(in srgb, var(--geomcp-ui-surface) 88%, transparent);
+  background: var(--geomcp-ui-surface);
   box-shadow: 0 1px 4px color-mix(in srgb, var(--geomcp-ui-text) 14%, transparent);
   color: var(--geomcp-ui-text);
   font-family: "GeoMCP Source Han Sans", sans-serif;
@@ -192,7 +194,7 @@
   font-variant-numeric: tabular-nums;
   line-height: 1.3;
   white-space: nowrap;
-  transform: translate(-50%, -50%);
+  transform: translate(var(--geomcp-measurement-label-anchor-x), var(--geomcp-measurement-label-anchor-y));
 }
 
 /* Marker 的 26px 尺寸由 Leaflet inline style 提供；button 填满它，SVG 留 1px 安全边。 */
@@ -201,10 +203,9 @@
   width: 100%;
   height: 100%;
   padding: 1px;
-  border: 1px solid var(--geomcp-ui-border);
+  border: 0;
   border-radius: 50%;
-  background-color: color-mix(in srgb, var(--geomcp-ui-surface) 92%, transparent);
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--geomcp-ui-text) 18%, transparent);
+  background: transparent;
   cursor: pointer;
 }
 

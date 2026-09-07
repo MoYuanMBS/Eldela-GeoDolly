@@ -317,7 +317,7 @@ export function createMeasureToolController(options: MeasureToolControllerOption
 
   const createDeleteMarker = (record: CompletedMeasurementRecord): Marker => {
     // Marker 使用经纬度锚点随地图移动；按钮本身仍是可访问的原生 DOM control。
-    const anchor = layerRuntime.getVisualNorthEast(record.visualLayer);
+    const anchor = layerRuntime.getDeleteAnchor(record.visualLayer);
     const button = document.createElement("button");
     button.type = "button";
     button.className = "geomcp-measurement-delete-button geomcp-ui-image-button";
@@ -339,11 +339,13 @@ export function createMeasureToolController(options: MeasureToolControllerOption
       button.append(deleteImage);
     }
     button.addEventListener("click", () => deleteMeasurement(record.measurement.measurementId), {once: true});
+    // 按钮右下角靠近实际边界点，像素留白不随 zoom 改变。
+    const anchorOffset = MEASURE_TOOL_BUILT_IN_CONFIG.deleteMarkerSizePx + MEASURE_TOOL_BUILT_IN_CONFIG.deleteMarkerGapPx;
     const icon = divIcon({
       className: "geomcp-measurement-delete-marker",
       html: button,
       iconSize: [MEASURE_TOOL_BUILT_IN_CONFIG.deleteMarkerSizePx, MEASURE_TOOL_BUILT_IN_CONFIG.deleteMarkerSizePx],
-      iconAnchor: [MEASURE_TOOL_BUILT_IN_CONFIG.deleteMarkerSizePx / 2, MEASURE_TOOL_BUILT_IN_CONFIG.deleteMarkerSizePx / 2],
+      iconAnchor: [anchorOffset, anchorOffset],
     });
     return marker([anchor.latitude, anchor.longitude], {
       icon,
@@ -605,6 +607,14 @@ export function createMeasureToolController(options: MeasureToolControllerOption
     }
   };
 
+  const updateDeleteMarkerPosition = (): void => {
+    const record = selectedMeasurementId === null ? undefined : records.get(selectedMeasurementId);
+    if (record?.deleteMarker == null) return;
+    const anchor = layerRuntime.getDeleteAnchor(record.visualLayer);
+    record.deleteMarker.setLatLng([anchor.latitude, anchor.longitude]);
+  };
+
+  map.on("zoomend", updateDeleteMarkerPosition);
   map.on("click", handleMapClick);
   map.on("dblclick", handleMapDoubleClick);
   map.on("mousemove", handleMapMouseMove);
@@ -625,6 +635,7 @@ export function createMeasureToolController(options: MeasureToolControllerOption
   const dispose = (): void => {
     if (disposed) return;
     // 先阻止新的外部事件，再清 timer/draft/records，最后释放统一 layer runtime。
+    map.off("zoomend", updateDeleteMarkerPosition);
     map.off("click", handleMapClick);
     map.off("dblclick", handleMapDoubleClick);
     map.off("mousemove", handleMapMouseMove);

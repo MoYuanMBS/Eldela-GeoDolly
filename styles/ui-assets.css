@@ -75,7 +75,7 @@
 }
 
 .geomcp-ui-icon-feature-extend {
-  width: 24px;
+  width: 40px;
   height: auto;
   justify-self: center;
   transition: transform 140ms ease;
@@ -193,8 +193,8 @@
 .geomcp-ui-decoration-standard-divider {
   position: absolute;
   top: 50%;
-  width: 8px;
-  height: 8px;
+  width: 16px;
+  height: 16px;
   left: 50%;
   transform: translate(-50%, -50%);
 }
@@ -254,8 +254,8 @@
 
 .geomcp-ui-decoration-feature-divider {
   /* Feature divider 仅用 SVG，在固定分隔槽中自然居中，不绘制贯穿栏高的 CSS 竖线。 */
-  width: 16px;
-  height: 6px;
+  width: 32px;
+  height: 32px;
 }
 
 .geomcp-ui-decoration-feature-end {
@@ -265,19 +265,19 @@
 
 /* 左右装饰各自保留完整 placement，调整任一侧不会改变另一侧。 */
 .geomcp-ui-decoration-feature-end-left {
-  top: 2px;
-  left: -12px;
-  width: 64px;
-  height: 32px;
+  top: 13px;
+  left: -21px;
+  width: 86px;
+  height: 43px;
   transform: scale(1);
   transform-origin: top left;
 }
 
 .geomcp-ui-decoration-feature-end-right {
-  top: 2px;
-  right: -12px;
-  width: 64px;
-  height: 32px;
+  top: 10px;
+  right: -9px;
+  width: 86px;
+  height: 43px;
   transform: scale(1);
   transform-origin: top right;
 }

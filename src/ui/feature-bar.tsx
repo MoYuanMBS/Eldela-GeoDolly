@@ -25,16 +25,17 @@ interface FeatureBarHeaderProps {
 
 function FeatureBarHeader({selectedLocationName, expanded, treeId, onToggle}: FeatureBarHeaderProps) {
   return (
-    <div className="geomcp-feature-bar-content geomcp-feature-bar-content-expandable">
+    // 整个标题栏是唯一按钮；树区域仍是其兄弟节点，操作 record 不会误收起 Feature UI。
+    <button className="geomcp-feature-bar-content geomcp-feature-bar-content-expandable geomcp-feature-bar-toggle" type="button" aria-label={expanded ? "Collapse Feature data" : "Expand Feature data"} aria-expanded={expanded} aria-controls={treeId} onClick={onToggle}>
       <span className="geomcp-feature-bar-title">Feature</span>
       <FeatureBarDivider position="title-toggle" />
-      <button className="geomcp-feature-bar-toggle" type="button" aria-label={expanded ? "Collapse Feature data" : "Expand Feature data"} aria-expanded={expanded} aria-controls={treeId} onClick={onToggle}>
+      <span className="geomcp-feature-bar-toggle-icon" aria-hidden="true">
         {/* 仅在 AI Output 存在时挂载 img，basemap-only 页面不会请求 extend.svg。 */}
         <img className={`geomcp-ui-icon geomcp-ui-icon-feature-extend${expanded ? " geomcp-ui-icon-feature-extend-expanded" : ""}`} src={UI_SVG_ASSETS.icons.extend} alt="" draggable={false} aria-hidden="true" />
-      </button>
+      </span>
       <FeatureBarDivider position="toggle-location" />
       <span className={`geomcp-feature-bar-location-name ${selectedLocationName === null ? "geomcp-feature-bar-location-name-empty" : "geomcp-feature-bar-location-name-ready"}`}>{selectedLocationName ?? ""}</span>
-    </div>
+    </button>
   );
 }
 
