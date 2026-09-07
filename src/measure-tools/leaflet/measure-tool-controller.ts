@@ -339,13 +339,13 @@ export function createMeasureToolController(options: MeasureToolControllerOption
       button.append(deleteImage);
     }
     button.addEventListener("click", () => deleteMeasurement(record.measurement.measurementId), {once: true});
-    // 按钮右下角靠近实际边界点，像素留白不随 zoom 改变。
+    // 按钮左下角靠近实际边界点，像素留白不随 zoom 改变。
     const anchorOffset = MEASURE_TOOL_BUILT_IN_CONFIG.deleteMarkerSizePx + MEASURE_TOOL_BUILT_IN_CONFIG.deleteMarkerGapPx;
     const icon = divIcon({
       className: "geomcp-measurement-delete-marker",
       html: button,
       iconSize: [MEASURE_TOOL_BUILT_IN_CONFIG.deleteMarkerSizePx, MEASURE_TOOL_BUILT_IN_CONFIG.deleteMarkerSizePx],
-      iconAnchor: [anchorOffset, anchorOffset],
+      iconAnchor: [-MEASURE_TOOL_BUILT_IN_CONFIG.deleteMarkerGapPx, anchorOffset],
     });
     return marker([anchor.latitude, anchor.longitude], {
       icon,

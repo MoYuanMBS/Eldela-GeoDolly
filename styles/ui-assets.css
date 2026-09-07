@@ -184,9 +184,9 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 16px;
+  width: 24px;
   max-width: none;
-  height: 6px;
+  height: 9px;
   transform: translate(-50%, -50%);
 }
 

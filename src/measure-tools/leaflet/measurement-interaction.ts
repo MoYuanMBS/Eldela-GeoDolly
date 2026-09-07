@@ -1,5 +1,5 @@
 import {
-  canvas,
+  Canvas,
   circle,
   circleMarker,
   divIcon,
@@ -20,12 +20,14 @@ import {
   Polygon,
   Polyline,
   type Renderer,
+  Util,
 } from "leaflet";
 import {MEASURE_TOOL_BUILT_IN_CONFIG} from "../../built-in-config/measure-tool.js";
 import {InnerBandCanvas} from "../../leaflet/runtime/inner-band-canvas.js";
 import type {MeasureCoordinateType} from "../../models/measure-tools/measure-tool-models.js";
 import type {
   CompletedMeasurementLayers,
+  MeasurementCanvasInternals,
   MeasurementCircleVisualLayers,
   MeasurementDraftPathLayers,
   MeasurementGeometryType,
@@ -33,6 +35,19 @@ import type {
   MeasurementVertexLayers,
 } from "../../models/measure-tools/measure-tool-runtime-models.js";
 import {AppError} from "../../utils/app-error.js";
+
+/** 只适配测量外框的重绘生命周期；虚线、节点和填充仍使用 Leaflet 原生绘制。 */
+class MeasurementCanvas extends Canvas {
+  _redraw(): void {
+    const internals = this as unknown as MeasurementCanvasInternals;
+    // zoom 会同步重绘；先取消旧 RAF，避免基类清空编号后销毁阶段无法取消它。
+    if (internals._redrawRequest != null) Util.cancelAnimFrame(internals._redrawRequest);
+    internals._redrawRequest = null;
+    // 已进入回调队列的过期任务也不能再访问销毁后的 context；不吞正常绘制异常。
+    if (internals._map == null || internals._ctx == null || internals._container == null) return;
+    (Canvas.prototype as unknown as MeasurementCanvasInternals)._redraw.call(this);
+  }
+}
 
 function ensurePane(map: LeafletMap, name: string, zIndex: number, pointerEvents: "none" | "auto"): void {
   const pane = map.getPane(name) ?? map.createPane(name);
@@ -125,7 +140,7 @@ export function createMeasurementLayerRuntime(map: LeafletMap): MeasurementLayer
   const bandOpacity = readRequiredCssNumber(map, "--geomcp-measurement-band-opacity");
   const surfaceColor = readRequiredCssColor(map, "--geomcp-ui-surface");
   const bandRenderer = new InnerBandCanvas({pane: panes.visual.name, tolerance: 0});
-  const visualRenderer: Renderer = canvas({pane: panes.visual.name, tolerance: 0});
+  const visualRenderer: Renderer = new MeasurementCanvas({pane: panes.visual.name, tolerance: 0});
   // Canvas 会用整张透明画布截断下层 Overlay hit；少量 Measurement 改用只在实际 Path 上命中的 SVG。
   const hitRenderer: Renderer = svg({pane: panes.hit.name});
   // 内侧色带先于虚线外框加入同一 pane，避免半透明色覆盖外框和数值标注。
@@ -331,15 +346,15 @@ export function createMeasurementLayerRuntime(map: LeafletMap): MeasurementLayer
       throw new AppError("measurement_geometry_failed", "Measurement delete anchor requires a Circle or Path");
     }
     const bounds = layer.getBounds();
-    const northWest = map.latLngToLayerPoint(bounds.getNorthWest());
-    let anchor = northWest;
+    const northEast = map.latLngToLayerPoint(bounds.getNorthEast());
+    let anchor = northEast;
     if (layer instanceof Circle) {
-      // 由 Leaflet 可见椭圆的包围范围求左上圆周点，不使用离圆周较远的方框角。
-      const southEast = map.latLngToLayerPoint(bounds.getSouthEast());
-      const center = northWest.add(southEast).divideBy(2);
-      anchor = center.add(northWest.subtract(center).multiplyBy(Math.SQRT1_2));
+      // 由 Leaflet 可见椭圆的包围范围求右上圆周点，不使用离圆周较远的方框角。
+      const southWest = map.latLngToLayerPoint(bounds.getSouthWest());
+      const center = northEast.add(southWest).divideBy(2);
+      anchor = center.add(northEast.subtract(center).multiplyBy(Math.SQRT1_2));
     } else {
-      // 本工具只创建单条 Line / 单外环 Polygon；沿实际边找距左上角最近的点，包含闭合边。
+      // 本工具只创建单条 Line / 单外环 Polygon；沿实际边找距右上角最近的点，包含闭合边。
       const coordinates = (layer instanceof Polygon ? layer.getLatLngs()[0] : layer.getLatLngs()) as LatLng[];
       const points = coordinates.map((coordinate) => map.latLngToLayerPoint(coordinate));
       if (layer instanceof Polygon && points.length > 1) points.push(points[0]);
@@ -349,9 +364,9 @@ export function createMeasurementLayerRuntime(map: LeafletMap): MeasurementLayer
         const start = points[index - 1];
         const delta = points[index].subtract(start);
         const squaredLength = delta.x * delta.x + delta.y * delta.y;
-        const ratio = squaredLength === 0 ? 0 : Math.max(0, Math.min(1, ((northWest.x - start.x) * delta.x + (northWest.y - start.y) * delta.y) / squaredLength));
+        const ratio = squaredLength === 0 ? 0 : Math.max(0, Math.min(1, ((northEast.x - start.x) * delta.x + (northEast.y - start.y) * delta.y) / squaredLength));
         const candidate = start.add(delta.multiplyBy(ratio));
-        if (candidate.distanceTo(northWest) < anchor.distanceTo(northWest)) anchor = candidate;
+        if (candidate.distanceTo(northEast) < anchor.distanceTo(northEast)) anchor = candidate;
       }
     }
     const coordinate = map.layerPointToLatLng(anchor);

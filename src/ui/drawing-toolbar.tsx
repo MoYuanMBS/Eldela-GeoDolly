@@ -64,11 +64,12 @@ export function DrawingToolbar({mode, disabled, onZoomIn, onZoomOut, onModeChang
             const effect = disabled ? null : isActive ? "toolSelect" : pressedControl === control.classSuffix ? "toolPressed" : hoveredControl === control.classSuffix ? "toolHover" : null;
             return (
               <div className={`geomcp-tool-bar-control geomcp-tool-bar-control-${control.classSuffix}`} key={isModeControl ? control.mode : control.command}>
-                {index === 0 ? null : (
+                {/* 只分隔缩放命令组与测量工具组，组内按钮之间不添加 divider。 */}
+                {isModeControl && TOOLBAR_CONTROLS[index - 1]?.kind === "command" ? (
                   <span className={`geomcp-tool-bar-divider geomcp-tool-bar-divider-before-${control.classSuffix}`} aria-hidden="true">
                     <img className="geomcp-ui-decoration geomcp-ui-decoration-tool-divider" src={UI_SVG_ASSETS.decorations.toolBarDivider} alt="" draggable={false} />
                   </span>
-                )}
+                ) : null}
                 <button
                   className={`geomcp-tool-bar-button geomcp-tool-bar-button-${control.classSuffix}${isActive ? " geomcp-tool-bar-button-active" : ""}${disabled ? " geomcp-tool-bar-button-disabled" : ""}`}
                   type="button"

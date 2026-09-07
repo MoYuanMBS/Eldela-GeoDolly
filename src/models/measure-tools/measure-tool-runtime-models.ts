@@ -1,4 +1,4 @@
-import type {Circle, CircleMarker, Layer, Map as LeafletMap, Marker, Path, Polyline} from "leaflet";
+import type {Canvas, Circle, CircleMarker, Layer, Map as LeafletMap, Marker, Path, Polyline} from "leaflet";
 import type {OverlayInteractionResult} from "../mapsurface/leaflet-renderer-models.js";
 import type {
   ActiveMeasurementTargetType,
@@ -6,6 +6,15 @@ import type {
   MeasureToolModeType,
   MeasureToolUiStateType,
 } from "./measure-tool-models.js";
+
+/** Leaflet 类型未公开的重绘字段；仅供测量 Canvas 生命周期适配使用，不向 UI 暴露。 */
+export interface MeasurementCanvasInternals {
+  _map?: LeafletMap | null;
+  _ctx?: CanvasRenderingContext2D | null;
+  _container?: HTMLCanvasElement;
+  _redrawRequest?: number | null;
+  _redraw(this: Canvas): void;
+}
 
 export type MeasurementGeometryType =
   // Geometry 只保存计算与重建图层所需的原始坐标，不混入显示格式或 Overlay ID。
@@ -53,7 +62,7 @@ export interface MeasurementLayerRuntime {
   updateDraftCircle(layers: MeasurementCircleVisualLayers, radiusMeters: number): void;
   createCompletedLayers(geometry: MeasurementGeometryType, labelMeters: number): CompletedMeasurementLayers;
   setVisualState(layers: Pick<CompletedMeasurementLayers, "visualLayer" | "radiusLayer" | "vertexLayers">, state: "base" | "hover" | "selected"): void;
-  /** 返回主几何左上方附近的实际边界点，不把包围盒角当作图形边界。 */
+  /** 返回主几何右上方附近的实际边界点，不把包围盒角当作图形边界。 */
   getDeleteAnchor(layer: Path): MeasureCoordinateType;
   /** 绘制 mode 中只暂停命中，不删除已完成的可见 Geometry。 */
   setCompletedInteractionEnabled(enabled: boolean): void;
