@@ -4,6 +4,31 @@
  * 后续样式增多时可在这里通过本地 @import 汇总分类文件。
  */
 
+/* Interactive 状态只着色独立 SVG，不改变 Base Canvas 或透明命中 geometry。 */
+.geomcp-overlay-highlight {
+  pointer-events: none;
+  fill: none;
+  fill-opacity: 1;
+  stroke-opacity: 1;
+  stroke: var(--geomcp-leaflet-hover);
+  opacity: var(--geomcp-leaflet-hover-opacity);
+  vector-effect: non-scaling-stroke;
+}
+
+.geomcp-overlay-highlight-selected {
+  stroke: var(--geomcp-leaflet-selected);
+  opacity: var(--geomcp-leaflet-selected-opacity);
+}
+
+.geomcp-overlay-highlight-node {
+  stroke: none;
+  fill: var(--geomcp-leaflet-hover);
+}
+
+.geomcp-overlay-highlight-node.geomcp-overlay-highlight-selected {
+  fill: var(--geomcp-leaflet-selected);
+}
+
 /* 特殊 Node 共用非缩放描边；地图缩放时仍保持一致的屏幕像素宽度。 */
 .geomcp-built-in-node-traffic-signals,
 .geomcp-built-in-node-transit-stop,

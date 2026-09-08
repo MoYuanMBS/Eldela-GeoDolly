@@ -153,7 +153,7 @@ export function MapPage({mapDataUrl, MapSurfaceComponent}: MapPageProps) {
     if (loadState.status !== "ready") return null;
     const payload = loadState.data.map_payload;
     return resolveInteractiveFeatureDetails(
-      selectedFeature ?? hoveredFeature,
+      hoveredFeature ?? selectedFeature,
       loadState.data.ai_output,
       payload.overlay_output,
       loadState.data.display_id_by_feature_id,
@@ -181,7 +181,8 @@ export function MapPage({mapDataUrl, MapSurfaceComponent}: MapPageProps) {
   // 只判断最终展示目标，避免别的对象被选中时给当前 hover 图标错误地加上特效。
   const standardTargetSelected = standardMeasurement !== null
     ? activeMeasurementTarget?.interactionState === "selected"
-    : selectedFeature !== null && activeFeatureDetails !== null;
+    : selectedFeature !== null && activeFeatureDetails !== null && (hoveredFeature === null
+      || (hoveredFeature.featureType === selectedFeature.featureType && hoveredFeature.featureId === selectedFeature.featureId));
 
   if (loadState.status === "loading") {
     return <main className="geomcp-map-page-state" role="status">Loading map data…</main>;

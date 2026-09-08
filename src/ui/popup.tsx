@@ -1,5 +1,6 @@
 import {useEffect, useRef, type ReactNode} from "react";
 import {UI_SVG_ASSETS} from "../built-in-config/ui-svg.js";
+import {ScrollArea} from "./scroll-area.js";
 
 interface PopupProps {
   variant: "feature" | "measurement";
@@ -46,7 +47,7 @@ export function Popup({variant, className, ariaLabel, ariaLive = "off", header, 
             <img className="geomcp-ui-icon geomcp-ui-icon-popup-close geomcp-ui-image-pressed" src={UI_SVG_ASSETS.hover.closePressed} alt="" draggable={false} aria-hidden="true" />
           </button>
         </header>
-        <div className="geomcp-popup-body">{children}</div>
+        <ScrollArea className="geomcp-popup-body" ariaLabel={`${ariaLabel} content`}>{children}</ScrollArea>
       </div>
       <footer ref={footerRef} className="geomcp-popup-footer" aria-hidden="true">
         <img ref={footerLineRef} className="geomcp-ui-decoration geomcp-ui-decoration-popup-footer-line" src={UI_SVG_ASSETS.bar.tagEnd} alt="" draggable={false} />

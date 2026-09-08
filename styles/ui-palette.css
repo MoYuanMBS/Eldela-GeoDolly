@@ -10,4 +10,15 @@
   --geomcp-measurement-stroke: #585555;
   --geomcp-measurement-band: #d8937c;
   --geomcp-measurement-band-opacity: 0.5;
+  --geomcp-scorebar-border: #552c22;
+  --geomcp-scorebar-fill: #f7c5bc;
+  --geomcp-scorebar-line: #9d312c;
+  --geomcp-scorebutton-hover: #f06b61;
+  --geomcp-scorebutton-hover-opacity: 0.2;
+  --geomcp-scorebutton-pressed: #ec5d53;
+  --geomcp-scorebutton-pressed-opacity: 0.3;
+  --geomcp-leaflet-hover: #f06b61;
+  --geomcp-leaflet-hover-opacity: 0.3;
+  --geomcp-leaflet-selected: #ec5d53;
+  --geomcp-leaflet-selected-opacity: 0.5;
 }

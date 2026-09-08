@@ -27,6 +27,19 @@ export const UI_BUILT_IN_CONFIG = {
   featureBar: {
     gapPx: 6,
   },
+  scrollbar: {
+    widthPx: 32,
+    buttonSizePx: 28,
+    buttonIconWidthPx: 20,
+    thumbWidthPx: 14,
+    minThumbHeightPx: 36,
+    thumbDecorationWidthPx: 8,
+    borderWidthPx: 1.5,
+    trackWidthPx: 2,
+    trackDashPx: 5,
+    trackGapPx: 4,
+    scrollStepPx: 48,
+  },
   popup: {
     // Popup 优先使用窄布局；长单词只在该区间内推动卡片扩宽，超过上限后换行。
     minWidthPx: 240,

@@ -1,0 +1,120 @@
+/* 只作用于共享内容区；原生容器保持滚动，外层 iframe 的滚动条不受影响。 */
+.geomcp-scroll-area {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.geomcp-scroll-area-viewport {
+  min-width: 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
+  overscroll-behavior: contain;
+}
+
+.geomcp-scroll-area-viewport::-webkit-scrollbar {
+  display: none;
+}
+
+.geomcp-scroll-area-content {
+  display: flow-root;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.geomcp-scrollbar {
+  position: relative;
+  width: var(--geomcp-scrollbar-width);
+  min-height: 0;
+  user-select: none;
+}
+
+.geomcp-scrollbar[hidden] {
+  display: none;
+}
+
+.geomcp-scrollbar-button {
+  position: absolute;
+  left: 50%;
+  display: grid;
+  place-items: center;
+  width: var(--geomcp-scrollbar-button-size);
+  height: var(--geomcp-scrollbar-button-size);
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  transform: translateX(-50%);
+  cursor: pointer;
+}
+
+.geomcp-scrollbar-button-up { top: 0; }
+.geomcp-scrollbar-button-down { bottom: 0; }
+
+/* 特效只在 SVG 下方；透明度不施加到整个按钮，素材保持原色。 */
+.geomcp-scrollbar-button::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.geomcp-scrollbar-button:hover:not(:active)::before {
+  background: var(--geomcp-scorebutton-hover);
+  opacity: var(--geomcp-scorebutton-hover-opacity);
+}
+
+.geomcp-scrollbar-button:active::before {
+  background: var(--geomcp-scorebutton-pressed);
+  opacity: var(--geomcp-scorebutton-pressed-opacity);
+}
+
+.geomcp-scrollbar-track {
+  position: absolute;
+  top: var(--geomcp-scrollbar-button-size);
+  bottom: var(--geomcp-scrollbar-button-size);
+  left: 0;
+  right: 0;
+  cursor: pointer;
+}
+
+.geomcp-scrollbar-track::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: var(--geomcp-scrollbar-track-width);
+  transform: translateX(-50%);
+  background: repeating-linear-gradient(to bottom, var(--geomcp-scorebar-line) 0 var(--geomcp-scrollbar-track-dash), transparent var(--geomcp-scrollbar-track-dash) calc(var(--geomcp-scrollbar-track-dash) + var(--geomcp-scrollbar-track-gap)));
+  pointer-events: none;
+}
+
+.geomcp-scrollbar-thumb {
+  position: absolute;
+  top: 0;
+  left: calc((100% - var(--geomcp-scrollbar-thumb-width)) / 2);
+  display: grid;
+  place-items: center;
+  width: var(--geomcp-scrollbar-thumb-width);
+  border: var(--geomcp-scrollbar-border-width) solid var(--geomcp-scorebar-border);
+  border-radius: 999px;
+  background: var(--geomcp-scorebar-fill);
+  cursor: grab;
+  touch-action: none;
+}
+
+.geomcp-scrollbar-thumb:active { cursor: grabbing; }
+
+.geomcp-scrollbar-button:focus-visible,
+.geomcp-scrollbar-thumb:focus-visible,
+.geomcp-scroll-area-viewport:focus-visible {
+  outline: 2px solid var(--geomcp-ui-border);
+  outline-offset: -2px;
+}

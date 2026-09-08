@@ -27,6 +27,8 @@ import tagEndBarUrl from "../../assets/ui/bar/tag-end.svg";
 import toolBottomBarUrl from "../../assets/ui/bar/tool-bottom.svg";
 import toolBodyBarUrl from "../../assets/ui/bar/tool-body.svg";
 import toolTopBarUrl from "../../assets/ui/bar/tool-top.svg";
+import scrollButtonUrl from "../../assets/ui/scroll-bar/button.svg";
+import scrollDecorationUrl from "../../assets/ui/scroll-bar/bar-decorate.svg";
 import featureBarDividerDecorationUrl from "../../assets/ui/decorations/feature-bar-divider.svg";
 import featureBarLeftDecorationUrl from "../../assets/ui/decorations/feature-bar-left.svg";
 import featureBarRightDecorationUrl from "../../assets/ui/decorations/feature-bar-right.svg";
@@ -74,6 +76,10 @@ export const UI_SVG_ASSETS = {
     toolTop: toolTopBarUrl,
     toolBody: toolBodyBarUrl,
     toolBottom: toolBottomBarUrl
+  },
+  scrollbar: {
+    button: scrollButtonUrl,
+    decoration: scrollDecorationUrl,
   },
   decorations: {
     featureBarDivider: featureBarDividerDecorationUrl,

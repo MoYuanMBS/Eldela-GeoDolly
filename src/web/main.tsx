@@ -5,6 +5,7 @@ import "../../styles/web.css";
 import "../../styles/ui-bars.css";
 import "../../styles/ui-panels.css";
 import "../../styles/ui-assets.css";
+import "../../styles/ui-scrollbar.css";
 import {MapSurfaceView} from "../browser-map-flow/map-surface-view.js";
 import {AppError} from "../utils/app-error.js";
 import {MapPage} from "./map-page.js";

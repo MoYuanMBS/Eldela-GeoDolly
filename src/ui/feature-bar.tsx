@@ -2,6 +2,7 @@ import {useId, useState} from "react";
 import {UI_SVG_ASSETS} from "../built-in-config/ui-svg.js";
 import type {AiOutputGroupsWithIdsType} from "../models/backend/map-data-models.js";
 import {AiOutputTree} from "./ai-output-tree.js";
+import {ScrollArea} from "./scroll-area.js";
 
 interface FeatureBarProps {
   selectedLocationName: string | null;
@@ -64,7 +65,7 @@ export function FeatureBar({selectedLocationName, aiOutput}: FeatureBarProps) {
         </div>
       )}
       {/* 折叠时不挂载树，避免无用 DOM 与大量 tag 内容参与页面布局。 */}
-      {expanded && aiOutput !== null ? <div className="geomcp-feature-bar-tree-body" id={treeId}><AiOutputTree aiOutput={aiOutput} /></div> : null}
+      {expanded && aiOutput !== null ? <ScrollArea className="geomcp-feature-bar-tree-body" id={treeId} ariaLabel="Feature data"><AiOutputTree aiOutput={aiOutput} /></ScrollArea> : null}
     </section>
   );
 }

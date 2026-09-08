@@ -290,8 +290,9 @@
 
 .geomcp-feature-bar-tree-body {
   max-height: var(--geomcp-feature-ui-max-height);
-  padding: 7px 12px 10px;
-  overflow: auto;
   border-top: 1px solid var(--geomcp-ui-divider);
-  overscroll-behavior: contain;
+}
+
+.geomcp-feature-bar-tree-body .geomcp-scroll-area-content {
+  padding: 7px 12px 10px;
 }

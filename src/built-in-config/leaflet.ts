@@ -34,11 +34,21 @@ export const LEAFLET_INTERNAL_RENDER_CONFIG = Object.freeze({
       // 单 Canvas 标签层位于全部空间视觉层上方。
       labels: 480,
     }),
+    highlight: Object.freeze({
+      name: "interactionHighlight" as const,
+      // 状态色盖在地图图形上，但不盖住 Label 和 Measurement。
+      zIndex: 478,
+    }),
     interaction: Object.freeze({
       name: "interaction" as const,
       // 唯一透明命中层必须最后绘制，确保 pointer hit 不受视觉层 DOM 顺序干扰。
       zIndex: 490,
     }),
+  }),
+  interactionHighlight: Object.freeze({
+    nodeExtraRadiusPx: 2,
+    lineExtraWidthPx: 4,
+    minStrokeWidthPx: 4,
   }),
   /** Label Canvas 的排版与视觉常量，全部尺寸均为 CSS 逻辑像素，不乘设备 DPR。 */
   label: Object.freeze({

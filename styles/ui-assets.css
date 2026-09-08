@@ -8,6 +8,17 @@
 }
 
 /* Icons */
+.geomcp-ui-icon-scroll-button {
+  position: relative;
+  z-index: 1;
+  width: var(--geomcp-scrollbar-button-icon-width);
+  height: auto;
+}
+
+.geomcp-scrollbar-button-down .geomcp-ui-icon-scroll-button {
+  transform: rotate(180deg);
+}
+
 /* close/delete 使用完整状态图；原生 :active 跟随真实按住状态，无计时器、无 select。 */
 .geomcp-ui-image-button > .geomcp-ui-image-hover,
 .geomcp-ui-image-button > .geomcp-ui-image-pressed {
@@ -164,6 +175,13 @@
 }
 
 /* Decorations */
+.geomcp-ui-decoration-scroll-thumb {
+  width: var(--geomcp-scrollbar-decoration-width);
+  height: auto;
+  max-height: 100%;
+  object-fit: contain;
+}
+
 .geomcp-ui-decoration-tool-top,
 .geomcp-ui-decoration-tool-bottom {
   width: 100%;

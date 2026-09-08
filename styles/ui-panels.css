@@ -67,11 +67,11 @@
 
 .geomcp-popup-body {
   min-height: 0;
-  padding: 0 12px;
-  overflow-x: hidden;
-  overflow-y: auto;
   background: var(--geomcp-ui-surface);
-  overscroll-behavior: contain;
+}
+
+.geomcp-popup-body .geomcp-scroll-area-content {
+  padding: 0 12px;
 }
 
 .geomcp-popup-section {

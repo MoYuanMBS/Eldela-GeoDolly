@@ -5,7 +5,7 @@
  * 展开的 geometry 与 measurement controller 的可靠测量。Snapshot 不导入或调用本模块。
  */
 
-import {CircleMarker, canvas, circleMarker, layerGroup, polygon, polyline, type Map as LeafletMap, type Path, type Renderer} from "leaflet";
+import {CircleMarker, canvas, circleMarker, layerGroup, polygon, polyline, svg, type Map as LeafletMap, type Path, type Renderer} from "leaflet";
 import type {LeafletConfigType} from "../../models/backend/config-models.js";
 import type {
   AttachOverlayInteractionOptions,
@@ -170,6 +170,14 @@ export function attachOverlayInteraction(options: AttachOverlayInteractionOption
   const renderer = canvas({pane: interactionPane, tolerance: 0});
   const rootLayer = layerGroup().addTo(map);
   rootLayer.addLayer(renderer);
+  const highlightPaneConfig = LEAFLET_INTERNAL_RENDER_CONFIG.panes.highlight;
+  const highlightPane = map.getPane(highlightPaneConfig.name) ?? map.createPane(highlightPaneConfig.name);
+  highlightPane.style.zIndex = String(highlightPaneConfig.zIndex);
+  highlightPane.style.pointerEvents = "none";
+  const highlightRenderer = svg({pane: highlightPaneConfig.name});
+  rootLayer.addLayer(highlightRenderer);
+  const highlightRoot = layerGroup();
+  rootLayer.addLayer(highlightRoot);
   const mutableLayerIndex: MutableOverlayInteractionLayerIndex = {
     node: Object.create(null) as Record<string, OverlayInteractionLayerEntry>,
     way: Object.create(null) as Record<string, OverlayInteractionLayerEntry>,
@@ -182,14 +190,51 @@ export function attachOverlayInteraction(options: AttachOverlayInteractionOption
   let enabled = true;
   let disposed = false;
 
+  const refreshHighlights = (): void => {
+    highlightRoot.clearLayers();
+    if (disposed || !enabled) return;
+    const size = LEAFLET_INTERNAL_RENDER_CONFIG.interactionHighlight;
+    // 最多两个纯显示 Path；同一对象 hover + selected 时只画 selected，避免叠色。
+    const draw = (target: OverlayInteractionTarget | null, state: "hover" | "selected"): void => {
+      if (target === null) return;
+      const entry = mutableLayerIndex[target.featureType][target.featureId];
+      if (entry === undefined) return;
+      const measurement = visualResult.measurementController.getMeasurement(target.featureType, target.featureId);
+      if (!measurement.hasVisiblePaint) return;
+      const geometry = entry.visualEntry.geometry;
+      const options = {
+        renderer: highlightRenderer,
+        pane: highlightPaneConfig.name,
+        interactive: false,
+        bubblingMouseEvents: false,
+        className: `geomcp-overlay-highlight geomcp-overlay-highlight-${state} geomcp-overlay-highlight-${target.featureType}`,
+        fill: false,
+        weight: Math.max(size.minStrokeWidthPx, measurement.visualSizePx + size.lineExtraWidthPx),
+        lineCap: "round" as const,
+        lineJoin: "round" as const,
+      };
+      // 沿用已展开的世界坐标；Area 保留外环/孔洞，只描边，原透明面命中不变。
+      const layer = geometry.featureType === "node"
+        ? circleMarker(geometry.center, {...options, radius: measurement.visualSizePx + size.nodeExtraRadiusPx, stroke: false, fill: true})
+        : geometry.featureType === "way" ? polyline(geometry.latLngs, options) : polygon(geometry.latLngs, options);
+      highlightRoot.addLayer(layer);
+    };
+    if (!isSameInteractionTarget(hoverTarget, selectedTarget)) draw(hoverTarget, "hover");
+    draw(selectedTarget, "selected");
+  };
+
   const publishHover = (target: OverlayInteractionTarget | null): void => {
+    if (disposed || (!enabled && target !== null)) return;
     if (isSameInteractionTarget(hoverTarget, target)) return;
     hoverTarget = target;
+    refreshHighlights();
     handlers?.onHoverChange(target);
   };
   const publishSelection = (target: OverlayInteractionTarget | null): void => {
+    if (disposed || (!enabled && target !== null)) return;
     if (isSameInteractionTarget(selectedTarget, target)) return;
     selectedTarget = target;
+    refreshHighlights();
     handlers?.onSelectionChange(target);
   };
   const clearHover = (): void => publishHover(null);
@@ -240,7 +285,10 @@ export function attachOverlayInteraction(options: AttachOverlayInteractionOption
     normalizeInteractionOrder(rootLayer, registrations);
     // Feature listener 完成全部增删/改尺寸后，再做一次批量顺序归一化，避免每条更新都 O(N)。
     unsubscribeCallbacks.push(visualResult.measurementController.subscribeBatchComplete(() => {
-      if (!disposed) normalizeInteractionOrder(rootLayer, registrations);
+      if (!disposed) {
+        normalizeInteractionOrder(rootLayer, registrations);
+        refreshHighlights();
+      }
     }));
     const handleMapClick = (): void => {
       if (enabled) clearSelection();
@@ -266,6 +314,7 @@ export function attachOverlayInteraction(options: AttachOverlayInteractionOption
       if (disposed) return;
       disposed = true;
       for (const unsubscribe of unsubscribeCallbacks.splice(0)) unsubscribe();
+      highlightRoot.clearLayers();
       if (hoverTarget !== null) {
         hoverTarget = null;
         handlers?.onHoverChange(null);
@@ -281,6 +330,7 @@ export function attachOverlayInteraction(options: AttachOverlayInteractionOption
     // attach 中途失败时撤销已经建立的订阅，不能把半成品 Interaction 留给 Visual 生命周期。
     disposed = true;
     for (const unsubscribe of unsubscribeCallbacks.splice(0)) unsubscribe();
+    highlightRoot.clearLayers();
     rootLayer.remove();
     throw AppError.fromUnknown(error, "overlay_interaction", "Overlay interaction initialization failed");
   }
