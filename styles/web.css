@@ -85,3 +85,8 @@ body {
   overflow: visible;
   pointer-events: none;
 }
+
+.geomcp-snapshot-map-clip {
+  overflow: hidden;
+  border-radius: 8px 8px 0 0;
+}

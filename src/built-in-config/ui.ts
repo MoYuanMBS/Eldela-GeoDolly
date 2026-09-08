@@ -4,6 +4,9 @@
  * 这些值属于 UI 实现约束，不通过部署配置或 config loader 覆盖。
  */
 
+/** Vite Browser build 使用 app.yaml 注入值；非 Vite 的纯组件环境保持现有默认外观。 */
+export const UI_DECORATIONS_ENABLED = typeof __GEOMCP_DECORATIONS_ENABLED__ === "boolean" ? __GEOMCP_DECORATIONS_ENABLED__ : true;
+
 export const UI_BUILT_IN_CONFIG = {
   // 地图、Popup、Feature Bar 的外框共用线宽；内部 divider 保持独立。
   frameBorderWidthPx: 1.5,

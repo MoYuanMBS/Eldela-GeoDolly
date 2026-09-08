@@ -1,6 +1,6 @@
 import {useEffect, useRef, useState, type CSSProperties} from "react";
 import {UI_SVG_ASSETS} from "../built-in-config/ui-svg.js";
-import {UI_BUILT_IN_CONFIG} from "../built-in-config/ui.js";
+import {UI_BUILT_IN_CONFIG, UI_DECORATIONS_ENABLED} from "../built-in-config/ui.js";
 import type {CompletedMeasurementType} from "../models/measure-tools/measure-tool-models.js";
 import type {InteractiveFeatureSummaryType} from "../models/web/interactive-ui-models.js";
 import {AppError} from "../utils/app-error.js";
@@ -238,8 +238,10 @@ export function StandardBar({logicalWidth, attributionText, attributionUrl, attr
     <footer ref={elementRef} className={`geomcp-standard-bar geomcp-standard-bar-status-${layoutStatus} ${featureTypeClass}`} aria-label="Interactive map standard information" data-standard-ui-status={layoutStatus}>
       <div ref={contentRef} className="geomcp-standard-bar-content">
         <span className="geomcp-standard-bar-block geomcp-standard-bar-block-end geomcp-standard-bar-block-end-left" aria-hidden="true">
-          <img className="geomcp-ui-decoration geomcp-ui-decoration-standard-end geomcp-ui-decoration-standard-end-up geomcp-ui-decoration-standard-end-left-up" src={UI_SVG_ASSETS.decorations.leftUp} alt="" draggable={false} />
-          <img className="geomcp-ui-decoration geomcp-ui-decoration-standard-end geomcp-ui-decoration-standard-end-down geomcp-ui-decoration-standard-end-left-down" src={UI_SVG_ASSETS.decorations.leftDown} alt="" draggable={false} />
+          {UI_DECORATIONS_ENABLED ? <>
+            <img className="geomcp-ui-decoration geomcp-ui-decoration-standard-end geomcp-ui-decoration-standard-end-up geomcp-ui-decoration-standard-end-left-up" src={UI_SVG_ASSETS.decorations.leftUp} alt="" draggable={false} />
+            <img className="geomcp-ui-decoration geomcp-ui-decoration-standard-end geomcp-ui-decoration-standard-end-down geomcp-ui-decoration-standard-end-left-down" src={UI_SVG_ASSETS.decorations.leftDown} alt="" draggable={false} />
+          </> : null}
         </span>
         <section className="geomcp-standard-bar-block geomcp-standard-bar-block-scale geomcp-standard-scale" style={scaleStyle} aria-label={metricScale === null ? "Map scale loading" : `Map scale ${metricScale.label}`}>
           <span className="geomcp-standard-scale-label">{metricScale?.label ?? "Scale"}</span>
@@ -292,13 +294,17 @@ export function StandardBar({logicalWidth, attributionText, attributionUrl, attr
           ))}
         </div>
         <span className="geomcp-standard-bar-block geomcp-standard-bar-block-end geomcp-standard-bar-block-end-right" aria-hidden="true">
-          <img className="geomcp-ui-decoration geomcp-ui-decoration-standard-end geomcp-ui-decoration-standard-end-up geomcp-ui-decoration-standard-end-right-up" src={UI_SVG_ASSETS.decorations.rightUp} alt="" draggable={false} />
-          <img className="geomcp-ui-decoration geomcp-ui-decoration-standard-end geomcp-ui-decoration-standard-end-down geomcp-ui-decoration-standard-end-right-down" src={UI_SVG_ASSETS.decorations.rightDown} alt="" draggable={false} />
+          {UI_DECORATIONS_ENABLED ? <>
+            <img className="geomcp-ui-decoration geomcp-ui-decoration-standard-end geomcp-ui-decoration-standard-end-up geomcp-ui-decoration-standard-end-right-up" src={UI_SVG_ASSETS.decorations.rightUp} alt="" draggable={false} />
+            <img className="geomcp-ui-decoration geomcp-ui-decoration-standard-end geomcp-ui-decoration-standard-end-down geomcp-ui-decoration-standard-end-right-down" src={UI_SVG_ASSETS.decorations.rightDown} alt="" draggable={false} />
+          </> : null}
         </span>
       </div>
-      <span className="geomcp-standard-bar-end" aria-hidden="true">
-        <img className="geomcp-ui-decoration geomcp-ui-decoration-standard-bar-end" src={UI_SVG_ASSETS.bar.standardEnd} alt="" draggable={false} />
-      </span>
+      {UI_DECORATIONS_ENABLED ? (
+        <span className="geomcp-standard-bar-end" aria-hidden="true">
+          <img className="geomcp-ui-decoration geomcp-ui-decoration-standard-bar-end" src={UI_SVG_ASSETS.bar.standardEnd} alt="" draggable={false} />
+        </span>
+      ) : null}
     </footer>
   );
 }

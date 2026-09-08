@@ -278,6 +278,7 @@ export const browserMapConfigSchema = z.object({
 
 /** Browser UI 的部署配置；平铺保存彼此独立的公开尺寸参数。 */
 export const uiConfigSchema = z.object({
+  decorations_enabled: z.boolean(),
   max_scale_width_px: positiveIntegerSchema,
   feature_ui_max_height_px: positiveIntegerSchema,
   measurement_preview_refresh_interval_ms: positiveIntegerSchema,

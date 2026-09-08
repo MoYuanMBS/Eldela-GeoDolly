@@ -1,5 +1,6 @@
 import {useEffect, useRef, type ReactNode} from "react";
 import {UI_SVG_ASSETS} from "../built-in-config/ui-svg.js";
+import {UI_DECORATIONS_ENABLED} from "../built-in-config/ui.js";
 import {ScrollArea} from "./scroll-area.js";
 
 interface PopupProps {
@@ -51,7 +52,7 @@ export function Popup({variant, className, ariaLabel, ariaLive = "off", header, 
       </div>
       <footer ref={footerRef} className="geomcp-popup-footer" aria-hidden="true">
         <img ref={footerLineRef} className="geomcp-ui-decoration geomcp-ui-decoration-popup-footer-line" src={UI_SVG_ASSETS.bar.tagEnd} alt="" draggable={false} />
-        <img className="geomcp-ui-decoration geomcp-ui-decoration-popup-corner" src={UI_SVG_ASSETS.decorations.popup} alt="" draggable={false} />
+        {UI_DECORATIONS_ENABLED ? <img className="geomcp-ui-decoration geomcp-ui-decoration-popup-corner" src={UI_SVG_ASSETS.decorations.popup} alt="" draggable={false} /> : null}
       </footer>
     </aside>
   );

@@ -1,5 +1,6 @@
 import {useId, useState} from "react";
 import {UI_SVG_ASSETS} from "../built-in-config/ui-svg.js";
+import {UI_DECORATIONS_ENABLED} from "../built-in-config/ui.js";
 import type {AiOutputGroupsWithIdsType} from "../models/backend/map-data-models.js";
 import {AiOutputTree} from "./ai-output-tree.js";
 import {ScrollArea} from "./scroll-area.js";
@@ -49,12 +50,14 @@ export function FeatureBar({selectedLocationName, aiOutput}: FeatureBarProps) {
 
   return (
     <section className={`geomcp-feature-bar geomcp-feature-bar-state-${state}`} aria-label="Feature data" data-feature-ui-state={state}>
-      <span className="geomcp-feature-bar-end geomcp-feature-bar-end-left" aria-hidden="true">
-        <img className="geomcp-ui-decoration geomcp-ui-decoration-feature-end geomcp-ui-decoration-feature-end-left" src={UI_SVG_ASSETS.decorations.featureBarLeft} alt="" draggable={false} />
-      </span>
-      <span className="geomcp-feature-bar-end geomcp-feature-bar-end-right" aria-hidden="true">
-        <img className="geomcp-ui-decoration geomcp-ui-decoration-feature-end geomcp-ui-decoration-feature-end-right" src={UI_SVG_ASSETS.decorations.featureBarRight} alt="" draggable={false} />
-      </span>
+      {UI_DECORATIONS_ENABLED ? <>
+        <span className="geomcp-feature-bar-end geomcp-feature-bar-end-left" aria-hidden="true">
+          <img className="geomcp-ui-decoration geomcp-ui-decoration-feature-end geomcp-ui-decoration-feature-end-left" src={UI_SVG_ASSETS.decorations.featureBarLeft} alt="" draggable={false} />
+        </span>
+        <span className="geomcp-feature-bar-end geomcp-feature-bar-end-right" aria-hidden="true">
+          <img className="geomcp-ui-decoration geomcp-ui-decoration-feature-end geomcp-ui-decoration-feature-end-right" src={UI_SVG_ASSETS.decorations.featureBarRight} alt="" draggable={false} />
+        </span>
+      </> : null}
       {expandable ? (
         <FeatureBarHeader selectedLocationName={selectedLocationName} expanded={expanded} treeId={treeId} onToggle={() => setExpanded((current) => !current)} />
       ) : (

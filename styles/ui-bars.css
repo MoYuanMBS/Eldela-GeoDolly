@@ -94,6 +94,19 @@
   align-items: center;
 }
 
+/* Reference UI 与 Standard UI 共享 bar、Scale、divider 和 Attribution CSS，只缩减为三个 block。 */
+.geomcp-reference-bar-content {
+  position: relative;
+  z-index: 3;
+  display: grid;
+  min-height: calc(var(--geomcp-standard-ui-min-height) - 2px);
+  grid-template-columns:
+    calc(var(--geomcp-scale-max-width) + 16px)
+    var(--geomcp-standard-ui-divider-width)
+    minmax(0, 1fr);
+  align-items: center;
+}
+
 .geomcp-standard-scale {
   position: relative;
   width: calc(100% - 16px);

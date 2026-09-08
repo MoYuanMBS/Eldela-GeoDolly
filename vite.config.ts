@@ -21,6 +21,7 @@ export default defineConfig({
     __GEOMCP_MAP_PADDING__: JSON.stringify(iframeAdaptiveConfig.padding),
     __GEOMCP_MAP_READY_TIMEOUT_MS__: JSON.stringify(browserMapConfig.ready_timeout_seconds * 1000),
     __GEOMCP_PROXY_TILE_TIMEOUT_MS__: JSON.stringify(browserMapConfig.proxy_tile_timeout_seconds * 1000),
+    __GEOMCP_DECORATIONS_ENABLED__: JSON.stringify(uiConfig.decorations_enabled),
     __GEOMCP_MAX_SCALE_WIDTH_PX__: JSON.stringify(uiConfig.max_scale_width_px),
     __GEOMCP_FEATURE_UI_MAX_HEIGHT_PX__: JSON.stringify(uiConfig.feature_ui_max_height_px),
     __GEOMCP_MEASUREMENT_PREVIEW_REFRESH_INTERVAL_MS__: JSON.stringify(uiConfig.measurement_preview_refresh_interval_ms),

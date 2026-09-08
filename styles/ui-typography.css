@@ -73,7 +73,9 @@
 }
 
 .geomcp-standard-bar-status-waiting-scale,
-.geomcp-standard-bar-status-measuring {
+.geomcp-standard-bar-status-measuring,
+.geomcp-reference-bar-status-waiting-scale,
+.geomcp-reference-bar-status-measuring {
   color: color-mix(in srgb, var(--geomcp-ui-text) 64%, var(--geomcp-ui-surface));
 }
 
