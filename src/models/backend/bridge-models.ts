@@ -9,6 +9,7 @@ import { z } from "zod";
 
 import {basemapProfileIdSchema} from "../common/basemap-models.js";
 import { pyToolResultSchema } from "./map-data-models.js";
+import {finalSessionIdSchema, searchSessionIdSchema} from "./session-id-models.js";
 
 export const toolTypeSchema = z.enum(["tool_a", "tool_b"]);
 export const searchStatusSchema = z.enum(["needs_confirmation", "no_match"]);
@@ -78,7 +79,7 @@ export const locSearchCandidateSchema = locSearchCandidateRawSchema.omit({
 export const locSearchReplyRawSchema = z
   .object({
     status: searchStatusSchema,
-    session_id: z.string(),
+    session_id: searchSessionIdSchema,
     query: z.string(),
     candidates: z.array(locSearchCandidateRawSchema),
     message: z.string().nullable().optional(),
@@ -88,7 +89,7 @@ export const locSearchReplyRawSchema = z
 export const locSearchReplySchema = z
   .object({
     status: searchStatusSchema,
-    session_id: z.string(),
+    session_id: searchSessionIdSchema,
     query: z.string(),
     candidates: z.array(locSearchCandidateSchema),
     message: z.string().nullable().optional(),
@@ -99,7 +100,7 @@ export const locSearchReplySchema = z
 // 这一层仍然是轻量确认信息，不包含 `selected_candidate`。
 export const AitoolInputReqSchema = z
   .object({
-    session_id: z.string(),
+    session_id: searchSessionIdSchema,
     selected_indices: z.array(z.number().int()).min(1),
     // 不设置隐式默认底图；每次 Tool 调用必须显式选择一个已登记的 basemap profile。
     basemap: basemapProfileIdSchema,
@@ -126,7 +127,7 @@ export const bridgeActionSchema = z.enum([
 // Python 执行 `tool_a` / `tool_b` 后回给 TS 的业务数据结构。
 export const pyToolReplySchema = z
   .object({
-    session_id: z.string(),
+    session_id: finalSessionIdSchema,
     result: pyToolResultSchema,
   })
   .strict();
@@ -134,7 +135,7 @@ export const pyToolReplySchema = z
 // 真正发给 Python 的 `data` 结构。
 export const pyToolReqSchema = z
     .object({
-      session_id: z.string(),
+      session_id: finalSessionIdSchema,
       selected_candidate: locSearchCandidateRawSchema,
       attention_experts: z.array(z.string()).nullable().optional(),
     })

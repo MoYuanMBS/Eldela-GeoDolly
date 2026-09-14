@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Literal, Protocol, TypeAlias, TypedDict, cast
+from typing import Annotated, Literal, Protocol, TypeAlias, TypedDict, cast
 
 from pydantic import BaseModel, ConfigDict, Field
 
 ToolType = Literal["tool_a", "tool_b"]
 BasemapType = Literal["osm", "satellite"]
 LocSearchStatusType = Literal["needs_confirmation", "no_match"]
+# 搜索响应使用基础 ID；确认候选后的 Tool 请求与回复必须携带候选 index。
+type SessionIdType = Annotated[str, Field(pattern=r"^\d{2}[0-9ab][0-9a-f]{8}$")]
+type IndexSessionIdType = Annotated[str, Field(pattern=r"^\d{2}[0-9ab][0-9a-f]{8}-[1-9]\d*$")]
 type JsonPrimitiveType = None | bool | int | float | str
 type JsonValueType = JsonPrimitiveType | list[JsonValueType] | dict[str, JsonValueType]
 type JsonDictType = dict[str, JsonValueType]
@@ -75,7 +78,7 @@ class NominatimData:
         """Python 传给 TypeScript 的搜索响应。"""
 
         status: LocSearchStatusType
-        session_id: str
+        session_id: SessionIdType
         query: str
         candidates: list[NominatimData.LocSearchCandidate]
         message: str | None = None
@@ -194,7 +197,7 @@ class Tools:
     class PyToolReq(StrictModel):
         """AI 确认候选后的选定地点级信息"""
 
-        session_id: str
+        session_id: IndexSessionIdType
         selected_candidate: NominatimData.LocSearchCandidate
         attention_experts: list[str] | None = None
 
@@ -210,7 +213,7 @@ class Tools:
     class PyToolReply(StrictModel):
         """带 session 标识的 Tool A/B Bridge data。"""
 
-        session_id: str
+        session_id: IndexSessionIdType
         result: Tools.PyToolResult
 
         def to_dict(self) -> JsonDictType:

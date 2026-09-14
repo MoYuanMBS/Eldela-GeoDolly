@@ -2,16 +2,15 @@
 
 from __future__ import annotations
 
-import uuid
 from typing import Any, Literal, cast
 
 import httpx
 
 from python.utils.config_loader import config
 from python.utils.models import JsonDictType, NominatimData, TransferTypes
+from python.utils.session_id import generate_session_id
 
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
-
 
 ##### 上游字段规范化 #####
 
@@ -141,18 +140,20 @@ def query_request(search_request: NominatimData.LocSearchQueryReq) -> NominatimD
     raw_results = search_location(query_text, country_codes)
 
     candidates = [_build_candidate(raw_result, index)for index, raw_result in enumerate(raw_results, start=1)]
+    # no-match 与 needs-confirmation 共用同一生成点，避免两个分支的 ID 格式发生漂移。
+    session_id = generate_session_id()
 
     if candidates:
         return NominatimData.LocSearchReply(
             status="needs_confirmation",
-            session_id=str(uuid.uuid4()).split("-")[0],
+            session_id=session_id,
             query=query_text,
             candidates=candidates,
         )
 
     return NominatimData.LocSearchReply(
         status="no_match",
-        session_id=str(uuid.uuid4()).split("-")[0],
+        session_id=session_id,
         query=query_text,
         candidates=[],
         message="No results found for the given query and country codes.",

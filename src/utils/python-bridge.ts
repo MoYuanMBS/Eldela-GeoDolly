@@ -32,6 +32,7 @@ import {
 } from "../models/backend/bridge-models.js";
 import {AppError} from "./app-error.js";
 import { config } from "./config-loader.js";
+import {buildFinalSessionId} from "./session-id.js";
 
 const PYTHON_ENTRYPOINT = "python/main.py";
 
@@ -275,7 +276,8 @@ export function exportToolsQueryForPython(
   }
 
   return pyToolReqSchema.parse({
-    session_id: query.session_id,
+    // Tool A/B 从第二次正式调用开始统一携带候选 index，避免并发任务串用目录与结果。
+    session_id: buildFinalSessionId(query.session_id, selected.index),
     selected_candidate: selected,
     attention_experts: config.filterAvailableExpertNames(query.attention_experts ?? []),
   });
