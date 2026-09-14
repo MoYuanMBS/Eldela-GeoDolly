@@ -177,6 +177,8 @@ browser_map:
 basemap:
   # 部署方可以配置 HTTP(S) proxy base URL；GeoMCP 会在运行时追加固定 namespace、profile ID 与 XYZ。
   proxy_url:
+  # Snapshot 固定首屏所需瓦片的最低成功比例；缺失但达到阈值时 warning 后继续发布。
+  snapshot_min_tile_success_ratio: 0.8
 
 # Browser UI 可公开调节参数。
 ui:

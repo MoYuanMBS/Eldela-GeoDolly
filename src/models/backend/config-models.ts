@@ -151,6 +151,7 @@ export const featureIdDisplayConfigSchema = z
 // 参考面积和比例允许浮点数；所有 CSS 尺寸与像素预算都是正整数。
 const positiveFiniteNumberSchema = z.number().finite().positive();
 const positiveIntegerSchema = z.number().int().positive();
+const nonNegativeIntegerSchema = z.number().int().nonnegative();
 
 export const iframePaddingConfigSchema = z.object({
   top: positiveIntegerSchema,
@@ -304,14 +305,48 @@ export const basemapConfigSchema = z.object({
     (proxyUrl) => typeof proxyUrl === "string" && proxyUrl.trim() === "" ? null : proxyUrl,
     basemapProxyUrlSchema.nullish(),
   ).transform((proxyUrl) => proxyUrl ?? null),
+  // 只用于 Snapshot 固定首屏；0 允许空底图，1 要求全部所需瓦片成功。
+  snapshot_min_tile_success_ratio: z.number().finite().min(0).max(1),
 }).strict();
 
 //#########################shared HTTP services###############################
 
-/** 独立 web.yaml；当前只配置全局共享的 Browser warning HTTP service。 */
+/** Map Session 对外地址必须是真正的 HTTP(S) origin，不接受 path、认证信息或 query。 */
+const publicOriginSchema = z.string().trim().pipe(z.url({protocol: /^https?$/, normalize: true}))
+  .transform((publicOrigin) => new URL(publicOrigin))
+  .refine(
+    (publicOrigin) => !publicOrigin.username && !publicOrigin.password && publicOrigin.pathname === "/" && !publicOrigin.search && !publicOrigin.hash,
+    "map public_origin must not contain credentials, path, query, or fragment",
+  )
+  .transform((publicOrigin) => publicOrigin.origin);
+
+export const mapHttpConfigSchema = z.object({
+  port: positiveIntegerSchema.max(65535),
+  public_origin: publicOriginSchema,
+}).strict();
+
+export const toolExecutionConfigSchema = z.object({
+  max_workers: positiveIntegerSchema,
+  // 0 明确表示没有等待队列；worker 全忙时立即返回 busy。
+  max_queue_length: nonNegativeIntegerSchema,
+  timeout_seconds: positiveFiniteNumberSchema,
+}).strict();
+
+export const sessionConfigSchema = z.object({
+  ttl_seconds: positiveFiniteNumberSchema,
+  expiry_check_interval_seconds: positiveFiniteNumberSchema,
+  flush_interval_seconds: positiveFiniteNumberSchema,
+}).strict();
+
+export const snapshotConfigSchema = z.object({
+  // 完整 wrapper 包含 MapSurface 与完成布局后的 Reference UI；当前 DPR 固定为 1。
+  max_wrapper_physical_pixels: positiveIntegerSchema,
+}).strict();
+
+/** 独立 web.yaml；所有 HTTP、调度、Session 与 Headless Snapshot 部署值都在启动时严格校验。 */
 export const webConfigSchema = z.object({
   http: z.object({
-    /** 后续 HTTP services 共用的内部 listener host，部署时可以覆盖。 */
+    /** warning 与 map HTTP services 共用的内部 listener host。 */
     listen_host: z.string().trim().min(1),
     warning: z.object({
       port: positiveIntegerSchema.max(65535),
@@ -321,7 +356,11 @@ export const webConfigSchema = z.object({
       rate_limit_window_seconds: positiveIntegerSchema,
       max_requests_per_window: positiveIntegerSchema,
     }).strict(),
+    map: mapHttpConfigSchema,
   }).strict(),
+  tool_execution: toolExecutionConfigSchema,
+  session: sessionConfigSchema,
+  snapshot: snapshotConfigSchema,
 }).strict();
 
 //#########################leaflet renderer###############################
@@ -405,5 +444,9 @@ export type IframeAdaptiveConfigType = z.infer<typeof iframeAdaptiveConfigSchema
 export type BrowserMapConfigType = z.infer<typeof browserMapConfigSchema>;
 export type UiConfigType = z.infer<typeof uiConfigSchema>;
 export type BasemapConfigType = z.infer<typeof basemapConfigSchema>;
+export type MapHttpConfigType = z.infer<typeof mapHttpConfigSchema>;
+export type ToolExecutionConfigType = z.infer<typeof toolExecutionConfigSchema>;
+export type SessionConfigType = z.infer<typeof sessionConfigSchema>;
+export type SnapshotConfigType = z.infer<typeof snapshotConfigSchema>;
 export type WebConfigType = z.infer<typeof webConfigSchema>;
 export type LeafletConfigType = z.infer<typeof leafletConfigSchema>;
