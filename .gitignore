@@ -2,6 +2,7 @@
 doc/
 test/
 local_test/
+cache/
 test.py
 test2.py
 test3.py
