@@ -213,6 +213,8 @@ export async function runToolFlow(tool: ToolType, cachedSelection: LocSearchRepl
   return Object.freeze({
     // Node/session/AI 数据不进入 CommonVisualMapPayload，避免 Browser 协议绑定 Tool 或 Python 状态。
     session_id: processed.session_id,
+    // visual_output 只留在 Node 发布路径；exportToolsQueryForPython 不会把它送入 Bridge。
+    visual_output: toolInput.visual_output,
     effective_query_mode: processed.effective_query_mode,
     ai_output: processed.ai_output,
     display_id_by_feature_id: processed.display_id_by_feature_id,

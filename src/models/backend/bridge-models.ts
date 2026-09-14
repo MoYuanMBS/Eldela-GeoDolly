@@ -14,10 +14,13 @@ import {finalSessionIdSchema, searchSessionIdSchema} from "./session-id-models.j
 export const toolTypeSchema = z.enum(["tool_a", "tool_b"]);
 export const searchStatusSchema = z.enum(["needs_confirmation", "no_match"]);
 export const osmTypeSchema = z.enum(["node", "way", "relation"]);
+/** 只决定最终向 AI 返回的视觉 URL；不改变后台地图与截图产物。 */
+export const visualOutputSchema = z.enum(["none", "screenshot", "interactive"]);
 
 export type ToolType = z.infer<typeof toolTypeSchema>;
 export type SearchStatus = z.infer<typeof searchStatusSchema>;
 export type OsmType = z.infer<typeof osmTypeSchema>;
+export type VisualOutputType = z.infer<typeof visualOutputSchema>;
 
 export type JsonPrimitiveType = null | boolean | number | string;
 export type JsonValueType = JsonPrimitiveType | JsonValueType[] | { [key: string]: JsonValueType };
@@ -104,6 +107,8 @@ export const AitoolInputReqSchema = z
     selected_indices: z.array(z.number().int()).min(1),
     // 不设置隐式默认底图；每次 Tool 调用必须显式选择一个已登记的 basemap profile。
     basemap: basemapProfileIdSchema,
+    // 必须保留调用方原值，后续发布完成后据此选择不返回、WebP 或公开 Snapshot 页面 URL。
+    visual_output: visualOutputSchema,
     attention_experts: z.array(z.string()).nullable().optional(),
     include_overlay_geojson: z.boolean().optional(),
   })

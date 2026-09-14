@@ -6,7 +6,7 @@
  */
 
 import type {LatLngBoundsLiteral} from "leaflet";
-import type {PyToolReqType, ToolType} from "./bridge-models.js";
+import type {PyToolReqType, ToolType, VisualOutputType} from "./bridge-models.js";
 import type {LeafletConfigType} from "./config-models.js";
 import type {
   AiOutputGroupsWithIdsType,
@@ -82,6 +82,8 @@ export type BasemapOnlyFlowInput = CommonMapPayloadFields;
 /** runToolFlow() 返回的 Node 数据、Browser 地图数据和独立样式快照。 */
 export type RunToolFlowResultType = Readonly<{
   session_id: string;
+  /** 原样透传 Tool 输入，供后续发布层选择 AI-facing 视觉 URL。 */
+  visual_output: VisualOutputType;
   effective_query_mode: EffectiveQueryModeType;
   ai_output: AiOutputGroupsWithIdsType | null;
   display_id_by_feature_id: DisplayIdByFeatureIdType | null;
