@@ -8,6 +8,8 @@ interface ReferenceBarProps {
   logicalWidth: number;
   attributionText: string;
   metricScale: MetricScaleViewType | null;
+  scaleSettled: boolean;
+  onRecoverableWarning(code: "reference_ui_font_fallback" | "reference_ui_decoration_hidden"): void;
   onReady(measuredHeight: number): void;
   onError(message: string): void;
 }
@@ -36,11 +38,16 @@ function waitForAnimationFrame(signal: AbortSignal): Promise<void> {
   });
 }
 
-async function waitForReferenceUiFonts(signal: AbortSignal): Promise<void> {
-  const loadedFonts = await document.fonts.load('400 13px "GeoMCP Source Han Sans"');
-  await document.fonts.ready;
-  if (signal.aborted) throw signal.reason;
-  if (loadedFonts.length === 0) throw new AppError("reference_ui_font_failed", "Reference UI font could not be loaded");
+async function waitForReferenceUiFonts(signal: AbortSignal): Promise<boolean> {
+  try {
+    const loadedFonts = await document.fonts.load('400 13px "GeoMCP Source Han Sans"');
+    await document.fonts.ready;
+    if (signal.aborted) throw signal.reason;
+    return loadedFonts.length > 0;
+  } catch (error) {
+    if (signal.aborted) throw error;
+    return false;
+  }
 }
 
 function waitForImage(image: HTMLImageElement, signal: AbortSignal): Promise<void> {
@@ -82,9 +89,20 @@ function waitForImage(image: HTMLImageElement, signal: AbortSignal): Promise<voi
   });
 }
 
-async function waitForReferenceUiAssets(element: HTMLElement, signal: AbortSignal): Promise<void> {
+async function waitForReferenceUiAssets(element: HTMLElement, signal: AbortSignal): Promise<boolean> {
   const images = [...element.querySelectorAll<HTMLImageElement>("img")];
-  await Promise.all(images.map((image) => waitForImage(image, signal)));
+  const results = await Promise.all(images.map(async (image) => {
+    try {
+      await waitForImage(image, signal);
+      return true;
+    } catch (error) {
+      if (signal.aborted) throw error;
+      // Reference UI 图片都只是可选装饰；隐藏失败项后继续用 CSS divider 完成稳定布局。
+      image.hidden = true;
+      return false;
+    }
+  }));
+  return results.every(Boolean);
 }
 
 function hasLayoutOverflow(element: HTMLElement, content: HTMLElement): boolean {
@@ -92,20 +110,20 @@ function hasLayoutOverflow(element: HTMLElement, content: HTMLElement): boolean 
 }
 
 /** Snapshot 专用 Reference UI；只挂载 Scale、唯一 divider 和无链接 Attribution。 */
-export function ReferenceBar({logicalWidth, attributionText, metricScale, onReady, onError}: ReferenceBarProps) {
+export function ReferenceBar({logicalWidth, attributionText, metricScale, scaleSettled, onRecoverableWarning, onReady, onError}: ReferenceBarProps) {
   const elementRef = useRef<HTMLElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const [layoutStatus, setLayoutStatus] = useState<ReferenceUiStatus>("pending");
-  const hasInitialScale = metricScale !== null;
 
   useEffect(() => {
     const element = elementRef.current;
     const content = contentRef.current;
     if (element === null || content === null) return;
     element.style.removeProperty("height");
+    element.style.removeProperty("font-family");
     delete element.dataset.lockedHeight;
-    setLayoutStatus(hasInitialScale ? "measuring" : "waiting-scale");
-    if (!hasInitialScale) return;
+    setLayoutStatus(scaleSettled ? "measuring" : "waiting-scale");
+    if (!scaleSettled) return;
 
     const abortController = new AbortController();
     const {signal} = abortController;
@@ -131,10 +149,16 @@ export function ReferenceBar({logicalWidth, attributionText, metricScale, onRead
 
     void (async () => {
       try {
-        await Promise.all([
+        const [fontLoaded, assetsLoaded] = await Promise.all([
           waitForReferenceUiFonts(signal),
           waitForReferenceUiAssets(element, signal),
         ]);
+        if (!fontLoaded) {
+          // 在开始高度测量前固定 fallback，确保后续锁高不会再因字体切换而漂移。
+          element.style.fontFamily = "sans-serif";
+          onRecoverableWarning("reference_ui_font_fallback");
+        }
+        if (!assetsLoaded) onRecoverableWarning("reference_ui_decoration_hidden");
         let previousHeight: number | null = null;
         let previousRevision: number | null = null;
         while (lockedHeight === null) {
@@ -170,7 +194,7 @@ export function ReferenceBar({logicalWidth, attributionText, metricScale, onRead
       resizeObserver.disconnect();
       if (anomalyFrameId !== null) cancelAnimationFrame(anomalyFrameId);
     };
-  }, [logicalWidth, attributionText, hasInitialScale, onReady, onError]);
+  }, [logicalWidth, attributionText, scaleSettled, onRecoverableWarning, onReady, onError]);
 
   const scaleStyle: MetricScaleStyle = {
     "--geomcp-metric-scale-width": `${metricScale?.widthPx ?? 0}px`,
@@ -183,15 +207,19 @@ export function ReferenceBar({logicalWidth, attributionText, metricScale, onRead
   ];
 
   return (
-    <footer ref={elementRef} className={`geomcp-standard-bar geomcp-reference-bar geomcp-reference-bar-status-${layoutStatus}`} aria-label="Snapshot map reference information" data-reference-ui-status={layoutStatus}>
+    <footer ref={elementRef} className={`geomcp-standard-bar geomcp-reference-bar geomcp-reference-bar-status-${layoutStatus}${metricScale === null && scaleSettled ? " geomcp-reference-bar-without-scale" : ""}`} aria-label="Snapshot map reference information" data-reference-ui-status={layoutStatus}>
       <div ref={contentRef} className="geomcp-reference-bar-content">
-        <section className="geomcp-standard-bar-block geomcp-standard-bar-block-scale geomcp-standard-scale" style={scaleStyle} aria-label={metricScale === null ? "Map scale loading" : `Map scale ${metricScale.label}`}>
-          <span className="geomcp-standard-scale-label">{metricScale?.label ?? "Scale"}</span>
-          <span className="geomcp-standard-scale-rule" aria-hidden="true" />
-        </section>
-        <span className="geomcp-standard-bar-divider geomcp-reference-bar-divider" aria-hidden="true">
-          <img className="geomcp-ui-decoration geomcp-ui-decoration-standard-divider" src={UI_SVG_ASSETS.decorations.referenceBarDivider} alt="" draggable={false} />
-        </span>
+        {metricScale === null ? null : (
+          <section className="geomcp-standard-bar-block geomcp-standard-bar-block-scale geomcp-standard-scale" style={scaleStyle} aria-label={`Map scale ${metricScale.label}`}>
+            <span className="geomcp-standard-scale-label">{metricScale.label}</span>
+            <span className="geomcp-standard-scale-rule" aria-hidden="true" />
+          </section>
+        )}
+        {metricScale === null ? null : (
+          <span className="geomcp-standard-bar-divider geomcp-reference-bar-divider" aria-hidden="true">
+            <img className="geomcp-ui-decoration geomcp-ui-decoration-standard-divider" src={UI_SVG_ASSETS.decorations.referenceBarDivider} alt="" draggable={false} />
+          </span>
+        )}
         <div className="geomcp-standard-bar-block geomcp-standard-bar-block-attribution geomcp-standard-attribution" aria-label="Map attribution">
           {attributionReferences.map((reference, index) => (
             <span className="geomcp-standard-attribution-item" key={`${index}:${reference}`}>

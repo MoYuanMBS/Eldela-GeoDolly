@@ -6,13 +6,13 @@ import {initializeBuiltInStyle} from "../leaflet/styles/built-in-style-loader.js
 import {initializeRuntimeStyle} from "../leaflet/styles/runtime-style-initializer.js";
 import type {SnapshotMapFlowResult} from "../models/mapsurface/basemap-runtime-models.js";
 import type {RuntimeStylePlan} from "../models/mapsurface/style/runtime-style-models.js";
-import type {SnapshotMapSurfacePortProps} from "../web/snapshot-map-page.js";
+import type {SnapshotMapSurfacePortProps} from "../web/map-surface-port.js";
 import {createSnapshotMapFlow} from "./snapshot-map-flow.js";
 
 initializeBuiltInStyle();
 
 /** Snapshot adapter 只接入共享视觉 flow，不导入 Interaction 或 Measure Tool。 */
-export function SnapshotMapSurfaceView({mapPayload, stylePayload, onMetricScaleReady, onMapRuntimeReady, onMapRuntimeError}: SnapshotMapSurfacePortProps) {
+export function SnapshotMapSurfaceView({mapPayload, stylePayload, onMetricScaleSettled, onMapRuntimeReady, onRecoverableWarning, onSnapshotDiagnostic, onMapRuntimeError}: SnapshotMapSurfacePortProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -43,7 +43,8 @@ export function SnapshotMapSurfaceView({mapPayload, stylePayload, onMetricScaleR
             visual_limits: leafletConfig.visual_limits,
           },
           centerLongitude: center[1],
-          signal: abortController.signal,
+          allowFontFallback: true,
+          onRecoverableWarning,
         }
       : null;
     const coreOverlay = coreVisual === null
@@ -52,7 +53,6 @@ export function SnapshotMapSurfaceView({mapPayload, stylePayload, onMetricScaleR
           coreVisual,
           nodeZoomConfig: leafletConfig.node_zoom,
           centerLongitude: center[1],
-          signal: abortController.signal,
         };
 
     void createSnapshotMapFlow({
@@ -67,7 +67,10 @@ export function SnapshotMapSurfaceView({mapPayload, stylePayload, onMetricScaleR
       basemap,
       readyTimeoutMs: __GEOMCP_MAP_READY_TIMEOUT_MS__,
       proxyTileTimeoutMs: __GEOMCP_PROXY_TILE_TIMEOUT_MS__,
+      minimumInitialTileSuccessRatio: __GEOMCP_SNAPSHOT_MIN_TILE_SUCCESS_RATIO__,
       metricScaleMaxWidthPx: __GEOMCP_MAX_SCALE_WIDTH_PX__,
+      signal: abortController.signal,
+      warningReporter: onSnapshotDiagnostic,
       overlay,
       coreOverlay,
     }).then((result) => {
@@ -76,8 +79,16 @@ export function SnapshotMapSurfaceView({mapPayload, stylePayload, onMetricScaleR
         return;
       }
       flowResult = result;
-      onMetricScaleReady(Object.freeze({label: result.metricScale.label, widthPx: result.metricScale.widthPx}));
-      onMapRuntimeReady(result.readySummary.status);
+      onMetricScaleSettled(result.metricScale === null ? null : Object.freeze({
+        label: result.metricScale.label,
+        widthPx: result.metricScale.widthPx,
+        distanceMeters: result.metricScale.distanceMeters,
+      }));
+      onMapRuntimeReady(Object.freeze({
+        summary: result.readySummary,
+        initialTiles: result.initialTiles,
+        renderedFeatureCounts: result.renderedFeatureCounts,
+      }));
     }).catch((error: unknown) => {
       if (abortController.signal.aborted) return;
       const message = error instanceof Error ? error.message : String(error);
@@ -89,7 +100,7 @@ export function SnapshotMapSurfaceView({mapPayload, stylePayload, onMetricScaleR
       abortController.abort();
       flowResult?.dispose();
     };
-  }, [mapPayload, stylePayload, onMetricScaleReady, onMapRuntimeReady, onMapRuntimeError]);
+  }, [mapPayload, stylePayload, onMetricScaleSettled, onMapRuntimeReady, onRecoverableWarning, onSnapshotDiagnostic, onMapRuntimeError]);
 
   return <div ref={containerRef} className="geomcp-map-surface" aria-label="Snapshot map" />;
 }

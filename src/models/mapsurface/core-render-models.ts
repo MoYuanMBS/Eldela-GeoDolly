@@ -108,6 +108,8 @@ export interface CoreOverlayRendererOptions {
 /** Core result 只保存独立 Canvas runtime 对象，不进入 payload、Feature index 或 React state。 */
 export interface CoreOverlayRenderResult {
   rootLayer: LayerGroup;
+  /** MultiPoint 按实际点数计数；同一 geometry 的多个视觉 pass 不重复计数。 */
+  renderedFeatureCounts: {node: number; way: number; area: number};
   /** 幂等清理 Node zoom listener、Canvas renderer 与全部 Core Paths。 */
   dispose(): void;
 }

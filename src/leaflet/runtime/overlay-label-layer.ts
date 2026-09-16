@@ -15,6 +15,8 @@ const LABEL_CONFIG = LEAFLET_INTERNAL_RENDER_CONFIG.label;
 // 字体尺寸仍是屏幕逻辑像素；Canvas bitmap 再按实际 DPR 扩大，二者不能混为同一个单位。
 const LABEL_FONT = `${LABEL_CONFIG.nameFontWeight} ${LABEL_CONFIG.fontSizePx}px ${LABEL_CONFIG.fontFamily}`;
 const LABEL_ID_FONT = `${LABEL_CONFIG.idFontWeight} ${LABEL_CONFIG.fontSizePx}px ${LABEL_CONFIG.fontFamily}`;
+const FALLBACK_LABEL_FONT = `${LABEL_CONFIG.nameFontWeight} ${LABEL_CONFIG.fontSizePx}px sans-serif`;
+const FALLBACK_LABEL_ID_FONT = `${LABEL_CONFIG.idFontWeight} ${LABEL_CONFIG.fontSizePx}px sans-serif`;
 
 function getFeatureMeasurementKey(featureType: CanvasSpatialFeatureType, featureId: string): string {
   // canonical feature_id 只保证类型内唯一，因此 key 必须同时包含 feature_type。
@@ -250,10 +252,10 @@ function getLabelLines(candidate: OverlayLabelCandidate): ReadonlyArray<string> 
   return candidate.nameText === undefined ? [candidate.displayId] : [candidate.displayId, candidate.nameText];
 }
 
-function getBlockSize(context: CanvasRenderingContext2D, lines: ReadonlyArray<string>): {width: number; height: number} {
+function getBlockSize(context: CanvasRenderingContext2D, lines: ReadonlyArray<string>, idFont: string, nameFont: string): {width: number; height: number} {
   let width = 0;
   for (let index = 0; index < lines.length; index += 1) {
-    context.font = index === 0 ? LABEL_ID_FONT : LABEL_FONT;
+    context.font = index === 0 ? idFont : nameFont;
     width = Math.max(width, context.measureText(lines[index]).width);
   }
   return {width: width + LABEL_CONFIG.paddingPx * 2, height: lines.length * LABEL_CONFIG.lineHeightPx + LABEL_CONFIG.paddingPx * 2};
@@ -280,11 +282,11 @@ function drawText(context: CanvasRenderingContext2D, text: string, x: number, y:
   context.fillText(text, x, y);
 }
 
-function drawBlockLabel(context: CanvasRenderingContext2D, candidate: OverlayLabelCandidate, center: Point): void {
+function drawBlockLabel(context: CanvasRenderingContext2D, candidate: OverlayLabelCandidate, center: Point, idFont: string, nameFont: string): void {
   const lines = getLabelLines(candidate);
   const firstY = center.y - (lines.length - 1) * LABEL_CONFIG.lineHeightPx / 2;
   for (let index = 0; index < lines.length; index += 1) {
-    drawText(context, lines[index], center.x, firstY + index * LABEL_CONFIG.lineHeightPx, index === 0 ? LABEL_ID_FONT : LABEL_FONT);
+    drawText(context, lines[index], center.x, firstY + index * LABEL_CONFIG.lineHeightPx, index === 0 ? idFont : nameFont);
   }
 }
 
@@ -298,16 +300,30 @@ export class OverlayLabelLayer extends Layer {
   private canvas: HTMLCanvasElement | null = null;
   private frameId: number | null = null;
   private fontReady = false;
+  private selectedNameFont = LABEL_FONT;
+  private selectedIdFont = LABEL_ID_FONT;
 
   /**
    * `document.fonts.load()` 会同时触发打包 WOFF2 的实际下载/解码。Renderer 在挂载本层前等待它，
    * 这样第一次 measureText、碰撞框和最终截图都不会先使用 fallback 字体再发生二次位移。
    */
-  async prepareFont(targetDocument: Document = document): Promise<void> {
-    const fontLoads = [LABEL_FONT, LABEL_ID_FONT].map((font) => targetDocument.fonts.load(font, LABEL_CONFIG.fontLoadSample));
-    const loadedFaces = await Promise.all(fontLoads);
-    if (loadedFaces.some((faces) => faces.length === 0)) throw new AppError("missing_label_font", `Leaflet label font "${LABEL_CONFIG.fontFaceFamily}" could not be loaded`);
-    this.fontReady = true;
+  async prepareFont(targetDocument: Document = document, allowFallback = false): Promise<"primary" | "fallback"> {
+    this.selectedNameFont = LABEL_FONT;
+    this.selectedIdFont = LABEL_ID_FONT;
+    try {
+      const fontLoads = [LABEL_FONT, LABEL_ID_FONT].map((font) => targetDocument.fonts.load(font, LABEL_CONFIG.fontLoadSample));
+      const loadedFaces = await Promise.all(fontLoads);
+      if (loadedFaces.some((faces) => faces.length === 0)) throw new AppError("missing_label_font", `Leaflet label font "${LABEL_CONFIG.fontFaceFamily}" could not be loaded`);
+      this.fontReady = true;
+      return "primary";
+    } catch (error) {
+      if (!allowFallback) throw error;
+      // 显式锁定 fallback font shorthand，避免迟到的原字体在 ready 后被 Canvas 自动切回。
+      this.selectedNameFont = FALLBACK_LABEL_FONT;
+      this.selectedIdFont = FALLBACK_LABEL_ID_FONT;
+      this.fontReady = true;
+      return "fallback";
+    }
   }
 
   addCandidate(candidate: OverlayLabelCandidate): void {
@@ -402,7 +418,7 @@ export class OverlayLabelLayer extends Layer {
     if (measurement === undefined || !measurement.hasVisiblePaint) return;
     const anchor = map.latLngToContainerPoint(candidate.geometry.center);
     const lines = getLabelLines(candidate);
-    const block = getBlockSize(context, lines);
+    const block = getBlockSize(context, lines, this.selectedIdFont, this.selectedNameFont);
     // 两行文字整体置于实际缩放后外圈上方，name 行比 display_id 更靠近 Node。
     const center = point(
       anchor.x,
@@ -411,7 +427,7 @@ export class OverlayLabelLayer extends Layer {
     const rect = getCenteredRect(center, block.width, block.height);
     if (!isVisibleRect(rect, viewportWidth, viewportHeight) || collisions.collides(rect)) return;
     collisions.insert(rect);
-    drawBlockLabel(context, candidate, center);
+    drawBlockLabel(context, candidate, center, this.selectedIdFont, this.selectedNameFont);
   }
 
   private drawWayLabel(context: CanvasRenderingContext2D, collisions: LabelCollisionIndex, candidate: OverlayLabelCandidate, viewportWidth: number, viewportHeight: number, map: LeafletMap): void {
@@ -419,7 +435,7 @@ export class OverlayLabelLayer extends Layer {
     const anchor = getWayLabelAnchor(map, candidate.geometry);
     if (anchor === null) return;
     const text = candidate.nameText === undefined ? candidate.displayId : `${candidate.displayId}   ${candidate.nameText}`;
-    context.font = LABEL_ID_FONT;
+    context.font = this.selectedIdFont;
     const textWidth = context.measureText(text).width;
     // 线在当前 zoom 下放不下完整文字时直接省略，避免标签明显越过 Feature 两端。
     if (anchor.lineLength < textWidth + LABEL_CONFIG.paddingPx * 4) return;
@@ -434,7 +450,7 @@ export class OverlayLabelLayer extends Layer {
     context.save();
     context.translate(anchor.center.x, anchor.center.y);
     context.rotate(anchor.angle);
-    drawText(context, text, 0, 0, LABEL_ID_FONT);
+    drawText(context, text, 0, 0, this.selectedIdFont);
     context.restore();
   }
 
@@ -442,10 +458,10 @@ export class OverlayLabelLayer extends Layer {
     if (candidate.geometry.featureType !== "area") return;
     const center = getAreaLabelAnchor(map, candidate.geometry);
     if (center === null) return;
-    const block = getBlockSize(context, getLabelLines(candidate));
+    const block = getBlockSize(context, getLabelLines(candidate), this.selectedIdFont, this.selectedNameFont);
     const rect = getCenteredRect(center, block.width, block.height);
     if (!isVisibleRect(rect, viewportWidth, viewportHeight) || collisions.collides(rect)) return;
     collisions.insert(rect);
-    drawBlockLabel(context, candidate, center);
+    drawBlockLabel(context, candidate, center, this.selectedIdFont, this.selectedNameFont);
   }
 }

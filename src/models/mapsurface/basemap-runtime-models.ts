@@ -54,8 +54,38 @@ export interface BasemapRuntimeOptions {
   basemap: ResolvedBasemapType;
   /** 单块 Proxy 瓦片的请求上限；原始瓦片仍由 Flow ready timeout 统一兜底。 */
   proxyTileTimeoutMs: number;
-  /** 长期 warning sink 与一次性 ready status 分离；Snapshot 或未接通通道时可以省略。 */
+  /** 长期 warning sink 与一次性 ready status 分离；未接通诊断通道时可以省略。 */
   warningReporter?: BrowserWarningReporterType;
+}
+
+/** Snapshot 固定首屏独有的瓦片统计，不进入共享 BasemapRuntimeStatus。 */
+export interface SnapshotInitialTileSummary {
+  success_count: number;
+  total_count: number;
+  success_ratio: number;
+  required_ratio: number;
+}
+
+export interface SnapshotBasemapRuntimeOptions extends BasemapRuntimeOptions {
+  minimumInitialTileSuccessRatio: number;
+  /** 只消费上层 Snapshot Flow 持有的取消/超时 signal，不建立第二个总计时器。 */
+  signal: AbortSignal;
+}
+
+export interface SnapshotBasemapRuntimeResult {
+  status: BasemapRuntimeStatus;
+  initialTiles: SnapshotInitialTileSummary;
+}
+
+export interface SnapshotSpatialRenderCounts {
+  node: number;
+  way: number;
+  area: number;
+}
+
+export interface SnapshotRenderedFeatureCounts {
+  overlay: SnapshotSpatialRenderCounts;
+  core: SnapshotSpatialRenderCounts;
 }
 
 /** 共享 Visual runtime 的稳定输入；Interactive 专属配置不进入本层。 */
@@ -114,7 +144,7 @@ export interface InteractiveMapFlowResult extends LeafletVisualRuntimeResult {
 }
 
 /** Snapshot 不附加交互状态，但负责创建并持有唯一 MapSurface。 */
-export interface SnapshotMapFlowOptions extends Omit<LeafletVisualRuntimeOptions, "mapSurface"> {
+export interface SnapshotMapFlowOptions extends Omit<LeafletVisualRuntimeOptions, "mapSurface" | "overlay" | "coreOverlay"> {
   /** Browser Flow 用于创建唯一 MapSurface 的固定尺寸与初始视口输入。 */
   mapSurface: MapSurfaceOptions;
   /** Node 已解析并写入 Browser payload 的底图 profile 快照。 */
@@ -123,8 +153,17 @@ export interface SnapshotMapFlowOptions extends Omit<LeafletVisualRuntimeOptions
   readyTimeoutMs: number;
   /** app.yaml browser_map.proxy_tile_timeout_seconds 转换后的毫秒值。 */
   proxyTileTimeoutMs: number;
+  /** app.yaml basemap.snapshot_min_tile_success_ratio。 */
+  minimumInitialTileSuccessRatio: number;
   /** app.yaml ui.max_scale_width_px；只参与返回给 UI 的公制 Scale 计算。 */
   metricScaleMaxWidthPx: number;
+  /** 页面生命周期取消由 Snapshot Flow 合并进自己持有的唯一 timeout signal。 */
+  signal: AbortSignal;
+  /** Snapshot Basemap 诊断通过独立通道返回 Node logger，不混入 ready summary。 */
+  warningReporter?: BrowserWarningReporterType;
+  /** Snapshot 子流程不能各带取消源，全部消费 Flow 合并后的同一个 signal。 */
+  overlay: Omit<OverlayRendererOptions, "map" | "signal"> | null;
+  coreOverlay: Omit<CoreOverlayRendererOptions, "map" | "signal"> | null;
 }
 
 /** Snapshot 返回自己持有的 MapSurface 与借助共享 runtime 创建的 Visual。 */
@@ -135,7 +174,12 @@ export interface SnapshotMapFlowResult extends LeafletVisualRuntimeResult {
   /** 不包含 Leaflet runtime 对象的当前 Flow 汇总。 */
   readySummary: MapFlowReadySummary;
   /** 仅交给 Browser UI 的初始公制 Scale 数据，不进入 readySummary。 */
-  metricScale: LeafletMetricScaleResult;
+  /** null 是允许发布的 Scale omitted 终态，由页面记录 warning 后隐藏对应 UI。 */
+  metricScale: LeafletMetricScaleResult | null;
+  /** Snapshot 专属首屏统计，与共享 Basemap contract 分离。 */
+  initialTiles: SnapshotInitialTileSummary;
+  /** renderer 实际创建的空间对象数；不同视觉 pass 不重复计数。 */
+  renderedFeatureCounts: SnapshotRenderedFeatureCounts;
   /** 幂等执行 Visual → MapSurface 清理。 */
   dispose(): void;
 }

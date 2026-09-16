@@ -107,6 +107,11 @@
   align-items: center;
 }
 
+/* Scale omitted 是 Snapshot 的显式恢复终态；Attribution 改为独占完整宽度。 */
+.geomcp-reference-bar-without-scale .geomcp-reference-bar-content {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .geomcp-standard-scale {
   position: relative;
   width: calc(100% - 16px);

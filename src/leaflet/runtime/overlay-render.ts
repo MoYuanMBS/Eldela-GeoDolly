@@ -509,7 +509,11 @@ export async function renderOverlay(options: OverlayRendererOptions): Promise<Ov
     throwIfAborted(options.signal);
     // CSS Path 全部挂载后批量读视觉宽度；返回前每个 Feature 必须已有可靠 measurement。
     // 字体同时在首个 Label Canvas 创建前完成下载与解码，不额外串行增加首帧等待。
-    await Promise.all([measurementController.synchronizeAfterMount(), labelLayer.prepareFont()]);
+    const [, labelFontStatus] = await Promise.all([
+      measurementController.synchronizeAfterMount(),
+      labelLayer.prepareFont(document, options.allowFontFallback ?? false),
+    ]);
+    if (labelFontStatus === "fallback") options.onRecoverableWarning?.("label_font_fallback");
     throwIfAborted(options.signal);
     // 所有候选注册完成后再挂载 Label Canvas，避免批量导入期间每个 Feature 都触发重排。
     rootLayer.addLayer(labelLayer);

@@ -1,8 +1,8 @@
 /** Browser 侧在线 raster TileLayer runtime。 */
 
 import {tileLayer, Util, type Map as LeafletMap, type TileLayer} from "leaflet";
-import type {BasemapRuntimeOptions, BasemapRuntimeStatus} from "../models/mapsurface/basemap-runtime-models.js";
-import {attachTileRequestTimeoutMonitor, mountTileLayerAndWaitForInitialReady} from "./tile-ready-controller.js";
+import type {BasemapRuntimeOptions, BasemapRuntimeStatus, SnapshotBasemapRuntimeOptions, SnapshotBasemapRuntimeResult} from "../models/mapsurface/basemap-runtime-models.js";
+import {attachTileRequestTimeoutMonitor, mountTileLayerAndWaitForInitialReady, mountTileLayerAndWaitForSnapshotReady} from "./tile-ready-controller.js";
 
 type TileFailureReason = "tile_layer_init" | "tile_load_failed" | "tile_load_timeout";
 type RuntimeProxyFallbackState = "proxy_active" | "fallback_scheduled" | "origin_active" | "disposed";
@@ -30,6 +30,7 @@ function removeTileLayerIfMounted(layer: TileLayer, map: LeafletMap): void {
 
 function getFailureReason(status: Extract<BasemapRuntimeStatus, {status: "failed"}>): TileFailureReason {
   if (status.error.code === "tile_load_failed" || status.error.code === "tile_load_timeout") return status.error.code;
+  if (status.error.code === "tile_success_ratio") return "tile_load_failed";
   return "tile_layer_init";
 }
 
@@ -157,6 +158,7 @@ export async function createBasemapRuntime(options: BasemapRuntimeOptions): Prom
     return mountOriginForInitialReady(options);
   }
 
+  // 共享 Basemap 保持严格首屏语义；Proxy 失败后由原始来源重新完成一次初始 ready 判定。
   const proxyStatus = await mountTileLayerAndWaitForInitialReady(proxyLayer, map, options.proxyTileTimeoutMs);
   if (proxyStatus.status === "ready") {
     attachRuntimeProxyFallback(proxyLayer, options);
@@ -169,4 +171,54 @@ export async function createBasemapRuntime(options: BasemapRuntimeOptions): Prom
     details: {profile_id: options.basemap.id, phase: "initial", reason_code: getFailureReason(proxyStatus)},
   });
   return mountOriginForInitialReady(options);
+}
+
+/** Snapshot 原始来源只由 Flow signal 兜底；总 deadline 到期不会伪装成瓦片比例结果。 */
+async function mountSnapshotOriginForInitialReady(options: SnapshotBasemapRuntimeOptions): Promise<SnapshotBasemapRuntimeResult> {
+  const map = options.mapSurface.map;
+  let originLayer: TileLayer;
+  try {
+    originLayer = createRasterTileLayer(options.basemap.url, map, options.basemap.max_native_zoom);
+  } catch {
+    return {
+      status: {status: "failed", error: {code: "tile_layer_init", message: "Basemap tile layer failed to initialize", details: null}},
+      initialTiles: {success_count: 0, total_count: 0, success_ratio: 0, required_ratio: options.minimumInitialTileSuccessRatio},
+    };
+  }
+  const result = await mountTileLayerAndWaitForSnapshotReady(originLayer, map, options.minimumInitialTileSuccessRatio, options.signal);
+  if (result.status.status === "ready") attachOriginRuntimeWarning(originLayer, options);
+  return result;
+}
+
+/**
+ * Snapshot 复用相同的 Proxy → origin 方向，但把成功率和计数限制在 Snapshot 专属返回值中。
+ * Proxy 单瓦片 timeout 可以提前触发 fallback；Flow 总 timeout 只通过唯一 signal 向上抛出。
+ */
+export async function createSnapshotBasemapRuntime(options: SnapshotBasemapRuntimeOptions): Promise<SnapshotBasemapRuntimeResult> {
+  if (options.basemap.proxy_tile_url === null) return mountSnapshotOriginForInitialReady(options);
+
+  const map = options.mapSurface.map;
+  let proxyLayer: TileLayer;
+  try {
+    proxyLayer = createRasterTileLayer(options.basemap.proxy_tile_url, map, options.basemap.max_native_zoom);
+  } catch {
+    options.warningReporter?.({
+      event: "basemap_proxy_fallback",
+      details: {profile_id: options.basemap.id, phase: "initial", reason_code: "tile_layer_init"},
+    });
+    return mountSnapshotOriginForInitialReady(options);
+  }
+
+  const proxyResult = await mountTileLayerAndWaitForSnapshotReady(proxyLayer, map, 1, options.signal, options.proxyTileTimeoutMs);
+  if (proxyResult.status.status === "ready") {
+    attachRuntimeProxyFallback(proxyLayer, options);
+    return proxyResult;
+  }
+
+  removeTileLayerIfMounted(proxyLayer, map);
+  options.warningReporter?.({
+    event: "basemap_proxy_fallback",
+    details: {profile_id: options.basemap.id, phase: "initial", reason_code: getFailureReason(proxyResult.status)},
+  });
+  return mountSnapshotOriginForInitialReady(options);
 }

@@ -100,6 +100,7 @@ export async function renderCoreOverlay(options: CoreOverlayRendererOptions): Pr
   const renderer = new InnerBandCanvas({pane: "coreOverlay"});
   const rootLayer = layerGroup().addTo(options.map);
   rootLayer.addLayer(renderer);
+  const renderedFeatureCounts = {node: 0, way: 0, area: 0};
   let disposed = false;
 
   try {
@@ -128,12 +129,14 @@ export async function renderCoreOverlay(options: CoreOverlayRendererOptions): Pr
       });
       renderer.registerInnerBand(bandLayer);
       rootLayer.addLayer(bandLayer);
+      renderedFeatureCounts.area += 1;
     }
 
     for (const sourceGeometry of parsed.geometries.lines) {
       const geometry = prepareLeafletGeoJsonGeometry(sourceGeometry, options.centerLongitude);
       if (geometry.featureType !== "way") throw new AppError("invalid_core_geometry", "Core line produced non-line Leaflet geometry");
       rootLayer.addLayer(createLineLayer(geometry.latLngs, CORE_RENDER_STYLE.lineOperation, renderer));
+      renderedFeatureCounts.way += 1;
     }
 
     if (parsed.geometries.points.length > 0) {
@@ -150,6 +153,7 @@ export async function renderCoreOverlay(options: CoreOverlayRendererOptions): Pr
         const circles = centers.map((center) => createPointLayer(center, CORE_RENDER_STYLE.pointOperation, renderer));
         for (const circle of circles) pointGroup.addLayer(circle);
         nodeZoomController.registerFeature(pointGroup, circles);
+        renderedFeatureCounts.node += circles.length;
       }
     }
 
@@ -161,7 +165,7 @@ export async function renderCoreOverlay(options: CoreOverlayRendererOptions): Pr
       disposed = true;
       rootLayer.remove();
     };
-    return Object.freeze({rootLayer, dispose});
+    return Object.freeze({rootLayer, renderedFeatureCounts: Object.freeze({...renderedFeatureCounts}), dispose});
   } catch (error) {
     disposed = true;
     rootLayer.remove();

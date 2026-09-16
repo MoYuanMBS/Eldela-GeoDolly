@@ -1,8 +1,11 @@
 import type {ComponentType} from "react";
+import type {BrowserWarningReportType} from "../models/common/browser-warning-models.js";
 import type {CommonVisualMapPayloadType} from "../models/mapsurface/map-payload-models.js";
+import type {MapFlowReadySummary, SnapshotMapFlowResult} from "../models/mapsurface/basemap-runtime-models.js";
 import type {ActiveMeasurementTargetType, MeasureToolModeType, MeasureToolUiStateType} from "../models/measure-tools/measure-tool-models.js";
 import type {RenderStylePayload} from "../models/mapsurface/style/user-css-style-models.js";
 import type {InteractiveSpatialFeatureType} from "../models/web/interactive-ui-models.js";
+import type {SnapshotRecoverableWarningType} from "../models/web/snapshot-ui-models.js";
 
 /** UI 事件只携带后端 canonical identity；display_id 必须临时从后端字典查询。 */
 export interface InteractiveFeatureTargetType {
@@ -14,6 +17,16 @@ export interface InteractiveFeatureTargetType {
 export interface MetricScaleViewType {
   label: string;
   widthPx: number;
+}
+
+export interface SnapshotMetricScaleViewType extends MetricScaleViewType {
+  distanceMeters: number;
+}
+
+export interface SnapshotMapRuntimeReadyType {
+  summary: MapFlowReadySummary;
+  initialTiles: SnapshotMapFlowResult["initialTiles"];
+  renderedFeatureCounts: SnapshotMapFlowResult["renderedFeatureCounts"];
 }
 
 export type MapRuntimeStatusType = "ready" | "degraded" | "failed";
@@ -56,3 +69,16 @@ export interface MapSurfacePortProps {
 
 /** MapPage 依赖 port component，而不是某个 Leaflet React 组件。 */
 export type MapSurfacePortComponentType = ComponentType<MapSurfacePortProps>;
+
+/** Snapshot Page 与无交互 MapSurface adapter 之间的唯一接线契约。 */
+export interface SnapshotMapSurfacePortProps {
+  mapPayload: CommonVisualMapPayloadType;
+  stylePayload: RenderStylePayload;
+  onMetricScaleSettled(metricScale: SnapshotMetricScaleViewType | null): void;
+  onMapRuntimeReady(result: SnapshotMapRuntimeReadyType): void;
+  onRecoverableWarning(warning: SnapshotRecoverableWarningType): void;
+  onSnapshotDiagnostic(diagnostic: BrowserWarningReportType): void;
+  onMapRuntimeError(message: string): void;
+}
+
+export type SnapshotMapSurfacePortComponentType = ComponentType<SnapshotMapSurfacePortProps>;

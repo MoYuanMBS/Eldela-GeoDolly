@@ -1,10 +1,18 @@
-import {useCallback, useEffect, useState, type ComponentType, type CSSProperties} from "react";
+import {useCallback, useEffect, useState, type CSSProperties} from "react";
 import {UI_BUILT_IN_CONFIG} from "../built-in-config/ui.js";
-import type {CommonVisualMapPayloadType} from "../models/mapsurface/map-payload-models.js";
-import type {RenderStylePayload} from "../models/mapsurface/style/user-css-style-models.js";
-import {snapshotMapDataSchema, type SnapshotMapDataType} from "../models/web/snapshot-ui-models.js";
+import type {BrowserWarningReportType} from "../models/common/browser-warning-models.js";
+import {
+  snapshotMapDataSchema,
+  type SnapshotBrowserReadySummaryType,
+  type SnapshotMapDataType,
+  type SnapshotRecoverableWarningType,
+} from "../models/web/snapshot-ui-models.js";
 import {ReferenceBar} from "../ui/reference-bar.js";
-import type {MapRuntimeStatusType, MetricScaleViewType} from "./map-surface-port.js";
+import type {
+  SnapshotMapRuntimeReadyType,
+  SnapshotMapSurfacePortComponentType,
+  SnapshotMetricScaleViewType,
+} from "./map-surface-port.js";
 
 type SnapshotMapLoadState =
   | {status: "loading"}
@@ -13,25 +21,22 @@ type SnapshotMapLoadState =
 
 type SnapshotMapRuntimeState =
   | {status: "pending"}
-  | {status: "ready"; runtimeStatus: MapRuntimeStatusType}
+  | {status: "ready"; result: SnapshotMapRuntimeReadyType}
   | {status: "failed"; message: string};
+
+type MetricScaleState =
+  | {status: "pending"; value: null}
+  | {status: "ready"; value: SnapshotMetricScaleViewType}
+  | {status: "omitted"; value: null};
 
 type ReferenceUiState =
   | {status: "pending"}
   | {status: "ready"; measuredHeight: number}
   | {status: "failed"; message: string};
 
-export interface SnapshotMapSurfacePortProps {
-  mapPayload: CommonVisualMapPayloadType;
-  stylePayload: RenderStylePayload;
-  onMetricScaleReady(metricScale: MetricScaleViewType): void;
-  onMapRuntimeReady(status: MapRuntimeStatusType): void;
-  onMapRuntimeError(message: string): void;
-}
-
 interface SnapshotMapPageProps {
   mapDataUrl: string | null;
-  SnapshotMapSurfaceComponent: ComponentType<SnapshotMapSurfacePortProps>;
+  SnapshotMapSurfaceComponent: SnapshotMapSurfacePortComponentType;
 }
 
 interface SnapshotMapPageStyle extends CSSProperties {
@@ -46,14 +51,18 @@ interface SnapshotMapPageStyle extends CSSProperties {
 /** Snapshot 页面只组合 MapSurface 与 Reference Bar，不读取 Interactive 数据或挂载交互 UI。 */
 export function SnapshotMapPage({mapDataUrl, SnapshotMapSurfaceComponent}: SnapshotMapPageProps) {
   const [loadState, setLoadState] = useState<SnapshotMapLoadState>({status: "loading"});
-  const [metricScale, setMetricScale] = useState<MetricScaleViewType | null>(null);
+  const [metricScaleState, setMetricScaleState] = useState<MetricScaleState>({status: "pending", value: null});
   const [mapRuntimeState, setMapRuntimeState] = useState<SnapshotMapRuntimeState>({status: "pending"});
   const [referenceUiState, setReferenceUiState] = useState<ReferenceUiState>({status: "pending"});
+  const [warnings, setWarnings] = useState<SnapshotRecoverableWarningType[]>([]);
+  const [diagnostics, setDiagnostics] = useState<BrowserWarningReportType[]>([]);
 
   useEffect(() => {
-    setMetricScale(null);
+    setMetricScaleState({status: "pending", value: null});
     setMapRuntimeState({status: "pending"});
     setReferenceUiState({status: "pending"});
+    setWarnings([]);
+    setDiagnostics([]);
     if (mapDataUrl === null) {
       setLoadState({status: "error", message: "Snapshot map data URL is missing"});
       return;
@@ -75,14 +84,33 @@ export function SnapshotMapPage({mapDataUrl, SnapshotMapSurfaceComponent}: Snaps
     return () => abortController.abort();
   }, [mapDataUrl]);
 
-  const handleMetricScaleReady = useCallback((nextMetricScale: MetricScaleViewType): void => setMetricScale(nextMetricScale), []);
-  const handleMapRuntimeReady = useCallback((runtimeStatus: MapRuntimeStatusType): void => setMapRuntimeState({status: "ready", runtimeStatus}), []);
+  const recordWarning = useCallback((warning: SnapshotRecoverableWarningType): void => {
+    setWarnings((current) => current.includes(warning) ? current : [...current, warning]);
+  }, []);
+  const recordDiagnostic = useCallback((diagnostic: BrowserWarningReportType): void => {
+    const diagnosticKey = JSON.stringify(diagnostic);
+    setDiagnostics((current) => current.some((existing) => JSON.stringify(existing) === diagnosticKey) ? current : [...current, diagnostic]);
+  }, []);
+  const handleMetricScaleSettled = useCallback((nextMetricScale: SnapshotMetricScaleViewType | null): void => {
+    if (nextMetricScale === null) {
+      recordWarning("scale_omitted");
+      setMetricScaleState({status: "omitted", value: null});
+    } else {
+      setMetricScaleState({status: "ready", value: nextMetricScale});
+    }
+  }, [recordWarning]);
+  const handleMapRuntimeReady = useCallback((result: SnapshotMapRuntimeReadyType): void => {
+    if (result.initialTiles.success_count < result.initialTiles.total_count && result.summary.status === "ready") {
+      recordWarning("basemap_tiles_missing");
+    }
+    setMapRuntimeState({status: "ready", result});
+  }, [recordWarning]);
   const handleMapRuntimeError = useCallback((message: string): void => setMapRuntimeState({status: "failed", message}), []);
   const handleReferenceUiReady = useCallback((measuredHeight: number): void => setReferenceUiState({status: "ready", measuredHeight}), []);
   const handleReferenceUiError = useCallback((message: string): void => setReferenceUiState({status: "failed", message}), []);
 
-  if (loadState.status === "loading") return <main className="geomcp-map-page-state" role="status">Loading snapshot map data…</main>;
-  if (loadState.status === "error") return <main className="geomcp-map-page-state geomcp-map-page-error" role="alert">{loadState.message}</main>;
+  if (loadState.status === "loading") return <main className="geomcp-map-page-state" role="status" data-geomcp-ready-status="pending" data-geomcp-snapshot-diagnostics="[]">Loading snapshot map data…</main>;
+  if (loadState.status === "error") return <main className="geomcp-map-page-state geomcp-map-page-error" role="alert" data-geomcp-ready-status="failed" data-geomcp-ready-error={loadState.message} data-geomcp-snapshot-diagnostics="[]">{loadState.message}</main>;
 
   const {data} = loadState;
   const payload = data.map_payload;
@@ -94,12 +122,46 @@ export function SnapshotMapPage({mapDataUrl, SnapshotMapSurfaceComponent}: Snaps
     "--geomcp-standard-ui-divider-width": `${UI_BUILT_IN_CONFIG.standardUi.dividerWidth}px`,
     "--geomcp-scale-max-width": `${__GEOMCP_MAX_SCALE_WIDTH_PX__}px`,
   };
+  const mapRuntimeResult = mapRuntimeState.status === "ready" ? mapRuntimeState.result : null;
+  const mapSummary = mapRuntimeResult?.summary ?? null;
   const failureMessage = mapRuntimeState.status === "failed"
     ? mapRuntimeState.message
+    : mapSummary?.status === "failed" ? mapSummary.error?.message ?? "Snapshot map runtime failed"
     : referenceUiState.status === "failed" ? referenceUiState.message : null;
   const browserReadyStatus = failureMessage !== null
     ? "failed"
-    : mapRuntimeState.status === "ready" && referenceUiState.status === "ready" ? mapRuntimeState.runtimeStatus : "pending";
+    : mapSummary?.status === "ready" && referenceUiState.status === "ready" && metricScaleState.status !== "pending" ? "ready" : "pending";
+  let readySummary: SnapshotBrowserReadySummaryType | null = null;
+  if (
+    browserReadyStatus === "ready"
+    && referenceUiState.status === "ready"
+    && metricScaleState.status !== "pending"
+    && mapSummary !== null
+    && mapSummary.status === "ready"
+    && mapSummary.basemap.status === "ready"
+    && mapRuntimeResult !== null
+  ) {
+    readySummary = {
+      status: mapSummary.status,
+      error: null,
+      initial_view: mapSummary.initial_view,
+      basemap: mapSummary.basemap,
+      overlay: {status: mapSummary.overlay, rendered: mapRuntimeResult.renderedFeatureCounts.overlay},
+      core_overlay: {status: mapSummary.core_overlay, rendered: mapRuntimeResult.renderedFeatureCounts.core},
+      reference_ui: {status: "ready", measured_height: referenceUiState.measuredHeight},
+      scale: metricScaleState.status === "omitted"
+        ? {status: "omitted"}
+        : {
+            status: "ready",
+            label: metricScaleState.value.label,
+            distance_meters: metricScaleState.value.distanceMeters,
+            width_px: metricScaleState.value.widthPx,
+          },
+      final_logical_height: payload.screenshot_size[1] + referenceUiState.measuredHeight,
+      initial_tiles: mapRuntimeResult.initialTiles,
+      warnings,
+    };
+  }
   const basemapAttribution = payload.basemap.full_attribution ?? payload.basemap.attribution;
 
   return (
@@ -108,6 +170,9 @@ export function SnapshotMapPage({mapDataUrl, SnapshotMapSurfaceComponent}: Snaps
       style={pageStyle}
       aria-busy={browserReadyStatus === "pending"}
       data-geomcp-ready-status={browserReadyStatus}
+      data-geomcp-ready-error={failureMessage ?? undefined}
+      data-geomcp-ready-summary={readySummary === null ? undefined : JSON.stringify(readySummary)}
+      data-geomcp-snapshot-diagnostics={JSON.stringify(diagnostics)}
       data-geomcp-reference-ui-status={referenceUiState.status}
       data-geomcp-reference-ui-height={referenceUiState.status === "ready" ? referenceUiState.measuredHeight : undefined}
       data-geomcp-final-logical-height={referenceUiState.status === "ready" ? payload.screenshot_size[1] + referenceUiState.measuredHeight : undefined}
@@ -117,15 +182,19 @@ export function SnapshotMapPage({mapDataUrl, SnapshotMapSurfaceComponent}: Snaps
           <SnapshotMapSurfaceComponent
             mapPayload={payload}
             stylePayload={data.style_payload}
-            onMetricScaleReady={handleMetricScaleReady}
+            onMetricScaleSettled={handleMetricScaleSettled}
             onMapRuntimeReady={handleMapRuntimeReady}
+            onRecoverableWarning={recordWarning}
+            onSnapshotDiagnostic={recordDiagnostic}
             onMapRuntimeError={handleMapRuntimeError}
           />
         </div>
         <ReferenceBar
           logicalWidth={payload.screenshot_size[0]}
           attributionText={basemapAttribution}
-          metricScale={metricScale}
+          metricScale={metricScaleState.value}
+          scaleSettled={metricScaleState.status !== "pending"}
+          onRecoverableWarning={recordWarning}
           onReady={handleReferenceUiReady}
           onError={handleReferenceUiError}
         />

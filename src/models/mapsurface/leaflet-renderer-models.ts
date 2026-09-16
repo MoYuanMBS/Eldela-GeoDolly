@@ -256,4 +256,8 @@ export interface OverlayRendererOptions {
   centerLongitude: number;
   /** 上层卸载或切换数据时中断分批渲染，不改变已处理 Feature 的语义。 */
   signal?: AbortSignal;
+  /** Snapshot 允许本地字体失败后改用声明中的 sans-serif；Interactive 默认仍严格失败。 */
+  allowFontFallback?: boolean;
+  /** 只上报已恢复且流程继续的状态，不传递底层异常或业务数据。 */
+  onRecoverableWarning?(code: "label_font_fallback"): void;
 }
