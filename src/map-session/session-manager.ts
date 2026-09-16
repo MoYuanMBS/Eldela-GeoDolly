@@ -8,7 +8,7 @@ import {
 } from "../models/backend/session-manager-models.js";
 import type {IndexSessionIdType} from "../models/backend/session-id-models.js";
 import {AppError} from "../utils/app-error.js";
-import {readSessionsJson, writeSessionsJson} from "../utils/file-writer.js";
+import {readSessionsJson, sessionFilesAreComplete, writeSessionsJson} from "../utils/file-writer.js";
 import {logger} from "../utils/logger.js";
 
 function errorReason(error: unknown): string {
@@ -58,17 +58,25 @@ export class SessionManager {
     this.flushTimer.unref();
   }
 
-  /** 用已通过 Zod 校验的 checkpoint 恢复 RAM mapping，再启动 expiry 与 flush timer。 */
+  /** 用已通过 Zod 校验且归档完整的 checkpoint 记录恢复 RAM mapping，再启动 expiry 与 flush timer。 */
   async start(): Promise<boolean> {
     if (this.started) return true;
     if (this.closed) throw new AppError("session_manager_closed", "Closed Session manager cannot be restarted");
 
-    this.sessions = await readSessionsJson();
+    const checkpointSessions = await readSessionsJson();
+    this.sessions = {};
     this.activeSessionIds.clear();
     const nowSeconds = Date.now() / 1000;
 
-    for (const [rawSessionId, record] of Object.entries(this.sessions)) {
+    for (const [rawSessionId, record] of Object.entries(checkpointSessions)) {
       const sessionId = rawSessionId as IndexSessionIdType;
+      if (!await sessionFilesAreComplete(sessionId)) {
+        // 不完整目录保持给用户人工处理；RAM 与下一次 checkpoint 只移除失效索引记录。
+        this.markDirty();
+        logger.warning("session_archive_incomplete", {session_id: sessionId, status: "removed_from_index"});
+        continue;
+      }
+      this.sessions[sessionId] = record;
       if (nowSeconds < record.close_time) this.activeSessionIds.add(sessionId);
     }
 
@@ -102,6 +110,16 @@ export class SessionManager {
     this.sessions[sessionId] = record;
     if (Date.now() / 1000 < recordInput.close_time) this.activeSessionIds.add(sessionId);
     else this.activeSessionIds.delete(sessionId);
+    this.markDirty();
+    return true;
+  }
+
+  /** HTTP 发现已登记归档被人工删除时移除 RAM 真源，后续 checkpoint 会持久化该变化。 */
+  unregisterSession(sessionId: IndexSessionIdType): boolean {
+    this.requireRunning();
+    if (!(sessionId in this.sessions)) return false;
+    delete this.sessions[sessionId];
+    this.activeSessionIds.delete(sessionId);
     this.markDirty();
     return true;
   }

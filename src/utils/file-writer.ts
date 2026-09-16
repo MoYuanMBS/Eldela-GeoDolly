@@ -19,6 +19,13 @@ import {logger} from "./logger.js";
 
 const cacheRootPath = path.resolve(process.cwd(), "cache");
 const sessionsJsonPath = path.join(cacheRootPath, "sessions.json");
+const requiredSessionFilePaths = [
+  ["selected-query.json"],
+  ["interactive-map", "interactive-map.json"],
+  ["output", "ai-output.yaml"],
+  ["output", "interactive-map-url.json"],
+  ["output", "snapshot.webp"],
+] as const;
 
 function parseSessionFiles(files: SessionFilesInputType): SessionFilesInputType {
   try {
@@ -225,6 +232,56 @@ export async function readSessionsJson(): Promise<SessionsJsonType> {
   } catch (error) {
     throw AppError.fromUnknown(error, "file_sessions_index_invalid", "Invalid sessions index");
   }
+}
+
+async function readOptionalSessionFile(sessionId: string, relativePath: readonly string[]): Promise<Buffer | null> {
+  try {
+    return await readFile(path.join(sessionDirectoryPath(sessionId), ...relativePath));
+  } catch (error) {
+    if (errorCode(error) === "ENOENT" || errorCode(error) === "ENOTDIR") return null;
+    throw AppError.fromUnknown(error, "file_session_read", "Failed to read Session file");
+  }
+}
+
+/** 公开 HTTP 只用该接口确认已登记 Session 的固定目录仍然存在。 */
+export async function sessionDirectoryExists(sessionId: string): Promise<boolean> {
+  try {
+    return (await stat(sessionDirectoryPath(sessionId))).isDirectory();
+  } catch (error) {
+    if (errorCode(error) === "ENOENT" || errorCode(error) === "ENOTDIR") return false;
+    throw AppError.fromUnknown(error, "file_session_check", "Failed to check Session directory");
+  }
+}
+
+/**
+ * 发布与 checkpoint 恢复共用同一套固定必需文件规则。Overlay 是请求级可选产物，
+ * 不参与完整性判定；零字节文件不能视为已经完成的 JSON、YAML 或 WebP 产物。
+ */
+export async function sessionFilesAreComplete(sessionId: string): Promise<boolean> {
+  const sessionPath = sessionDirectoryPath(sessionId);
+  try {
+    const fileStats = await Promise.all(requiredSessionFilePaths.map((relativePath) => stat(path.join(sessionPath, ...relativePath))));
+    return fileStats.every((fileStat) => fileStat.isFile() && fileStat.size > 0);
+  } catch (error) {
+    if (errorCode(error) === "ENOENT" || errorCode(error) === "ENOTDIR") return false;
+    throw AppError.fromUnknown(error, "file_session_check", "Failed to check Session files");
+  }
+}
+
+/** Interactive Archive 保持 unknown，交给现有 Archive → runtime 边界执行唯一业务校验。 */
+export async function readInteractiveMapArchiveFile(sessionId: string): Promise<unknown | null> {
+  const data = await readOptionalSessionFile(sessionId, ["interactive-map", "interactive-map.json"]);
+  if (data === null) return null;
+  try {
+    return JSON.parse(data.toString("utf8")) as unknown;
+  } catch (error) {
+    throw AppError.fromUnknown(error, "file_session_archive_invalid", "Invalid Interactive Map archive JSON");
+  }
+}
+
+/** 返回原始 WebP bytes；HTTP cache validator 由响应层按内容生成。 */
+export function readSessionSnapshotFile(sessionId: string): Promise<Buffer | null> {
+  return readOptionalSessionFile(sessionId, ["output", "snapshot.webp"]);
 }
 
 /** 临时索引清理失败只记 warning，不能覆盖原始 checkpoint 写入异常。 */

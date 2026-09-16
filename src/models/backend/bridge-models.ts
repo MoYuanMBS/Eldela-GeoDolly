@@ -110,7 +110,7 @@ export const AitoolInputReqSchema = z
     // 必须保留调用方原值，后续发布完成后据此选择不返回、WebP 或公开 Snapshot 页面 URL。
     visual_output: visualOutputSchema,
     attention_experts: z.array(z.string()).nullable().optional(),
-    include_overlay_geojson: z.boolean().optional(),
+    include_overlay_geojson: z.boolean().nullable().optional(),
   })
   .strict();
 

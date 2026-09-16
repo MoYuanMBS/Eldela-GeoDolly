@@ -36,6 +36,7 @@ type ReferenceUiState =
 
 interface SnapshotMapPageProps {
   mapDataUrl: string | null;
+  onArchived?: () => void;
   SnapshotMapSurfaceComponent: SnapshotMapSurfacePortComponentType;
 }
 
@@ -49,7 +50,7 @@ interface SnapshotMapPageStyle extends CSSProperties {
 }
 
 /** Snapshot 页面只组合 MapSurface 与 Reference Bar，不读取 Interactive 数据或挂载交互 UI。 */
-export function SnapshotMapPage({mapDataUrl, SnapshotMapSurfaceComponent}: SnapshotMapPageProps) {
+export function SnapshotMapPage({mapDataUrl, onArchived, SnapshotMapSurfaceComponent}: SnapshotMapPageProps) {
   const [loadState, setLoadState] = useState<SnapshotMapLoadState>({status: "loading"});
   const [metricScaleState, setMetricScaleState] = useState<MetricScaleState>({status: "pending", value: null});
   const [mapRuntimeState, setMapRuntimeState] = useState<SnapshotMapRuntimeState>({status: "pending"});
@@ -73,6 +74,10 @@ export function SnapshotMapPage({mapDataUrl, SnapshotMapSurfaceComponent}: Snaps
     async function loadMapData(): Promise<void> {
       try {
         const response = await fetch(dataUrl, {cache: "no-store", signal: abortController.signal});
+        if (response.status === 410) {
+          onArchived?.();
+          return;
+        }
         if (!response.ok) throw new Error(`Snapshot map data request failed with HTTP ${response.status}`);
         setLoadState({status: "ready", data: snapshotMapDataSchema.parse(await response.json())});
       } catch (error) {
@@ -82,7 +87,7 @@ export function SnapshotMapPage({mapDataUrl, SnapshotMapSurfaceComponent}: Snaps
     }
     void loadMapData();
     return () => abortController.abort();
-  }, [mapDataUrl]);
+  }, [mapDataUrl, onArchived]);
 
   const recordWarning = useCallback((warning: SnapshotRecoverableWarningType): void => {
     setWarnings((current) => current.includes(warning) ? current : [...current, warning]);

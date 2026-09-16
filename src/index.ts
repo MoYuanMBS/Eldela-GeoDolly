@@ -13,6 +13,9 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 
+import {closeMapHttpService, createMapHttpService, listenMapHttpService} from "./http/map-http-service.js";
+import {SessionManager} from "./map-session/session-manager.js";
+import {SnapshotTokenStore} from "./map-session/snapshot-token-store.js";
 import {
   type AiToolInputReqType,
   type LocSearchReplyRawType,
@@ -30,6 +33,7 @@ import {
 } from "./utils/python-bridge.js";
 import {config} from "./utils/config-loader.js";
 import {initializeUserStyle} from "./utils/user-style-rule.js";
+import {logger} from "./utils/logger.js";
 
 //#################################################################################
 const searchResultCache = new Map<string, LocSearchReplyRawType>();
@@ -134,11 +138,48 @@ async function main() {
   // 配置与用户 CSS/YAML 在工具注册前完成校验；失败时服务不进入可调用状态。
   config.initialize();
   initializeUserStyle();
+  const webConfig = config.getWebConfig();
+  const sessionManager = new SessionManager(webConfig.session);
+  const snapshotTokenStore = new SnapshotTokenStore();
+  const mapHttpService = createMapHttpService(webConfig, snapshotTokenStore, sessionManager);
   // GeoMCP 当前先使用 stdio transport，供本地 MCP client / AI 进程拉起。
   const server = buildServer();
   const transport = new StdioServerTransport();
+  let shutdownPromise: Promise<void> | null = null;
 
-  await server.connect(transport);
+  const shutdown = (): Promise<void> => {
+    if (shutdownPromise !== null) return shutdownPromise;
+    shutdownPromise = (async () => {
+      await closeMapHttpService(mapHttpService);
+      snapshotTokenStore.clear();
+      await sessionManager.close();
+      await server.close();
+    })();
+    return shutdownPromise;
+  };
+  const handleShutdownSignal = (): void => {
+    void shutdown().catch((error: unknown) => {
+      logger.warning("service_shutdown_failed", {reason: error instanceof Error ? error.message : String(error)});
+      process.exitCode = 1;
+    });
+  };
+  process.once("SIGINT", handleShutdownSignal);
+  process.once("SIGTERM", handleShutdownSignal);
+  // stdio 客户端正常断开时也必须关闭 HTTP listener，否则端口会让进程继续常驻。
+  server.server.onclose = handleShutdownSignal;
+
+  try {
+    await sessionManager.start();
+    await listenMapHttpService(mapHttpService, webConfig.http);
+    await server.connect(transport);
+  } catch (error) {
+    process.off("SIGINT", handleShutdownSignal);
+    process.off("SIGTERM", handleShutdownSignal);
+    await shutdown().catch((shutdownError: unknown) => {
+      logger.warning("service_startup_cleanup_failed", {reason: shutdownError instanceof Error ? shutdownError.message : String(shutdownError)});
+    });
+    throw error;
+  }
 }
 
 main().catch((error: unknown) => {

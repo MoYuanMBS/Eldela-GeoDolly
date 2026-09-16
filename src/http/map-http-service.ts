@@ -5,15 +5,15 @@ import {readFile, stat} from "node:fs/promises";
 import {createServer, type Server, type ServerResponse} from "node:http";
 import path from "node:path";
 import type {WebConfigType} from "../models/backend/config-models.js";
+import type {SessionManager} from "../map-session/session-manager.js";
 import type {SnapshotTokenStore} from "../map-session/snapshot-token-store.js";
 import {AppError} from "../utils/app-error.js";
 import {logger} from "../utils/logger.js";
+import {buildMapBrowserHtml, resolveSessionHttpRoute} from "./session-http-routes.js";
 
 const INTERNAL_REQUEST_TIMEOUT_MS = 10_000;
 const INTERNAL_KEEP_ALIVE_TIMEOUT_MS = 5_000;
 const SNAPSHOT_ROUTE_PATTERN = /^\/_geomcp\/snapshot\/([0-9a-f]{64})(\/data)?$/u;
-const SNAPSHOT_FLOW_ATTRIBUTE = 'data-geomcp-browser-flow="interactive"';
-const MAP_DATA_META_PATTERN = /<meta\s+name="geomcp-map-data-url"\s+content="[^"]*"\s*\/>/u;
 
 const ASSET_CONTENT_TYPES: Readonly<Record<string, string>> = {
   ".css": "text/css; charset=utf-8",
@@ -31,16 +31,6 @@ function writeResponse(response: ServerResponse, statusCode: number, body: strin
     ...headers,
   });
   response.end(bodyBuffer);
-}
-
-function buildSnapshotHtml(htmlTemplate: string, token: string): string {
-  if (!htmlTemplate.includes(SNAPSHOT_FLOW_ATTRIBUTE) || !MAP_DATA_META_PATTERN.test(htmlTemplate)) {
-    throw new AppError("invalid_browser_build", "Browser index does not expose the required Snapshot injection points");
-  }
-  const dataPath = `/_geomcp/snapshot/${token}/data`;
-  return htmlTemplate
-    .replace(SNAPSHOT_FLOW_ATTRIBUTE, 'data-geomcp-browser-flow="snapshot"')
-    .replace(MAP_DATA_META_PATTERN, `<meta name="geomcp-map-data-url" content="${dataPath}" />`);
 }
 
 function resolveAssetPath(assetsRootPath: string, encodedPathname: string): string | null {
@@ -71,7 +61,8 @@ export function getInternalMapOrigin(httpConfig: WebConfigType["http"]): string 
  * HTML route 仅验证 token；data route 先原子消费再序列化，因此刷新 data、重放或并发第二次读取均为
  * 404。构建资源只允许访问 dist/web/assets 的单层 hash 文件，不能借路径穿越读取 cache 或源码。
  */
-export function createMapHttpService(httpConfig: WebConfigType["http"], tokenStore: SnapshotTokenStore): Server {
+export function createMapHttpService(webConfig: WebConfigType, tokenStore: SnapshotTokenStore, sessionManager: SessionManager): Server {
+  const httpConfig = webConfig.http;
   const webRootPath = path.resolve(process.cwd(), "dist", "web");
   const assetsRootPath = path.join(webRootPath, "assets");
   let htmlTemplate: string;
@@ -110,7 +101,19 @@ export function createMapHttpService(httpConfig: WebConfigType["http"], tokenSto
           writeResponse(response, 404);
           return;
         }
-        writeResponse(response, 200, buildSnapshotHtml(htmlTemplate, token), {"content-type": "text/html; charset=utf-8"});
+        writeResponse(response, 200, buildMapBrowserHtml(htmlTemplate, "snapshot", `/_geomcp/snapshot/${token}/data`), {"content-type": "text/html; charset=utf-8"});
+        return;
+      }
+
+      const sessionResponse = await resolveSessionHttpRoute(
+        requestUrl.pathname,
+        request.headers,
+        htmlTemplate,
+        webConfig.session,
+        sessionManager,
+      );
+      if (sessionResponse !== null) {
+        writeResponse(response, sessionResponse.statusCode, sessionResponse.body, sessionResponse.headers);
         return;
       }
 
@@ -149,4 +152,35 @@ export function createMapHttpService(httpConfig: WebConfigType["http"], tokenSto
     if (socket.writable) socket.end("HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
   });
   return server;
+}
+
+/** Map listener 启动失败必须在 MCP 接受请求前明确上抛。 */
+export function listenMapHttpService(server: Server, httpConfig: WebConfigType["http"]): Promise<boolean> {
+  return new Promise((resolve, reject) => {
+    const handleError = (error: Error): void => {
+      server.off("listening", handleListening);
+      reject(AppError.fromUnknown(error, "map_http_listen", "Map HTTP service could not start"));
+    };
+    const handleListening = (): void => {
+      server.off("error", handleError);
+      resolve(true);
+    };
+    server.once("error", handleError);
+    server.once("listening", handleListening);
+    server.listen(httpConfig.map.port, httpConfig.listen_host);
+  });
+}
+
+/** 重复关闭尚未启动或已经停止的 listener 同样视为成功。 */
+export function closeMapHttpService(server: Server): Promise<boolean> {
+  if (!server.listening) return Promise.resolve(true);
+  return new Promise((resolve, reject) => {
+    server.close((error) => {
+      if (error !== undefined) {
+        reject(AppError.fromUnknown(error, "map_http_close", "Map HTTP service could not close"));
+        return;
+      }
+      resolve(true);
+    });
+  });
 }
