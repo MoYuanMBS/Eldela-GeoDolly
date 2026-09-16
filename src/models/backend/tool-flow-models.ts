@@ -18,11 +18,12 @@ import type {
 } from "./map-data-models.js";
 import type {
   BasemapOnlyMapPayloadType,
-  CommonVisualMapPayloadType,
   CoreMapPayloadType,
   NonCoreMapPayloadType,
 } from "../mapsurface/map-payload-models.js";
-import type {RenderStylePayload} from "../mapsurface/style/user-css-style-models.js";
+import type {InteractiveMapArchiveType} from "./map-session-models.js";
+import type {InteractiveMapDataType} from "../web/interactive-ui-models.js";
+import type {SnapshotMapDataType} from "../web/snapshot-ui-models.js";
 
 /** processToolReply() 生成的公共数据结果；样式与具体 render_mode 不进入该阶段。 */
 export interface ProcessedToolReplyType {
@@ -79,7 +80,7 @@ export type NonCoreFlowInput = Omit<
 /** Basemap-only builder 只接收三种地图模式真正共用的字段。 */
 export type BasemapOnlyFlowInput = CommonMapPayloadFields;
 
-/** runToolFlow() 返回的 Node 数据、Browser 地图数据和独立样式快照。 */
+/** runToolFlow() 返回的 Node 数据、Archive 与两种严格 Browser runtime。 */
 export type RunToolFlowResultType = Readonly<{
   session_id: string;
   /** 原样透传 Tool 输入，供后续发布层选择 AI-facing 视觉 URL。 */
@@ -89,7 +90,9 @@ export type RunToolFlowResultType = Readonly<{
   display_id_by_feature_id: DisplayIdByFeatureIdType | null;
   relation_membership_by_feature_id: RelationMembershipByFeatureIdType | null;
   selected_location_name: string | null;
-  map_payload: CommonVisualMapPayloadType;
-  style_payload: RenderStylePayload;
+  /** 文件层只保存这份纯数据 Archive；Browser runtime 由当前配置另行组装。 */
+  interactive_archive: InteractiveMapArchiveType;
+  interactive_runtime: InteractiveMapDataType;
+  snapshot_runtime: SnapshotMapDataType;
   info: string;
 }>;

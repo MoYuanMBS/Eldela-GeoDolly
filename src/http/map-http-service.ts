@@ -5,7 +5,7 @@ import {readFile, stat} from "node:fs/promises";
 import {createServer, type Server, type ServerResponse} from "node:http";
 import path from "node:path";
 import type {WebConfigType} from "../models/backend/config-models.js";
-import type {SnapshotTokenStore} from "../screenshot/snapshot-token-store.js";
+import type {SnapshotTokenStore} from "../map-session/snapshot-token-store.js";
 import {AppError} from "../utils/app-error.js";
 import {logger} from "../utils/logger.js";
 

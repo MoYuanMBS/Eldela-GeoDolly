@@ -2,9 +2,8 @@
 
 import {z} from "zod";
 
-import {pyToolReqSchema} from "./bridge-models.js";
 import {identifiedOverlayGroupsWithDisplayIdSchema} from "./map-data-models.js";
-import {interactiveMapDataSchema} from "../web/interactive-ui-models.js";
+import {interactiveMapArchiveSchema, selectedQueryArchiveSchema} from "./map-session-models.js";
 
 /** 新版最终 Session ID schema 接入前，只确认调用边界收到字符串。 */
 export const fileWriterSessionIdSchema = z.string();
@@ -32,8 +31,8 @@ export const interactiveMapUrlSchema = z.object({
  * selectedQuery 始终存在；其余字段为 null 或缺省时不创建对应文件。
  */
 export const sessionFilesInputSchema = z.object({
-  selectedQuery: pyToolReqSchema,
-  interactiveMap: interactiveMapDataSchema.nullish(),
+  selectedQuery: selectedQueryArchiveSchema,
+  interactiveMap: interactiveMapArchiveSchema.nullish(),
   aiOutputYaml: z.string().nullish(),
   interactiveMapUrl: interactiveMapUrlSchema.nullish(),
   overlayOutput: identifiedOverlayGroupsWithDisplayIdSchema.nullish(),

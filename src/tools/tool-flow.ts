@@ -12,7 +12,6 @@ import {
   type PyToolReplyType,
   type ToolType,
 } from "../models/backend/bridge-models.js";
-import type {ResolvedBasemapType} from "../models/common/basemap-models.js";
 import {addFeatureIdsToAiOutput} from "../map-data/ai-output.js";
 import {resolveBasemap} from "../map-data/basemap.js";
 import {addDisplayIds} from "../map-data/display-id.js";
@@ -25,14 +24,12 @@ import {generateCaptureCenter} from "../iframe-capture/center-generator.js";
 import {toLeafletBounds} from "../iframe-capture/leaflet-bounds.js";
 import {leafletConfigSchema} from "../models/backend/config-models.js";
 import {
-  mapSurfacePayloadSchema,
   type CommonVisualMapPayloadType,
   type MapRenderModeType,
 } from "../models/mapsurface/map-payload-models.js";
 import type {EffectiveQueryModeType} from "../models/backend/map-data-models.js";
-import {renderStylePayloadSchema, type RenderStylePayload} from "../models/mapsurface/style/user-css-style-models.js";
+import {interactiveMapArchiveSchema, type InteractiveMapArchiveType} from "../models/backend/map-session-models.js";
 import type {
-  CommonMapPayloadFields,
   MapModeSwitchInput,
   ProcessedToolReplyType,
   RunToolFlowResultType,
@@ -40,7 +37,7 @@ import type {
 import {AppError} from "../utils/app-error.js";
 import {config} from "../utils/config-loader.js";
 import {PythonBridgeError, callBridge, exportToolsQueryForPython} from "../utils/python-bridge.js";
-import {getUserStyle} from "../utils/user-style-rule.js";
+import {buildMapRuntimePayloads} from "../map-session/map-runtime.js";
 import {buildBasemapOnlyMapPayload} from "./basemap-only-flow.js";
 import {buildCoreMapPayload} from "./core-flow.js";
 import {buildNonCoreMapPayload} from "./non-core-flow.js";
@@ -163,27 +160,29 @@ export function runMapModeFlow(input: MapModeSwitchInput): CommonVisualMapPayloa
   }
 }
 
-/**
- * 从 Node 启动时已经验证并冻结的用户样式缓存生成独立传输快照。
- * built-in CSS/Canvas styles 随 Browser App 构建，不进入该变量；这里也不重新读取文件或支持热更新。
- */
-function buildRenderStylePayload(): RenderStylePayload {
-  const userStyle = getUserStyle();
-  return renderStylePayloadSchema.parse({user_css: userStyle.css, user_rules: userStyle.rules});
-}
-
-/** 把公共视口结果收窄为共享地图 schema 的固定 tuple，并附加调用方明确选择的底图。 */
-function buildCommonMapPayloadFields(
+/** 只保存无法从当前部署配置重新取得的数据；Basemap-only 明确丢弃不适用的 Feature 数据。 */
+function buildInteractiveMapArchive(
+  requestedTool: ToolType,
+  basemap: AiToolInputReqType["basemap"],
+  selectedCandidate: PyToolReqType["selected_candidate"],
   processed: ProcessedToolReplyType,
-  basemap: ResolvedBasemapType,
-): CommonMapPayloadFields {
-  // Leaflet 的 LatLngBoundsLiteral 静态类型允许多种形态；跨进程 payload 只接受固定双角 tuple。
-  const mapSurfacePayload = mapSurfacePayloadSchema.parse({
+): InteractiveMapArchiveType {
+  const renderMode = selectMapRenderMode(requestedTool, processed.effective_query_mode);
+  const hasInteractiveData = renderMode !== "basemap_only";
+  return interactiveMapArchiveSchema.parse({
+    ai_output: hasInteractiveData ? processed.ai_output : null,
+    overlay_output: hasInteractiveData ? processed.overlay_output : null,
+    display_id_by_feature_id: hasInteractiveData ? processed.display_id_by_feature_id : null,
+    relation_member_features_by_relation: hasInteractiveData ? processed.relation_member_features_by_relation : null,
+    relation_membership_by_feature_id: hasInteractiveData ? processed.relation_membership_by_feature_id : null,
+    selected_location_name: selectedCandidate.name ?? null,
     screenshot_size: processed.screenshot_size,
     center: processed.center,
     leaflet_bbox: processed.leaflet_bbox,
+    render_mode: renderMode,
+    core_visual: renderMode === "core" ? selectedCandidate.geojson ?? null : null,
+    basemap,
   });
-  return {...mapSurfacePayload, basemap, leaflet: processed.leaflet};
 }
 
 /**
@@ -195,20 +194,13 @@ function buildCommonMapPayloadFields(
  */
 export async function runToolFlow(tool: ToolType, cachedSelection: LocSearchReplyRawType, toolInput: AiToolInputReqType): Promise<RunToolFlowResultType> {
   // profile 必须在重型 Python 调用前解析；无效 ID 不得进入 Python 或 Browser payload。
-  const basemap = resolveBasemap(toolInput.basemap);
+  resolveBasemap(toolInput.basemap);
   // 公共流程固定为：准备一次请求 → 调用 Python → 一次数据后处理 → 独立模式 switch。
   const pythonQuery = exportToolsQueryForPython(cachedSelection, toolInput);
   const processed = processToolReply(await callPythonTool(tool, pythonQuery));
-  const commonMapFields = buildCommonMapPayloadFields(processed, basemap);
-  const mapPayload = runMapModeFlow({
-    requestedTool: tool,
-    effectiveQueryMode: processed.effective_query_mode,
-    selectedCandidate: pythonQuery.selected_candidate,
-    processed,
-    commonMapFields,
-  });
-  // 样式是与地图数据并列的独立部署快照，不嵌入 map_payload 或 Overlay。
-  const stylePayload = buildRenderStylePayload();
+  const interactiveArchive = buildInteractiveMapArchive(tool, toolInput.basemap, pythonQuery.selected_candidate, processed);
+  // Browser runtime 必须从 Archive 与当前版本配置组装，不能把 runtime 包装反向当作归档格式。
+  const browserRuntime = buildMapRuntimePayloads(interactiveArchive);
 
   return Object.freeze({
     // Node/session/AI 数据不进入 CommonVisualMapPayload，避免 Browser 协议绑定 Tool 或 Python 状态。
@@ -221,8 +213,9 @@ export async function runToolFlow(tool: ToolType, cachedSelection: LocSearchRepl
     relation_membership_by_feature_id: processed.relation_membership_by_feature_id,
     // Feature UI 只使用候选的精确 name，不以 display_name 代替。
     selected_location_name: pythonQuery.selected_candidate.name ?? null,
-    map_payload: mapPayload,
-    style_payload: stylePayload,
+    interactive_archive: interactiveArchive,
+    interactive_runtime: browserRuntime.interactive,
+    snapshot_runtime: browserRuntime.snapshot,
     info: processed.info,
   });
 }

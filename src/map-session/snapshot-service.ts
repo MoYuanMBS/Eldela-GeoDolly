@@ -1,4 +1,4 @@
-/** 使用共享 Chromium 与独立 BrowserContext 生成 Snapshot WebP。 */
+/** Map Session 使用共享 Chromium 与独立 BrowserContext 生成 Snapshot WebP。 */
 
 import {chromium, type Browser, type BrowserContext} from "playwright";
 import type {SnapshotConfigType} from "../models/backend/config-models.js";

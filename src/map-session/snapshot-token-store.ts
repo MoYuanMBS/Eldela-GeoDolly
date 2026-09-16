@@ -1,4 +1,4 @@
-/** 预发布 Snapshot 页面使用的一次性内存授权。 */
+/** Map Session 预发布 Snapshot 页面使用的一次性内存授权。 */
 
 import {randomBytes} from "node:crypto";
 import type {SnapshotMapDataType} from "../models/web/snapshot-ui-models.js";
