@@ -13,6 +13,7 @@ import {
   type PendingFile,
   type SessionFilesInputType,
 } from "../models/backend/file-writer-models.js";
+import {interactiveMapArchiveSchema} from "../models/backend/map-session-models.js";
 import {sessionsJsonSchema, type SessionsJsonType} from "../models/backend/session-manager-models.js";
 import {AppError} from "./app-error.js";
 import {logger} from "./logger.js";
@@ -22,10 +23,11 @@ const sessionsJsonPath = path.join(cacheRootPath, "sessions.json");
 const requiredSessionFilePaths = [
   ["selected-query.json"],
   ["interactive-map", "interactive-map.json"],
-  ["output", "ai-output.yaml"],
   ["output", "interactive-map-url.json"],
   ["output", "snapshot.webp"],
 ] as const;
+const interactiveMapArchivePath = ["interactive-map", "interactive-map.json"] as const;
+const aiOutputPath = ["output", "ai-output.yaml"] as const;
 
 function parseSessionFiles(files: SessionFilesInputType): SessionFilesInputType {
   try {
@@ -254,14 +256,23 @@ export async function sessionDirectoryExists(sessionId: string): Promise<boolean
 }
 
 /**
- * 发布与 checkpoint 恢复共用同一套固定必需文件规则。Overlay 是请求级可选产物，
- * 不参与完整性判定；零字节文件不能视为已经完成的 JSON、YAML 或 WebP 产物。
+ * 发布与 checkpoint 恢复共用同一套必需文件规则。Overlay 始终可选；
+ * Basemap-only 不生成 AI Output，Core / Non-core 则必须有非空 YAML。
  */
 export async function sessionFilesAreComplete(sessionId: string): Promise<boolean> {
   const sessionPath = sessionDirectoryPath(sessionId);
   try {
     const fileStats = await Promise.all(requiredSessionFilePaths.map((relativePath) => stat(path.join(sessionPath, ...relativePath))));
-    return fileStats.every((fileStat) => fileStat.isFile() && fileStat.size > 0);
+    if (!fileStats.every((fileStat) => fileStat.isFile() && fileStat.size > 0)) return false;
+
+    // 只读取已存档的 render_mode 来选择文件集，不根据文件是否偶然存在反推模式。
+    const archive = interactiveMapArchiveSchema.parse(
+      JSON.parse(await readFile(path.join(sessionPath, ...interactiveMapArchivePath), "utf8")) as unknown,
+    );
+    if (archive.render_mode === "basemap_only") return true;
+
+    const aiOutputStats = await stat(path.join(sessionPath, ...aiOutputPath));
+    return aiOutputStats.isFile() && aiOutputStats.size > 0;
   } catch (error) {
     if (errorCode(error) === "ENOENT" || errorCode(error) === "ENOTDIR") return false;
     throw AppError.fromUnknown(error, "file_session_check", "Failed to check Session files");

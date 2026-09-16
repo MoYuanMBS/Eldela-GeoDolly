@@ -13,18 +13,20 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 
-import {closeMapHttpService, createMapHttpService, listenMapHttpService} from "./http/map-http-service.js";
+import {closeMapHttpService, createMapHttpService, getInternalMapOrigin, listenMapHttpService} from "./http/map-http-service.js";
 import {SessionManager} from "./map-session/session-manager.js";
+import {SnapshotService} from "./map-session/snapshot-service.js";
 import {SnapshotTokenStore} from "./map-session/snapshot-token-store.js";
 import {
   type AiToolInputReqType,
   type LocSearchReplyRawType,
-  type ToolType,
   locSearchQueryReqSchema,
   locSearchReplyRawSchema,
   AitoolInputReqSchema,
 } from "./models/backend/bridge-models.js";
-import {runToolFlow} from "./tools/tool-flow.js";
+import type {ToolFlowServicesType} from "./tools/tool-flow.js";
+import {ToolExecutionScheduler} from "./tools/tool-execution-scheduler.js";
+import {funcToolA, funcToolB} from "./tools/tools.js";
 import {AppError} from "./utils/app-error.js";
 import { getToolPromptsConfigWithHints } from "./utils/prompt-hints.js";
 import {
@@ -69,20 +71,35 @@ function getCachedSearchResponse(sessionId: string): LocSearchReplyRawType {
   return cachedResponse;
 }
 
-/**
- * Tool A / Tool B 共用同一套 TS 后处理；requested tool 只决定 Python action。
- */
-async function executeMapTool(tool: ToolType, args: AiToolInputReqType) {
+async function executeToolARequest(
+  args: AiToolInputReqType,
+  scheduler: ToolExecutionScheduler,
+  services: ToolFlowServicesType,
+) {
   try {
     const cachedResponse = getCachedSearchResponse(args.session_id);
-    const toolResponse = await runToolFlow(tool, cachedResponse, args);
+    const toolResponse = await scheduler.run((context) => funcToolA(cachedResponse, args, context, services));
     return createTextToolResult(JSON.stringify(toolResponse, null, 2));
   } catch (error) {
     return createErrorToolResult(error);
   }
 }
 
-function buildServer() {
+async function executeToolBRequest(
+  args: AiToolInputReqType,
+  scheduler: ToolExecutionScheduler,
+  services: ToolFlowServicesType,
+) {
+  try {
+    const cachedResponse = getCachedSearchResponse(args.session_id);
+    const toolResponse = await scheduler.run((context) => funcToolB(cachedResponse, args, context, services));
+    return createTextToolResult(JSON.stringify(toolResponse, null, 2));
+  } catch (error) {
+    return createErrorToolResult(error);
+  }
+}
+
+function buildServer(scheduler: ToolExecutionScheduler, services: ToolFlowServicesType) {
   const toolPromptsConfig = getToolPromptsConfigWithHints();
   const server = new McpServer({
     name: "geomcp",
@@ -98,9 +115,9 @@ function buildServer() {
     },
     async (args) => {
       try {
-        const rawResponse = locSearchReplyRawSchema.parse(
-          await callBridge("search_location", args),
-        );
+        const rawResponse = await scheduler.run(async (context) => locSearchReplyRawSchema.parse(
+          await callBridge("search_location", args, context.signal),
+        ));
         searchResultCache.set(rawResponse.session_id, rawResponse);
         const responseForAI = sanitizeSearchResponseForAI(rawResponse);
 
@@ -118,7 +135,7 @@ function buildServer() {
       description: toolPromptsConfig.tool_a.description,
       inputSchema: AitoolInputReqSchema,
     },
-    async (args) => executeMapTool("tool_a", args),
+    async (args) => executeToolARequest(args, scheduler, services),
   );
 
   server.registerTool(
@@ -128,7 +145,7 @@ function buildServer() {
       description: toolPromptsConfig.tool_b.description,
       inputSchema: AitoolInputReqSchema,
     },
-    async (args) => executeMapTool("tool_b", args),
+    async (args) => executeToolBRequest(args, scheduler, services),
   );
 
   return server;
@@ -141,15 +158,19 @@ async function main() {
   const webConfig = config.getWebConfig();
   const sessionManager = new SessionManager(webConfig.session);
   const snapshotTokenStore = new SnapshotTokenStore();
+  const snapshotService = new SnapshotService(snapshotTokenStore, getInternalMapOrigin(webConfig.http), webConfig.snapshot);
+  const toolScheduler = new ToolExecutionScheduler(webConfig.tool_execution);
   const mapHttpService = createMapHttpService(webConfig, snapshotTokenStore, sessionManager);
   // GeoMCP 当前先使用 stdio transport，供本地 MCP client / AI 进程拉起。
-  const server = buildServer();
+  const server = buildServer(toolScheduler, {sessionManager, snapshotService});
   const transport = new StdioServerTransport();
   let shutdownPromise: Promise<void> | null = null;
 
   const shutdown = (): Promise<void> => {
     if (shutdownPromise !== null) return shutdownPromise;
     shutdownPromise = (async () => {
+      await toolScheduler.close();
+      await snapshotService.close();
       await closeMapHttpService(mapHttpService);
       snapshotTokenStore.clear();
       await sessionManager.close();
@@ -171,6 +192,7 @@ async function main() {
   try {
     await sessionManager.start();
     await listenMapHttpService(mapHttpService, webConfig.http);
+    await snapshotService.start();
     await server.connect(transport);
   } catch (error) {
     process.off("SIGINT", handleShutdownSignal);

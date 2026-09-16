@@ -81,6 +81,12 @@ export class PythonBridgeError extends AppError {
   }
 }
 
+function bridgeAbortError(signal: AbortSignal): AppError {
+  if (signal.reason instanceof AppError) return signal.reason;
+  const message = signal.reason instanceof Error ? signal.reason.message : "Python bridge call was cancelled";
+  return new AppError("python_bridge_cancelled", message, null, signal.reason instanceof Error ? {cause: signal.reason} : undefined);
+}
+
 /**
  * 按 Python bridge 约定，把业务数据包装成统一请求 envelope。
  */
@@ -165,7 +171,9 @@ function callPython<
   requestSchema: TRequestSchema,
   responseSchema: TResponseSchema,
   payload: unknown,
+  signal?: AbortSignal,
 ): Promise<z.infer<TResponseSchema>> {
+  if (signal?.aborted === true) return Promise.reject(bridgeAbortError(signal));
   const pythonExecutable = resolvePythonExecutable();
 
   // 验原始 payload 是否符合当前 action 对应的请求 schema。。
@@ -179,12 +187,44 @@ function callPython<
   return new Promise((resolve, reject) => {
     // 启动 Python 入口程序。
     const child = spawn(pythonExecutable, [PYTHON_ENTRYPOINT], {
+      // POSIX 使用独立进程组，取消时连同 Python 可能派生的子进程一起终止。
+      detached: process.platform !== "win32",
       stdio: ["pipe", "pipe", "pipe"],
     });
 
     // Node 的 stream 会分块收到数据，所以这里先累计到字符串里，
     let stdout = "";
     let stderr = "";
+    let settled = false;
+    let abortFailure: AppError | null = null;
+    const removeAbortListener = (): void => signal?.removeEventListener("abort", handleAbort);
+    const rejectOnce = (error: unknown): void => {
+      if (settled) return;
+      settled = true;
+      removeAbortListener();
+      reject(error);
+    };
+    const resolveOnce = (value: z.infer<TResponseSchema>): void => {
+      if (settled) return;
+      settled = true;
+      removeAbortListener();
+      resolve(value);
+    };
+    const handleAbort = (): void => {
+      if (signal === undefined || abortFailure !== null || settled) return;
+      abortFailure = bridgeAbortError(signal);
+      // Promise 只在 close 后拒绝，确保 scheduler 释放 worker 时 Python 已经真实退出。
+      child.stdin.destroy();
+      try {
+        if (process.platform !== "win32" && child.pid !== undefined) process.kill(-child.pid, "SIGTERM");
+        else if (!child.killed) child.kill("SIGTERM");
+      } catch {
+        // 进程恰好已经退出时 close 会立即收敛；不能让终止竞争覆盖原始取消原因。
+      }
+    };
+    signal?.addEventListener("abort", handleAbort, {once: true});
+    // spawn 到 listener 注册之间也可能取消，注册后立即补查避免遗漏。
+    if (signal?.aborted === true) handleAbort();
 
     // Python stdout 约定只输出最终 JSON 响应；
     // 如果中间掺杂了 print 调试文本，后面的 JSON.parse 就会失败。
@@ -200,10 +240,15 @@ function callPython<
 
     // 这里处理的是“进程级错误”
     child.on("error", (error) => {
-      reject(new AppError("python_process", error.message, null, {cause: error}));
+      rejectOnce(abortFailure ?? new AppError("python_process", error.message, null, {cause: error}));
     });
 
     child.on("close", (code) => {
+      if (settled) return;
+      if (abortFailure !== null) {
+        rejectOnce(abortFailure);
+        return;
+      }
       if (stderr.trim()) {
         process.stderr.write(stderr);
       }
@@ -212,7 +257,7 @@ function callPython<
       // 如果完全没有 stdout，说明 Python 没按 bridge 协议返回结果，
       // 这时把 exit code 和 stderr 一起带出去，方便定位问题。
       if (!stdout.trim()) {
-        reject(
+        rejectOnce(
           new AppError(
             "empty_bridge_response",
             `python process returned no stdout (exit code ${code ?? "unknown"}): ${stderr.trim()}`,
@@ -232,11 +277,11 @@ function callPython<
         // unwrapBridgeResponseData 会按 bridge 约定解开 envelope：
         // - ok=true  -> 返回内部 data
         // - ok=false -> 把 Python 返回的结构化错误包装成 PythonBridgeError 再抛出
-        resolve(unwrapBridgeResponseData(responseEnvelope));
+        resolveOnce(unwrapBridgeResponseData(responseEnvelope));
       } catch (error) {
         // Python 明确返回的 AppError 保留原 code；只把 JSON/Zod 等边界异常收敛为响应错误。
-        if (error instanceof AppError) reject(error);
-        else reject(new AppError("invalid_bridge_response", `failed to handle python bridge response: ${String(error)}\nstderr: ${stderr.trim()}\nstdout: ${stdout.trim()}`, {
+        if (error instanceof AppError) rejectOnce(error);
+        else rejectOnce(new AppError("invalid_bridge_response", `failed to handle python bridge response: ${String(error)}\nstderr: ${stderr.trim()}\nstdout: ${stdout.trim()}`, {
           reason: error instanceof Error ? error.message : String(error),
           stderr: stderr.trim(),
           stdout: stdout.trim(),
@@ -245,14 +290,17 @@ function callPython<
     });
 
     // 把请求送给 Python：
-    child.stdin.write(JSON.stringify(requestEnvelope));
-    child.stdin.end();
+    if (abortFailure === null) {
+      child.stdin.write(JSON.stringify(requestEnvelope));
+      child.stdin.end();
+    }
   });
 }
 
 export function callBridge(
   action: BridgeActionType,
   payload: unknown,
+  signal?: AbortSignal,
 ): Promise<JsonValueType> {
   // `error` 只保留给协议层类型对齐，不允许作为主动调用的 bridge action。
   if (action === "error") {
@@ -261,7 +309,7 @@ export function callBridge(
 
   const registryEntry = BridgeActionsRegistry[action];
 
-  return callPython(action, registryEntry.requestSchema, registryEntry.responseSchema, payload);
+  return callPython(action, registryEntry.requestSchema, registryEntry.responseSchema, payload, signal);
 }
 
 export function exportToolsQueryForPython(

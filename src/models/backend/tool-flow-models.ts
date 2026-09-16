@@ -6,7 +6,14 @@
  */
 
 import type {LatLngBoundsLiteral} from "leaflet";
-import type {PyToolReqType, ToolType, VisualOutputType} from "./bridge-models.js";
+import type {
+  AiToolInputReqType,
+  LocSearchReplyRawType,
+  PyToolReplyType,
+  PyToolReqType,
+  VisualOutputType,
+} from "./bridge-models.js";
+import type {ResolvedBasemapType} from "../common/basemap-models.js";
 import type {LeafletConfigType} from "./config-models.js";
 import type {
   AiOutputGroupsWithIdsType,
@@ -19,6 +26,7 @@ import type {
 import type {
   BasemapOnlyMapPayloadType,
   CoreMapPayloadType,
+  MapRenderModeType,
   NonCoreMapPayloadType,
 } from "../mapsurface/map-payload-models.js";
 import type {InteractiveMapArchiveType} from "./map-session-models.js";
@@ -50,13 +58,17 @@ export type CommonMapPayloadFields = Pick<
   "basemap" | "screenshot_size" | "center" | "leaflet_bbox" | "leaflet"
 >;
 
-/** 唯一地图模式 switch 的完整输入，不使用业务函数 ReturnType 建立反向依赖。 */
-export interface MapModeSwitchInput {
-  requestedTool: ToolType;
-  effectiveQueryMode: EffectiveQueryModeType;
-  selectedCandidate: PyToolReqType["selected_candidate"];
-  processed: ProcessedToolReplyType;
-  commonMapFields: CommonMapPayloadFields;
+/** Tool 入口已经完成的请求语义映射；Basemap-only 只由 Python 降级结果覆盖得到。 */
+export type RequestedMapFlowType = Exclude<MapRenderModeType, "basemap_only">;
+
+/** `tools.ts` 完成 Tool 映射与 Python 调用后交给内部 Flow 的完整输入。 */
+export interface ToolFlowInputType {
+  requestedFlow: RequestedMapFlowType;
+  cachedSelection: LocSearchReplyRawType;
+  toolInput: AiToolInputReqType;
+  pythonQuery: PyToolReqType;
+  toolReply: PyToolReplyType;
+  resolvedBasemap: ResolvedBasemapType;
 }
 
 /** Core builder 保留普通 Overlay 必需字段，并携带地点确认阶段的可空原始 GeoJSON。 */
@@ -80,7 +92,7 @@ export type NonCoreFlowInput = Omit<
 /** Basemap-only builder 只接收三种地图模式真正共用的字段。 */
 export type BasemapOnlyFlowInput = CommonMapPayloadFields;
 
-/** runToolFlow() 返回的 Node 数据、Archive 与两种严格 Browser runtime。 */
+/** Python 与公共数据整理完成后，供发布阶段消费的 Node 数据和两种严格 Browser runtime。 */
 export type RunToolFlowResultType = Readonly<{
   session_id: string;
   /** 原样透传 Tool 输入，供后续发布层选择 AI-facing 视觉 URL。 */
@@ -95,4 +107,13 @@ export type RunToolFlowResultType = Readonly<{
   interactive_runtime: InteractiveMapDataType;
   snapshot_runtime: SnapshotMapDataType;
   info: string;
+}>;
+
+/** `tools.ts` 返回给后续 MCP content 组装层的唯一已发布结果。 */
+export type PublishedToolFlowResultType = Readonly<{
+  session_id: string;
+  ai_output_yaml?: string;
+  overlay_output_json?: string;
+  visual_url?: string;
+  interactive_url: string;
 }>;

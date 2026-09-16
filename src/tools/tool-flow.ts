@@ -1,83 +1,67 @@
 /**
- * Node 侧地图 Tool 总编排入口。
+ * Core / Non-core / Basemap-only 的 Node 发布编排。
  *
- * Python 返回以后先统一执行 enrichment 与视口计算，再根据 requested Tool 和 effective query mode
- * 选择 Core / Non-core / Basemap-only payload builder。这里不导入 Leaflet，也不持有浏览器对象。
+ * 公开 Tool 名称与 Python action 只存在于 `tools.ts`。本模块只接收已映射的地图 Flow，
+ * 并在唯一 switch 中处理 Python `basemap_only` 覆盖。
  */
 
-import {
-  type AiToolInputReqType,
-  type LocSearchReplyRawType,
-  type PyToolReqType,
-  type PyToolReplyType,
-  type ToolType,
-} from "../models/backend/bridge-models.js";
+import {generateCaptureCenter} from "../iframe-capture/center-generator.js";
+import {generateCaptureSize} from "../iframe-capture/capture-generator.js";
+import {toLeafletBounds} from "../iframe-capture/leaflet-bounds.js";
 import {addFeatureIdsToAiOutput} from "../map-data/ai-output.js";
-import {resolveBasemap} from "../map-data/basemap.js";
 import {addDisplayIds} from "../map-data/display-id.js";
 import {
   buildRelationMemberFeaturesByRelation,
   buildRelationMembershipByFeatureId,
 } from "../map-data/relation-membership.js";
-import {generateCaptureSize} from "../iframe-capture/capture-generator.js";
-import {generateCaptureCenter} from "../iframe-capture/center-generator.js";
-import {toLeafletBounds} from "../iframe-capture/leaflet-bounds.js";
+import {generateAiOutputYaml} from "../map-data/yaml-output.js";
+import {buildMapRuntimePayloads} from "../map-session/map-runtime.js";
+import type {SessionManager} from "../map-session/session-manager.js";
+import type {SnapshotService} from "../map-session/snapshot-service.js";
 import {leafletConfigSchema} from "../models/backend/config-models.js";
 import {
-  type CommonVisualMapPayloadType,
-  type MapRenderModeType,
-} from "../models/mapsurface/map-payload-models.js";
-import type {EffectiveQueryModeType} from "../models/backend/map-data-models.js";
-import {interactiveMapArchiveSchema, type InteractiveMapArchiveType} from "../models/backend/map-session-models.js";
+  interactiveMapArchiveSchema,
+  selectedQueryArchiveSchema,
+  type InteractiveMapArchiveType,
+} from "../models/backend/map-session-models.js";
 import type {
-  MapModeSwitchInput,
+  CommonMapPayloadFields,
   ProcessedToolReplyType,
+  PublishedToolFlowResultType,
   RunToolFlowResultType,
+  ToolFlowInputType,
 } from "../models/backend/tool-flow-models.js";
+import type {ToolExecutionContextType} from "../models/backend/tool-execution-models.js";
+import {
+  type CommonVisualMapPayloadType,
+  mapSurfacePayloadSchema,
+} from "../models/mapsurface/map-payload-models.js";
 import {AppError} from "../utils/app-error.js";
 import {config} from "../utils/config-loader.js";
-import {PythonBridgeError, callBridge, exportToolsQueryForPython} from "../utils/python-bridge.js";
-import {buildMapRuntimePayloads} from "../map-session/map-runtime.js";
+import {
+  cleanupSessionFiles,
+  sessionFilesAreComplete,
+  writeSessionFiles,
+  writeSnapshotFile,
+} from "../utils/file-writer.js";
+import {logger} from "../utils/logger.js";
 import {buildBasemapOnlyMapPayload} from "./basemap-only-flow.js";
 import {buildCoreMapPayload} from "./core-flow.js";
 import {buildNonCoreMapPayload} from "./non-core-flow.js";
 
-/**
- * 执行已经固定 selected candidate 的 Python 请求。
- *
- * 调用方先固定 pythonQuery；Core visual 因而可以复用真正发给 Python 的 selected_candidate，
- * 不在 Python 完成后按 selected_indices 再做第二次选择。
- */
-export async function callPythonTool(tool: ToolType, pythonQuery: PyToolReqType): Promise<PyToolReplyType> {
-  try {
-    // callBridge 已按 action registry 的 pyToolReplySchema 完成运行时校验，这里只恢复静态类型。
-    return await callBridge(tool, pythonQuery) as PyToolReplyType;
-  } catch (error) {
-    // Python 明确返回的结构化业务错误保持原 code；TS bridge/进程故障增加当前 Tool 上下文。
-    if (error instanceof PythonBridgeError) throw error;
-    const message = error instanceof Error ? error.message : String(error);
-    throw new AppError(
-      "python_tool",
-      `Python ${tool} call failed: ${message}`,
-      error instanceof AppError ? error.toJSON() : message,
-      error instanceof Error ? {cause: error} : undefined,
-    );
-  }
+export interface ToolFlowServicesType {
+  sessionManager: SessionManager;
+  snapshotService: SnapshotService;
 }
 
-/**
- * 纯 TypeScript 数据后处理入口，不启动 Python 子进程，也不读取或混入渲染样式。
- * display ID、AI join、Relation 索引和视口在所有地图模式中只执行一次。
- * ###################以降级为临时的 调试流程函数！######################
- */
-export function processToolReply(toolReply: PyToolReplyType): ProcessedToolReplyType {
-  const sessionId = toolReply.session_id;
-  const bbox = toolReply.result.bbox;
-  const output = toolReply.result.output;
-  const areaFactor = toolReply.result.recommended_viewport_area_factor;
-  const effectiveQueryMode = toolReply.result.effective_query_mode;
-  const info = toolReply.result.info; // 单独保留，供后续追加到 AI Output YAML 末尾。
-  // 浏览器不直接访问服务端配置文件；复制启动时已校验的 section，保证一次地图生成使用固定快照。
+interface PreparedBackendFlowType {
+  processed: ProcessedToolReplyType;
+  commonMapFields: CommonMapPayloadFields;
+}
+
+/** Python reply 的公共后处理只执行一次。此阶段不选择地图模式，也不创建 Browser runtime。 */
+export function processToolReply(toolReply: ToolFlowInputType["toolReply"]): ProcessedToolReplyType {
+  const {bbox, output, recommended_viewport_area_factor: areaFactor, effective_query_mode: effectiveQueryMode, info} = toolReply.result;
   const leafletConfig = config.getAppSection("leaflet", leafletConfigSchema);
   let aiOutput = null;
   let overlayOutput = null;
@@ -85,7 +69,7 @@ export function processToolReply(toolReply: PyToolReplyType): ProcessedToolReply
   let relationMemberFeaturesByRelation = null;
   let relationMembershipByFeatureId = null;
 
-  // basemap-only 没有地图数据；其他模式统一完成 display ID、AI Output enrichment 与 relation 成员索引。
+  // Basemap-only 没有地图数据；其他模式共用同一份 enrichment 与 Relation 索引。
   if (output !== null) {
     const displayIdEnrichment = addDisplayIds(output.overlay_output);
     overlayOutput = displayIdEnrichment.overlayOutput;
@@ -95,127 +79,278 @@ export function processToolReply(toolReply: PyToolReplyType): ProcessedToolReply
     relationMembershipByFeatureId = buildRelationMembershipByFeatureId(relationMemberFeaturesByRelation);
   }
 
-  // 截图尺寸和 center 属于后端稳定结果；Leaflet bounds 仅作为后续浏览器初始化格式。
-  const screenshotSize = generateCaptureSize(bbox, areaFactor);
-  const center = generateCaptureCenter(bbox);
-  const leafletBounds = toLeafletBounds(bbox);
-
   return {
-    "session_id": sessionId,
-    "effective_query_mode": effectiveQueryMode,
-    "ai_output": aiOutput,
-    "overlay_output": overlayOutput,
-    "display_id_by_feature_id": displayIdByFeatureId,
-    "relation_member_features_by_relation": relationMemberFeaturesByRelation,
-    "relation_membership_by_feature_id": relationMembershipByFeatureId,
-    "screenshot_size": screenshotSize,
-    "center": center,
-    "leaflet_bbox": leafletBounds,
-    "leaflet": leafletConfig,
-    "info": info,
+    session_id: toolReply.session_id,
+    effective_query_mode: effectiveQueryMode,
+    ai_output: aiOutput,
+    overlay_output: overlayOutput,
+    display_id_by_feature_id: displayIdByFeatureId,
+    relation_member_features_by_relation: relationMemberFeaturesByRelation,
+    relation_membership_by_feature_id: relationMembershipByFeatureId,
+    screenshot_size: generateCaptureSize(bbox, areaFactor),
+    center: generateCaptureCenter(bbox),
+    leaflet_bbox: toLeafletBounds(bbox),
+    leaflet: leafletConfig,
+    info,
   };
 }
 
-/**
- * 把 requested Tool 与 Python 降级结果收敛为唯一 Browser render_mode。
- *
- * Basemap-only 是覆盖所有 Tool 的终态；其余模式的 Tool 映射只存在于这个 switch。后续增加 Tool
- * 时只需调整 Node 编排映射，Browser 与共享地图 payload 不需要认识新的 Tool 名称。
- */
-export function selectMapRenderMode(requestedTool: ToolType, effectiveQueryMode: EffectiveQueryModeType): MapRenderModeType {
-  if (effectiveQueryMode === "basemap_only") return "basemap_only";
-  switch (requestedTool) {
-    case "tool_a":
-      return "non_core";
-    case "tool_b":
-      return "core";
-  }
+/** 后端公共子流程：整理 Python 结果并收窄 MapSurface 边界。 */
+function prepareBackendFlow(input: ToolFlowInputType): PreparedBackendFlowType {
+  const processed = processToolReply(input.toolReply);
+  const mapSurface = mapSurfacePayloadSchema.parse({
+    screenshot_size: processed.screenshot_size,
+    center: processed.center,
+    leaflet_bbox: processed.leaflet_bbox,
+  });
+  return {
+    processed,
+    commonMapFields: {
+      ...mapSurface,
+      basemap: input.resolvedBasemap,
+      leaflet: processed.leaflet,
+    },
+  };
 }
 
-/**
- * 唯一地图模式 switch；每个分支只把公共数据交给对应 builder。
- *
- * 本层不手写 Overlay/Relation null 审查：Basemap-only 忽略无关 Python 数据，Core/Non-core 则由
- * 自己的共享 Zod schema 校验必需字段。这样模式契约只有一个权威实现，不在 orchestrator 重复。
- */
-export function runMapModeFlow(input: MapModeSwitchInput): CommonVisualMapPayloadType {
-  const {requestedTool, effectiveQueryMode, selectedCandidate, processed, commonMapFields} = input;
-  switch (selectMapRenderMode(requestedTool, effectiveQueryMode)) {
-    case "basemap_only":
-      return buildBasemapOnlyMapPayload(commonMapFields);
-    case "non_core":
-      return buildNonCoreMapPayload({
-        ...commonMapFields,
-        overlay_output: processed.overlay_output,
-        relation_member_features_by_relation: processed.relation_member_features_by_relation,
-      });
-    case "core":
-      // Node 不解释原始 GeoJSON；null 静默跳过、非 null 校验与 warning 由 Browser Core renderer 负责。
-      return buildCoreMapPayload({
-        ...commonMapFields,
-        overlay_output: processed.overlay_output,
-        relation_member_features_by_relation: processed.relation_member_features_by_relation,
-        core_visual: selectedCandidate.geojson ?? null,
-      });
-  }
-}
-
-/** 只保存无法从当前部署配置重新取得的数据；Basemap-only 明确丢弃不适用的 Feature 数据。 */
+/** 只保存无法从当前部署配置重建的数据；Basemap-only 明确丢弃不适用的 Feature 数据。 */
 function buildInteractiveMapArchive(
-  requestedTool: ToolType,
-  basemap: AiToolInputReqType["basemap"],
-  selectedCandidate: PyToolReqType["selected_candidate"],
+  input: ToolFlowInputType,
   processed: ProcessedToolReplyType,
+  mapPayload: CommonVisualMapPayloadType,
 ): InteractiveMapArchiveType {
-  const renderMode = selectMapRenderMode(requestedTool, processed.effective_query_mode);
-  const hasInteractiveData = renderMode !== "basemap_only";
+  const hasInteractiveData = mapPayload.render_mode !== "basemap_only";
   return interactiveMapArchiveSchema.parse({
     ai_output: hasInteractiveData ? processed.ai_output : null,
     overlay_output: hasInteractiveData ? processed.overlay_output : null,
     display_id_by_feature_id: hasInteractiveData ? processed.display_id_by_feature_id : null,
     relation_member_features_by_relation: hasInteractiveData ? processed.relation_member_features_by_relation : null,
     relation_membership_by_feature_id: hasInteractiveData ? processed.relation_membership_by_feature_id : null,
-    selected_location_name: selectedCandidate.name ?? null,
+    selected_location_name: input.pythonQuery.selected_candidate.name ?? null,
     screenshot_size: processed.screenshot_size,
     center: processed.center,
     leaflet_bbox: processed.leaflet_bbox,
-    render_mode: renderMode,
-    core_visual: renderMode === "core" ? selectedCandidate.geojson ?? null : null,
-    basemap,
+    render_mode: mapPayload.render_mode,
+    core_visual: mapPayload.render_mode === "core" ? mapPayload.core_visual : null,
+    basemap: input.toolInput.basemap,
   });
 }
 
-/**
- * 执行完整 Node Tool Flow，并把 Node-only 数据与 Browser visual payload 分开返回。
- *
- * `effective_query_mode` 只在 Node 层决定 Basemap-only 覆盖；Browser 只读取 map_payload.render_mode。
- * Tool B 即使在 Python 内部降级到 tool_a，仍由 requested Tool 选择 Core builder。三个 builder 都只
- * 组装可序列化数据，不启动 Browser、Leaflet、截图或发布流程。
- */
-export async function runToolFlow(tool: ToolType, cachedSelection: LocSearchReplyRawType, toolInput: AiToolInputReqType): Promise<RunToolFlowResultType> {
-  // profile 必须在重型 Python 调用前解析；无效 ID 不得进入 Python 或 Browser payload。
-  resolveBasemap(toolInput.basemap);
-  // 公共流程固定为：准备一次请求 → 调用 Python → 一次数据后处理 → 独立模式 switch。
-  const pythonQuery = exportToolsQueryForPython(cachedSelection, toolInput);
-  const processed = processToolReply(await callPythonTool(tool, pythonQuery));
-  const interactiveArchive = buildInteractiveMapArchive(tool, toolInput.basemap, pythonQuery.selected_candidate, processed);
-  // Browser runtime 必须从 Archive 与当前版本配置组装，不能把 runtime 包装反向当作归档格式。
+/** 前端公共子流程：Archive 与当前版本配置组装成 Interactive / Snapshot runtime。 */
+function prepareFrontendFlow(
+  input: ToolFlowInputType,
+  processed: ProcessedToolReplyType,
+  mapPayload: CommonVisualMapPayloadType,
+): RunToolFlowResultType {
+  const interactiveArchive = buildInteractiveMapArchive(input, processed, mapPayload);
   const browserRuntime = buildMapRuntimePayloads(interactiveArchive);
-
   return Object.freeze({
-    // Node/session/AI 数据不进入 CommonVisualMapPayload，避免 Browser 协议绑定 Tool 或 Python 状态。
     session_id: processed.session_id,
-    // visual_output 只留在 Node 发布路径；exportToolsQueryForPython 不会把它送入 Bridge。
-    visual_output: toolInput.visual_output,
+    visual_output: input.toolInput.visual_output,
     effective_query_mode: processed.effective_query_mode,
     ai_output: processed.ai_output,
     display_id_by_feature_id: processed.display_id_by_feature_id,
     relation_membership_by_feature_id: processed.relation_membership_by_feature_id,
-    // Feature UI 只使用候选的精确 name，不以 display_name 代替。
-    selected_location_name: pythonQuery.selected_candidate.name ?? null,
+    selected_location_name: input.pythonQuery.selected_candidate.name ?? null,
     interactive_archive: interactiveArchive,
     interactive_runtime: browserRuntime.interactive,
     snapshot_runtime: browserRuntime.snapshot,
     info: processed.info,
+  });
+}
+
+/** Core 确定分支：只组装 Core payload，再进入共用前端子流程。 */
+function runCoreFlow(input: ToolFlowInputType, backend: PreparedBackendFlowType): RunToolFlowResultType {
+  const mapPayload = buildCoreMapPayload({
+    ...backend.commonMapFields,
+    overlay_output: backend.processed.overlay_output,
+    relation_member_features_by_relation: backend.processed.relation_member_features_by_relation,
+    // Core visual 始终来自搜索阶段缓存的原始 candidate，不从 Python geometry 反算。
+    core_visual: input.pythonQuery.selected_candidate.geojson ?? null,
+  });
+  return prepareFrontendFlow(input, backend.processed, mapPayload);
+}
+
+/** Non-core 确定分支：不读取 Core visual，也不理解降级。 */
+function runNonCoreFlow(input: ToolFlowInputType, backend: PreparedBackendFlowType): RunToolFlowResultType {
+  const mapPayload = buildNonCoreMapPayload({
+    ...backend.commonMapFields,
+    overlay_output: backend.processed.overlay_output,
+    relation_member_features_by_relation: backend.processed.relation_member_features_by_relation,
+  });
+  return prepareFrontendFlow(input, backend.processed, mapPayload);
+}
+
+/** Basemap-only 确定分支：只保留底图与 MapSurface，不生成任何动态 Feature 数据。 */
+function runBasemapOnlyFlow(input: ToolFlowInputType, backend: PreparedBackendFlowType): RunToolFlowResultType {
+  return prepareFrontendFlow(input, backend.processed, buildBasemapOnlyMapPayload(backend.commonMapFields));
+}
+
+function serializeOverlayJson(overlayOutput: NonNullable<InteractiveMapArchiveType["overlay_output"]>): string {
+  try {
+    return `${JSON.stringify(overlayOutput, null, 2)}\n`;
+  } catch (error) {
+    throw AppError.fromUnknown(error, "overlay_output_serialize", "Failed to serialize Overlay output");
+  }
+}
+
+function resolvePublishedUrls(sessionId: string, visualOutput: ToolFlowInputType["toolInput"]["visual_output"]): {
+  interactiveUrl: string;
+  visualUrl?: string;
+} {
+  const publicOrigin = config.getWebConfig().http.map.public_origin;
+  const interactiveUrl = `${publicOrigin}/session/${encodeURIComponent(sessionId)}`;
+  switch (visualOutput) {
+    case "none":
+      return {interactiveUrl};
+    case "screenshot":
+      return {interactiveUrl, visualUrl: `${interactiveUrl}/snapshot.webp`};
+    case "interactive":
+      return {interactiveUrl, visualUrl: `${interactiveUrl}/snapshot`};
+  }
+}
+
+/** 后端发布子流程：一次准备目录并并发写入快速产物。 */
+async function publishBackendFiles(
+  sessionId: string,
+  files: Parameters<typeof writeSessionFiles>[1],
+  signal: AbortSignal,
+): Promise<void> {
+  await writeSessionFiles(sessionId, files, {signal});
+}
+
+/** 前端发布子流程：并发渲染 WebP，但只在后端目录准备成功后追加文件。 */
+async function publishFrontendSnapshot(
+  sessionId: string,
+  snapshotRuntime: RunToolFlowResultType["snapshot_runtime"],
+  backendFilesPromise: Promise<void>,
+  signal: AbortSignal,
+  snapshotService: SnapshotService,
+): Promise<void> {
+  const image = await snapshotService.capture(snapshotRuntime, signal);
+  await backendFilesPromise;
+  await writeSnapshotFile(sessionId, image, {signal});
+}
+
+/**
+ * 两条发布子流程共享同一 signal。任一分支失败后先取消并等待兄弟分支，
+ * 再删除整个 Session 目录，避免晚到写入重建残片。
+ */
+async function publishSessionArtifacts(
+  sessionId: string,
+  files: Parameters<typeof writeSessionFiles>[1],
+  snapshotRuntime: RunToolFlowResultType["snapshot_runtime"],
+  context: ToolExecutionContextType,
+  snapshotService: SnapshotService,
+): Promise<void> {
+  const siblingController = new AbortController();
+  const branchSignal = AbortSignal.any([context.signal, siblingController.signal]);
+  const observeFailure = <T>(promise: Promise<T>): Promise<T> => promise.catch((error: unknown) => {
+    if (!siblingController.signal.aborted) siblingController.abort(error);
+    throw error;
+  });
+
+  const backendFilesPromise = observeFailure(publishBackendFiles(sessionId, files, branchSignal));
+  const frontendSnapshotPromise = observeFailure(publishFrontendSnapshot(
+    sessionId,
+    snapshotRuntime,
+    backendFilesPromise,
+    branchSignal,
+    snapshotService,
+  ));
+  const branches: Promise<unknown>[] = [backendFilesPromise, frontendSnapshotPromise];
+
+  try {
+    const results = await Promise.allSettled(branches);
+    const failedResult = results.find((result): result is PromiseRejectedResult => result.status === "rejected");
+    if (failedResult !== undefined) throw failedResult.reason;
+    context.throwIfAborted();
+    if (!await sessionFilesAreComplete(sessionId)) {
+      throw new AppError("file_session_incomplete", "Session files are incomplete after publication", sessionId);
+    }
+  } catch (error) {
+    if (!siblingController.signal.aborted) siblingController.abort(error);
+    await Promise.allSettled(branches);
+    try {
+      await cleanupSessionFiles(sessionId);
+    } catch (cleanupError) {
+      logger.warning("tool_flow_cleanup_failed", {
+        session_id: sessionId,
+        reason: cleanupError instanceof Error ? cleanupError.message : String(cleanupError),
+      });
+    }
+    throw AppError.fromUnknown(error, "tool_flow_publish", "Tool Flow publication failed");
+  }
+}
+
+/**
+ * 完整发布入口。模式 switch 与 Basemap-only 回退只在本入口下汇合，三个确定模式
+ * 分支都不理解 Tool 名称，也不互相跳转。
+ */
+export async function publishToolFlow(
+  input: ToolFlowInputType,
+  context: ToolExecutionContextType,
+  services: ToolFlowServicesType,
+): Promise<PublishedToolFlowResultType> {
+  context.throwIfAborted();
+  const backend = prepareBackendFlow(input);
+  let result: RunToolFlowResultType;
+  if (backend.processed.effective_query_mode === "basemap_only") {
+    result = runBasemapOnlyFlow(input, backend);
+  } else {
+    // 非 Basemap-only 时保持 tools.ts 已经决定的模式；Python 内部 Tool B 降级不会改成 Non-core。
+    switch (input.requestedFlow) {
+      case "core":
+        result = runCoreFlow(input, backend);
+        break;
+      case "non_core":
+        result = runNonCoreFlow(input, backend);
+        break;
+    }
+  }
+  context.throwIfAborted();
+
+  const selectedCandidate = input.pythonQuery.selected_candidate;
+  const sessionRecord = services.sessionManager.createRecord(input.cachedSelection.query, selectedCandidate.name);
+  const selectedQuery = selectedQueryArchiveSchema.parse({
+    session_id: result.session_id,
+    ...(input.toolInput.attention_experts === undefined ? {} : {attention_experts: input.toolInput.attention_experts}),
+    basemap: input.toolInput.basemap,
+    query: sessionRecord.query,
+    ...(sessionRecord.name === undefined ? {} : {name: sessionRecord.name}),
+    candidate: selectedCandidate,
+    actual_tool: result.effective_query_mode,
+    ...(input.toolInput.include_overlay_geojson === undefined ? {} : {include_overlay_geojson: input.toolInput.include_overlay_geojson}),
+    visual_output: input.toolInput.visual_output,
+    created_time: sessionRecord.created_time,
+    open_time: sessionRecord.open_time,
+    close_time: sessionRecord.close_time,
+  });
+  // Basemap-only 没有 AI Output，因此不生成空 YAML 文件或返回字段。
+  const aiOutputYaml = result.ai_output === null ? undefined : generateAiOutputYaml(result.ai_output, result.info);
+  const overlayOutput = input.toolInput.include_overlay_geojson === true
+    ? result.interactive_archive.overlay_output ?? undefined
+    : undefined;
+  const overlayOutputJson = overlayOutput === undefined ? undefined : serializeOverlayJson(overlayOutput);
+  const urls = resolvePublishedUrls(result.session_id, input.toolInput.visual_output);
+
+  // 同 ID 重建开始后旧目录会被 writer 删除，先关闭旧 RAM 入口，避免固定 URL 暴露半成品。
+  services.sessionManager.unregisterSession(result.session_id);
+  await publishSessionArtifacts(result.session_id, {
+    selectedQuery,
+    interactiveMap: result.interactive_archive,
+    aiOutputYaml,
+    interactiveMapUrl: {url: urls.interactiveUrl},
+    overlayOutput,
+  }, result.snapshot_runtime, context, services.snapshotService);
+  context.throwIfAborted();
+  services.sessionManager.registerSession(result.session_id, sessionRecord);
+
+  return Object.freeze({
+    session_id: result.session_id,
+    ...(aiOutputYaml === undefined ? {} : {ai_output_yaml: aiOutputYaml}),
+    ...(overlayOutputJson === undefined ? {} : {overlay_output_json: overlayOutputJson}),
+    ...(urls.visualUrl === undefined ? {} : {visual_url: urls.visualUrl}),
+    interactive_url: urls.interactiveUrl,
   });
 }
