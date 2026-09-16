@@ -336,6 +336,7 @@ export const sessionConfigSchema = z.object({
   ttl_seconds: positiveFiniteNumberSchema,
   expiry_check_interval_seconds: positiveFiniteNumberSchema,
   flush_interval_seconds: positiveFiniteNumberSchema,
+  max_timer_delay_ms: positiveIntegerSchema,
 }).strict();
 
 export const snapshotConfigSchema = z.object({

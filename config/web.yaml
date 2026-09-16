@@ -29,6 +29,8 @@ session:
   ttl_seconds: 86400
   expiry_check_interval_seconds: 1800
   flush_interval_seconds: 60
+  # Node timer 单次 delay 的部署上限；更长的检查间隔按该值封顶。
+  max_timer_delay_ms: 2147483647
 
 # Headless Snapshot 执行器的全局资源边界；deviceScaleFactor 固定为 1，不配置。
 snapshot:

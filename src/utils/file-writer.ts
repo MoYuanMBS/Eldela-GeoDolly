@@ -1,20 +1,19 @@
-/** 固定 cache 目录下的 Session 产物与 sessions.json 写入。 */
+/** 固定 cache 目录下的 Session 产物写入，以及 sessions.json checkpoint 读写。 */
 
 import {randomUUID} from "node:crypto";
-import {mkdir, rename, rm, stat, unlink, writeFile} from "node:fs/promises";
+import {mkdir, readFile, rename, rm, stat, unlink, writeFile} from "node:fs/promises";
 import path from "node:path";
 
 import {
   fileWriterSessionIdSchema,
   imageFileDataSchema,
   sessionFilesInputSchema,
-  sessionsJsonSchema,
   type FileWriteOptionsType,
   type ImageFileDataType,
   type PendingFile,
   type SessionFilesInputType,
-  type SessionsJsonType,
 } from "../models/backend/file-writer-models.js";
+import {sessionsJsonSchema, type SessionsJsonType} from "../models/backend/session-manager-models.js";
 import {AppError} from "./app-error.js";
 import {logger} from "./logger.js";
 
@@ -34,14 +33,6 @@ function parseImageData(image: ImageFileDataType): Uint8Array {
     return imageFileDataSchema.parse(image);
   } catch (error) {
     throw AppError.fromUnknown(error, "file_write_input", "Invalid snapshot image data");
-  }
-}
-
-function parseSessionsJson(value: SessionsJsonType): SessionsJsonType {
-  try {
-    return sessionsJsonSchema.parse(value);
-  } catch (error) {
-    throw AppError.fromUnknown(error, "file_write_input", "Invalid sessions.json input");
   }
 }
 
@@ -216,6 +207,26 @@ function sessionsTemporaryPath(): string {
   return path.join(cacheRootPath, `.sessions.${randomUUID()}.tmp`);
 }
 
+/**
+ * 加载并校验上一次 sessions.json checkpoint。cache 或索引不存在表示空部署，
+ * 不在读取路径创建目录；存在但无法解析或不符合 schema 时明确失败。
+ */
+export async function readSessionsJson(): Promise<SessionsJsonType> {
+  let rawText: string;
+  try {
+    rawText = await readFile(sessionsJsonPath, "utf8");
+  } catch (error) {
+    if (errorCode(error) === "ENOENT") return {};
+    throw AppError.fromUnknown(error, "file_sessions_index_read", "Failed to read sessions index");
+  }
+
+  try {
+    return sessionsJsonSchema.parse(JSON.parse(rawText) as unknown);
+  } catch (error) {
+    throw AppError.fromUnknown(error, "file_sessions_index_invalid", "Invalid sessions index");
+  }
+}
+
 /** 临时索引清理失败只记 warning，不能覆盖原始 checkpoint 写入异常。 */
 async function cleanupTemporaryFile(tempPath: string): Promise<void> {
   try {
@@ -237,8 +248,8 @@ async function cleanupTemporaryFile(tempPath: string): Promise<void> {
  * 完整临时文件写入成功后才 rename 覆盖正式索引；成功返回 true，失败抛出 AppError。
  */
 export async function writeSessionsJson(sessionsJson: SessionsJsonType, options: FileWriteOptionsType = {}): Promise<boolean> {
-  const value = parseSessionsJson(sessionsJson);
-  const data = serializeJson(value);
+  // 调用方传入的是 RAM mapping 的类型化快照；写入边界不重复执行同一份 Zod 校验。
+  const data = serializeJson(sessionsJson);
   let tempPath: string | null = null;
   try {
     await ensureCacheDirectory();

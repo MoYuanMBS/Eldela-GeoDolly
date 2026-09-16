@@ -41,18 +41,5 @@ export const sessionFilesInputSchema = z.object({
 /** Buffer 是 Uint8Array 的子类，因此 Playwright 截图可以直接通过该边界。 */
 export const imageFileDataSchema = z.custom<Uint8Array>((value) => value instanceof Uint8Array);
 
-/** RAM Session checkpoint 中单条记录的稳定磁盘结构。 */
-export const sessionIndexRecordSchema = z.object({
-  query: z.string(),
-  name: z.string().nullable().optional(),
-  created_time: z.number(),
-  open_time: z.number(),
-  close_time: z.number(),
-}).strict();
-
-/** sessions.json 以最终 Session ID 为 key；新版 ID schema 接入前暂按字符串 key 处理。 */
-export const sessionsJsonSchema = z.record(z.string(), sessionIndexRecordSchema);
-
 export type SessionFilesInputType = z.infer<typeof sessionFilesInputSchema>;
 export type ImageFileDataType = z.infer<typeof imageFileDataSchema>;
-export type SessionsJsonType = z.infer<typeof sessionsJsonSchema>;
