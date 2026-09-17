@@ -1,4 +1,4 @@
-/** Map HTTP service 的内部 Snapshot route 与 Browser 构建资源。 */
+/** Map HTTP service 的公开 Session routes 与 Browser 构建资源。 */
 
 import {readFileSync} from "node:fs";
 import {readFile, stat} from "node:fs/promises";
@@ -6,14 +6,12 @@ import {createServer, type Server, type ServerResponse} from "node:http";
 import path from "node:path";
 import type {WebConfigType} from "../models/backend/config-models.js";
 import type {SessionManager} from "../map-session/session-manager.js";
-import type {SnapshotTokenStore} from "../map-session/snapshot-token-store.js";
 import {AppError} from "../utils/app-error.js";
 import {logger} from "../utils/logger.js";
-import {buildMapBrowserHtml, resolveSessionHttpRoute} from "./session-http-routes.js";
+import {resolveSessionHttpRoute} from "./session-http-routes.js";
 
 const INTERNAL_REQUEST_TIMEOUT_MS = 10_000;
 const INTERNAL_KEEP_ALIVE_TIMEOUT_MS = 5_000;
-const SNAPSHOT_ROUTE_PATTERN = /^\/_geomcp\/snapshot\/([0-9a-f]{64})(\/data)?$/u;
 
 const ASSET_CONTENT_TYPES: Readonly<Record<string, string>> = {
   ".css": "text/css; charset=utf-8",
@@ -56,12 +54,10 @@ export function getInternalMapOrigin(httpConfig: WebConfigType["http"]): string 
 }
 
 /**
- * 创建当前只处理内部 Snapshot route 的 map listener。
- *
- * HTML route 仅验证 token；data route 先原子消费再序列化，因此刷新 data、重放或并发第二次读取均为
- * 404。构建资源只允许访问 dist/web/assets 的单层 hash 文件，不能借路径穿越读取 cache 或源码。
+ * 创建公开 Session route 与 Browser 构建资源共用的 map listener。
+ * 构建资源只允许访问 dist/web/assets 的单层 hash 文件，不能借路径穿越读取 cache 或源码。
  */
-export function createMapHttpService(webConfig: WebConfigType, tokenStore: SnapshotTokenStore, sessionManager: SessionManager): Server {
+export function createMapHttpService(webConfig: WebConfigType, sessionManager: SessionManager): Server {
   const httpConfig = webConfig.http;
   const webRootPath = path.resolve(process.cwd(), "dist", "web");
   const assetsRootPath = path.join(webRootPath, "assets");
@@ -81,27 +77,6 @@ export function createMapHttpService(webConfig: WebConfigType, tokenStore: Snaps
       }
       if (requestUrl.search !== "") {
         writeResponse(response, 404);
-        return;
-      }
-
-      const routeMatch = SNAPSHOT_ROUTE_PATTERN.exec(requestUrl.pathname);
-      if (routeMatch !== null) {
-        const token = routeMatch[1];
-        const isDataRoute = routeMatch[2] === "/data";
-        if (isDataRoute) {
-          const payload = tokenStore.consume(token);
-          if (payload === null) {
-            writeResponse(response, 404);
-            return;
-          }
-          writeResponse(response, 200, JSON.stringify(payload), {"content-type": "application/json; charset=utf-8"});
-          return;
-        }
-        if (!tokenStore.has(token)) {
-          writeResponse(response, 404);
-          return;
-        }
-        writeResponse(response, 200, buildMapBrowserHtml(htmlTemplate, "snapshot", `/_geomcp/snapshot/${token}/data`), {"content-type": "text/html; charset=utf-8"});
         return;
       }
 

@@ -1,4 +1,4 @@
-/** 成功发布地图的唯一 RAM Session 索引与低频 checkpoint 生命周期。 */
+/** 可由公开 Session routes 查找的唯一 RAM 索引与低频 checkpoint 生命周期。 */
 
 import type {SessionConfigType} from "../models/backend/config-models.js";
 import {
@@ -20,8 +20,9 @@ function timerDelayMilliseconds(seconds: number, maximumDelayMs: number): number
 }
 
 /**
- * Session manager 只登记全部产物已经完成的地图。expiry 只关闭动态服务，
- * 不删除 record 或归档；sessions.json 只是 RAM mapping 的低频恢复点。
+ * Session manager 只管理索引，不判断发布阶段。Tool Flow 可在内部截图期间临时登记，
+ * 失败时必须撤销；expiry 只关闭动态服务，不删除 record 或归档。
+ * sessions.json 只是 RAM mapping 的低频恢复点，恢复时仍会核验完整文件集。
  */
 export class SessionManager {
   private sessions: SessionsJsonType = {};
@@ -100,7 +101,7 @@ export class SessionManager {
     };
   }
 
-  /** Tool Flow 完成全部产物后调用；这里仅覆盖登记已经校验的 RAM record。 */
+  /** 覆盖登记调用方已经校验的 RAM record；发布阶段与失败撤销由 Tool Flow 持有。 */
   registerSession(sessionIdInput: IndexSessionIdType, recordInput: SessionIndexRecordType): boolean {
     this.requireRunning();
     const sessionId = sessionIdInput;

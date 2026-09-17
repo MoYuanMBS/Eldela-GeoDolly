@@ -309,6 +309,11 @@ export const basemapConfigSchema = z.object({
   snapshot_min_tile_success_ratio: z.number().finite().min(0).max(1),
 }).strict();
 
+/** 部署级输出总开关；具体请求仍需同时显式启用对应输出。 */
+export const outputConfigSchema = z.object({
+  allow_overlay_geojson: z.boolean(),
+}).strict();
+
 //#########################shared HTTP services###############################
 
 /** Map Session 对外地址必须是真正的 HTTP(S) origin，不接受 path、认证信息或 query。 */

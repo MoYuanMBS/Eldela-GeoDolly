@@ -18,12 +18,13 @@ import {generateAiOutputYaml} from "../map-data/yaml-output.js";
 import {buildMapRuntimePayloads} from "../map-session/map-runtime.js";
 import type {SessionManager} from "../map-session/session-manager.js";
 import type {SnapshotService} from "../map-session/snapshot-service.js";
-import {leafletConfigSchema} from "../models/backend/config-models.js";
+import {leafletConfigSchema, outputConfigSchema} from "../models/backend/config-models.js";
 import {
   interactiveMapArchiveSchema,
   selectedQueryArchiveSchema,
   type InteractiveMapArchiveType,
 } from "../models/backend/map-session-models.js";
+import type {SessionIndexRecordType} from "../models/backend/session-manager-models.js";
 import type {
   CommonMapPayloadFields,
   ProcessedToolReplyType,
@@ -194,83 +195,80 @@ function serializeOverlayJson(overlayOutput: NonNullable<InteractiveMapArchiveTy
   }
 }
 
-function resolvePublishedUrls(sessionId: string, visualOutput: ToolFlowInputType["toolInput"]["visual_output"]): {
-  interactiveUrl: string;
-  visualUrl?: string;
-} {
+function buildSessionUrl(sessionId: string, route: "interactive" | "snapshot-interactive" | "snapshot.webp"): string {
   const publicOrigin = config.getWebConfig().http.map.public_origin;
-  const interactiveUrl = `${publicOrigin}/session/${encodeURIComponent(sessionId)}`;
+  return `${publicOrigin}/session/${encodeURIComponent(sessionId)}/${route}`;
+}
+
+/** `interactive-map-url.json` 只供客户端完整 Interactive 页面使用。 */
+function buildClientInteractiveUrl(sessionId: string): string {
+  return buildSessionUrl(sessionId, "interactive");
+}
+
+function runNoneVisualOutputFlow(): undefined {
+  return undefined;
+}
+
+function runScreenshotVisualOutputFlow(sessionId: string): string {
+  return buildSessionUrl(sessionId, "snapshot.webp");
+}
+
+function runInteractiveVisualOutputFlow(sessionId: string): string {
+  return buildSessionUrl(sessionId, "snapshot-interactive");
+}
+
+/** AI 视觉 URL 只由请求的单一分支生成，不附带客户端 Interactive URL。 */
+function resolveAiVisualUrl(sessionId: string, visualOutput: ToolFlowInputType["toolInput"]["visual_output"]): string | undefined {
   switch (visualOutput) {
     case "none":
-      return {interactiveUrl};
+      return runNoneVisualOutputFlow();
     case "screenshot":
-      return {interactiveUrl, visualUrl: `${interactiveUrl}/snapshot.webp`};
+      return runScreenshotVisualOutputFlow(sessionId);
     case "interactive":
-      return {interactiveUrl, visualUrl: `${interactiveUrl}/snapshot`};
+      return runInteractiveVisualOutputFlow(sessionId);
   }
 }
 
-/** 后端发布子流程：一次准备目录并并发写入快速产物。 */
-async function publishBackendFiles(
-  sessionId: string,
-  files: Parameters<typeof writeSessionFiles>[1],
-  signal: AbortSignal,
-): Promise<void> {
-  await writeSessionFiles(sessionId, files, {signal});
-}
-
-/** 前端发布子流程：并发渲染 WebP，但只在后端目录准备成功后追加文件。 */
-async function publishFrontendSnapshot(
-  sessionId: string,
-  snapshotRuntime: RunToolFlowResultType["snapshot_runtime"],
-  backendFilesPromise: Promise<void>,
-  signal: AbortSignal,
-  snapshotService: SnapshotService,
-): Promise<void> {
-  const image = await snapshotService.capture(snapshotRuntime, signal);
-  await backendFilesPromise;
-  await writeSnapshotFile(sessionId, image, {signal});
+/** 部署总开关、请求开关与实际数据必须同时成立才发布 Overlay JSON。 */
+function resolveOverlayGeoJsonOutput(
+  input: ToolFlowInputType,
+  result: RunToolFlowResultType,
+): NonNullable<InteractiveMapArchiveType["overlay_output"]> | undefined {
+  const outputConfig = config.getAppSection("output", outputConfigSchema);
+  if (!outputConfig.allow_overlay_geojson || input.toolInput.include_overlay_geojson !== true) return undefined;
+  return result.interactive_archive.overlay_output ?? undefined;
 }
 
 /**
- * 两条发布子流程共享同一 signal。任一分支失败后先取消并等待兄弟分支，
- * 再删除整个 Session 目录，避免晚到写入重建残片。
+ * 先写入公开页面需要的快速产物并登记 Session，再访问真实
+ * `/snapshot-interactive` 页面截图。AI URL 必须在本函数全部成功后才由上层组装。
  */
 async function publishSessionArtifacts(
   sessionId: string,
   files: Parameters<typeof writeSessionFiles>[1],
   snapshotRuntime: RunToolFlowResultType["snapshot_runtime"],
+  sessionRecord: SessionIndexRecordType,
   context: ToolExecutionContextType,
-  snapshotService: SnapshotService,
+  services: ToolFlowServicesType,
 ): Promise<void> {
-  const siblingController = new AbortController();
-  const branchSignal = AbortSignal.any([context.signal, siblingController.signal]);
-  const observeFailure = <T>(promise: Promise<T>): Promise<T> => promise.catch((error: unknown) => {
-    if (!siblingController.signal.aborted) siblingController.abort(error);
-    throw error;
-  });
-
-  const backendFilesPromise = observeFailure(publishBackendFiles(sessionId, files, branchSignal));
-  const frontendSnapshotPromise = observeFailure(publishFrontendSnapshot(
-    sessionId,
-    snapshotRuntime,
-    backendFilesPromise,
-    branchSignal,
-    snapshotService,
-  ));
-  const branches: Promise<unknown>[] = [backendFilesPromise, frontendSnapshotPromise];
-
+  let sessionRegistered = false;
   try {
-    const results = await Promise.allSettled(branches);
-    const failedResult = results.find((result): result is PromiseRejectedResult => result.status === "rejected");
-    if (failedResult !== undefined) throw failedResult.reason;
+    await writeSessionFiles(sessionId, files, {signal: context.signal});
+    context.throwIfAborted();
+    services.sessionManager.registerSession(sessionId, sessionRecord);
+    sessionRegistered = true;
+
+    const image = await services.snapshotService.capture(sessionId, snapshotRuntime, context.signal);
+    context.throwIfAborted();
+    await writeSnapshotFile(sessionId, image, {signal: context.signal});
     context.throwIfAborted();
     if (!await sessionFilesAreComplete(sessionId)) {
       throw new AppError("file_session_incomplete", "Session files are incomplete after publication", sessionId);
     }
+    // 临时开放期间若缺失 snapshot 的提前请求撤销了 RAM 记录，最终核验后用同一 record 恢复正式登记。
+    services.sessionManager.registerSession(sessionId, sessionRecord);
   } catch (error) {
-    if (!siblingController.signal.aborted) siblingController.abort(error);
-    await Promise.allSettled(branches);
+    if (sessionRegistered) services.sessionManager.unregisterSession(sessionId);
     try {
       await cleanupSessionFiles(sessionId);
     } catch (cleanupError) {
@@ -328,29 +326,26 @@ export async function publishToolFlow(
   });
   // Basemap-only 没有 AI Output，因此不生成空 YAML 文件或返回字段。
   const aiOutputYaml = result.ai_output === null ? undefined : generateAiOutputYaml(result.ai_output, result.info);
-  const overlayOutput = input.toolInput.include_overlay_geojson === true
-    ? result.interactive_archive.overlay_output ?? undefined
-    : undefined;
+  const overlayOutput = resolveOverlayGeoJsonOutput(input, result);
   const overlayOutputJson = overlayOutput === undefined ? undefined : serializeOverlayJson(overlayOutput);
-  const urls = resolvePublishedUrls(result.session_id, input.toolInput.visual_output);
+  const clientInteractiveUrl = buildClientInteractiveUrl(result.session_id);
 
-  // 同 ID 重建开始后旧目录会被 writer 删除，先关闭旧 RAM 入口，避免固定 URL 暴露半成品。
+  // 同 ID 重建开始后旧目录会被 writer 删除，先关闭旧 RAM 入口。
   services.sessionManager.unregisterSession(result.session_id);
   await publishSessionArtifacts(result.session_id, {
     selectedQuery,
     interactiveMap: result.interactive_archive,
     aiOutputYaml,
-    interactiveMapUrl: {url: urls.interactiveUrl},
+    interactiveMapUrl: {url: clientInteractiveUrl},
     overlayOutput,
-  }, result.snapshot_runtime, context, services.snapshotService);
+  }, result.snapshot_runtime, sessionRecord, context, services);
   context.throwIfAborted();
-  services.sessionManager.registerSession(result.session_id, sessionRecord);
+  const visualUrl = resolveAiVisualUrl(result.session_id, input.toolInput.visual_output);
 
   return Object.freeze({
     session_id: result.session_id,
     ...(aiOutputYaml === undefined ? {} : {ai_output_yaml: aiOutputYaml}),
     ...(overlayOutputJson === undefined ? {} : {overlay_output_json: overlayOutputJson}),
-    ...(urls.visualUrl === undefined ? {} : {visual_url: urls.visualUrl}),
-    interactive_url: urls.interactiveUrl,
+    ...(visualUrl === undefined ? {} : {visual_url: visualUrl}),
   });
 }

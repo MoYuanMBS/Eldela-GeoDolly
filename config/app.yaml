@@ -180,6 +180,11 @@ basemap:
   # Snapshot 固定首屏所需瓦片的最低成功比例；缺失但达到阈值时 warning 后继续发布。
   snapshot_min_tile_success_ratio: 0.8
 
+# AI-facing 独立输出开关。
+output:
+  # false 时即使 Tool 请求 include_overlay_geojson=true，也不返回或写入 Overlay JSON。
+  allow_overlay_geojson: true
+
 # Browser UI 可公开调节参数。
 ui:
   # 是否挂载 Interactive UI 的 8 个可选装饰 SVG；关闭不影响 divider、图标和其他必要 UI 素材。

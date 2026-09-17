@@ -2,6 +2,7 @@
 
 import {chromium, type Browser, type BrowserContext} from "playwright";
 import type {SnapshotConfigType} from "../models/backend/config-models.js";
+import type {IndexSessionIdType} from "../models/backend/session-id-models.js";
 import {
   snapshotBrowserReadySummarySchema,
   snapshotDiagnosticsSchema,
@@ -10,7 +11,6 @@ import {
 } from "../models/web/snapshot-ui-models.js";
 import {AppError} from "../utils/app-error.js";
 import {logger, recordBrowserWarning} from "../utils/logger.js";
-import type {SnapshotTokenStore} from "./snapshot-token-store.js";
 
 const SNAPSHOT_WRAPPER_SELECTOR = ".geomcp-snapshot-wrapper";
 const PAGE_FRAME_PADDING_PX = 48;
@@ -38,7 +38,6 @@ export class SnapshotService {
   private readonly activeContexts = new Set<BrowserContext>();
 
   constructor(
-    private readonly tokenStore: SnapshotTokenStore,
     private readonly internalMapOrigin: string,
     private readonly config: SnapshotConfigType,
   ) {}
@@ -55,10 +54,10 @@ export class SnapshotService {
   }
 
   /**
-   * 在调用方现有 deadline signal 内完成一次截图，只返回 WebP bytes。
-   * 文件写入与 session 发布由后续 Tool Flow 持有，本服务不会提前暴露或落盘产物。
+   * 在调用方现有 deadline signal 内打开已登记 Session 的 Snapshot Interactive 页面，
+   * 完成截图后只返回 WebP bytes。文件写入仍由 Tool Flow 持有。
    */
-  async capture(payload: unknown, signal: AbortSignal): Promise<Buffer> {
+  async capture(sessionId: IndexSessionIdType, payload: unknown, signal: AbortSignal): Promise<Buffer> {
     requireActiveSignal(signal);
     const browser = this.browser;
     if (browser === null) throw new AppError("snapshot_browser_not_started", "Snapshot service must be started before capture");
@@ -79,7 +78,6 @@ export class SnapshotService {
       });
     }
 
-    const token = this.tokenStore.issue(snapshotData);
     let context: BrowserContext | null = null;
     const closeContextOnAbort = (): void => {
       if (context !== null) void context.close().catch((error: unknown) => recordCleanupWarning("snapshot_context_close_failed", error));
@@ -94,7 +92,14 @@ export class SnapshotService {
       this.activeContexts.add(context);
       requireActiveSignal(signal);
       const page = await context.newPage();
-      await page.goto(`${this.internalMapOrigin}/_geomcp/snapshot/${token}`, {waitUntil: "domcontentloaded", timeout: 0});
+      const snapshotPageUrl = `${this.internalMapOrigin}/session/${encodeURIComponent(sessionId)}/snapshot-interactive`;
+      const pageResponse = await page.goto(snapshotPageUrl, {waitUntil: "domcontentloaded", timeout: 0});
+      if (pageResponse === null || !pageResponse.ok()) {
+        throw new AppError("snapshot_page_request", "Snapshot Interactive page could not be loaded", {
+          url: snapshotPageUrl,
+          status: pageResponse?.status() ?? null,
+        });
+      }
       requireActiveSignal(signal);
 
       const devicePixelRatio = await page.evaluate(() => window.devicePixelRatio);
@@ -184,7 +189,6 @@ export class SnapshotService {
       throw AppError.fromUnknown(error, "snapshot_capture", "Snapshot capture failed");
     } finally {
       signal.removeEventListener("abort", closeContextOnAbort);
-      this.tokenStore.revoke(token);
       if (context !== null) {
         this.activeContexts.delete(context);
         await context.close().catch((error: unknown) => recordCleanupWarning("snapshot_context_close_failed", error));
@@ -192,7 +196,7 @@ export class SnapshotService {
     }
   }
 
-  /** 关闭全部进行中的页面与共享 browser，并撤销尚未消费的内部 token。 */
+  /** 关闭全部进行中的页面与共享 browser。 */
   async close(): Promise<boolean> {
     const browser = this.browser;
     this.browser = null;
@@ -200,7 +204,6 @@ export class SnapshotService {
     this.activeContexts.clear();
     await Promise.all(contexts.map(async (context) => context.close().catch((error: unknown) => recordCleanupWarning("snapshot_context_close_failed", error))));
     if (browser !== null) await browser.close().catch((error: unknown) => recordCleanupWarning("snapshot_browser_close_failed", error));
-    this.tokenStore.clear();
     return true;
   }
 }

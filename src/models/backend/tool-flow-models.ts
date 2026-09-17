@@ -115,5 +115,4 @@ export type PublishedToolFlowResultType = Readonly<{
   ai_output_yaml?: string;
   overlay_output_json?: string;
   visual_url?: string;
-  interactive_url: string;
 }>;

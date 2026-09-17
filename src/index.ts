@@ -16,7 +16,6 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import {closeMapHttpService, createMapHttpService, getInternalMapOrigin, listenMapHttpService} from "./http/map-http-service.js";
 import {SessionManager} from "./map-session/session-manager.js";
 import {SnapshotService} from "./map-session/snapshot-service.js";
-import {SnapshotTokenStore} from "./map-session/snapshot-token-store.js";
 import {
   type AiToolInputReqType,
   type LocSearchReplyRawType,
@@ -157,10 +156,9 @@ async function main() {
   initializeUserStyle();
   const webConfig = config.getWebConfig();
   const sessionManager = new SessionManager(webConfig.session);
-  const snapshotTokenStore = new SnapshotTokenStore();
-  const snapshotService = new SnapshotService(snapshotTokenStore, getInternalMapOrigin(webConfig.http), webConfig.snapshot);
+  const snapshotService = new SnapshotService(getInternalMapOrigin(webConfig.http), webConfig.snapshot);
   const toolScheduler = new ToolExecutionScheduler(webConfig.tool_execution);
-  const mapHttpService = createMapHttpService(webConfig, snapshotTokenStore, sessionManager);
+  const mapHttpService = createMapHttpService(webConfig, sessionManager);
   // GeoMCP 当前先使用 stdio transport，供本地 MCP client / AI 进程拉起。
   const server = buildServer(toolScheduler, {sessionManager, snapshotService});
   const transport = new StdioServerTransport();
@@ -172,7 +170,6 @@ async function main() {
       await toolScheduler.close();
       await snapshotService.close();
       await closeMapHttpService(mapHttpService);
-      snapshotTokenStore.clear();
       await sessionManager.close();
       await server.close();
     })();

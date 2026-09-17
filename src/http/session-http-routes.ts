@@ -15,7 +15,7 @@ import {
 } from "../utils/file-writer.js";
 import {AppError} from "../utils/app-error.js";
 
-const SESSION_ROUTE_PATTERN = /^\/session\/([^/]+)(?:\/(status|data|snapshot|snapshot\/data|snapshot\.webp))?$/u;
+const SESSION_ROUTE_PATTERN = /^\/session\/([^/]+)\/(status|interactive|interactive\/data|snapshot-interactive|snapshot-interactive\/data|snapshot\.webp)$/u;
 const INTERACTIVE_FLOW_ATTRIBUTE = 'data-geomcp-browser-flow="interactive"';
 const MAP_DATA_META_PATTERN = /<meta\s+name="geomcp-map-data-url"\s+content="[^"]*"\s*\/>/u;
 
@@ -31,7 +31,7 @@ interface PublicSessionHtmlOptions {
   snapshotUrl: string;
 }
 
-/** 同一 Browser build 同时服务内部 Snapshot、公开 Interactive 与公开 Snapshot。 */
+/** 同一 Browser build 同时服务公开 Interactive 与 Snapshot Interactive 页面。 */
 export function buildMapBrowserHtml(
   htmlTemplate: string,
   flow: "interactive" | "snapshot",
@@ -111,7 +111,7 @@ export async function resolveSessionHttpRoute(
   const missingArchiveResponse = await removeMissingArchive(sessionManager, sessionId);
   if (missingArchiveResponse !== null) return missingArchiveResponse;
 
-  const route = routeMatch[2] ?? "page";
+  const route = routeMatch[2];
   if (route === "status") {
     const status: SessionHttpStatusType = lookup.status === "active"
       ? {status: "active", recheck_after_ms: recheckAfterMilliseconds(sessionConfig)}
@@ -119,7 +119,7 @@ export async function resolveSessionHttpRoute(
     return jsonResponse(status);
   }
 
-  if (route === "data" || route === "snapshot/data") {
+  if (route === "interactive/data" || route === "snapshot-interactive/data") {
     if (lookup.status === "archived") return emptyResponse(410);
     const archive = await readInteractiveMapArchiveFile(sessionId);
     if (archive === null) {
@@ -127,7 +127,7 @@ export async function resolveSessionHttpRoute(
       return emptyResponse(404);
     }
     const runtime = buildMapRuntimePayloads(archive);
-    return jsonResponse(route === "data" ? runtime.interactive : runtime.snapshot);
+    return jsonResponse(route === "interactive/data" ? runtime.interactive : runtime.snapshot);
   }
 
   if (route === "snapshot.webp") {
@@ -144,8 +144,10 @@ export async function resolveSessionHttpRoute(
 
   const encodedSessionId = encodeURIComponent(sessionId);
   const basePath = `/session/${encodedSessionId}`;
-  const flow = route === "snapshot" ? "snapshot" : "interactive";
-  const dataUrl = flow === "snapshot" ? `${basePath}/snapshot/data` : `${basePath}/data`;
+  const flow = route === "snapshot-interactive" ? "snapshot" : "interactive";
+  const dataUrl = flow === "snapshot"
+    ? `${basePath}/snapshot-interactive/data`
+    : `${basePath}/interactive/data`;
   const html = buildMapBrowserHtml(htmlTemplate, flow, dataUrl, {
     status: lookup.status,
     statusUrl: `${basePath}/status`,

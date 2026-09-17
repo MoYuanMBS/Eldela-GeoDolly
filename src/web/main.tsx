@@ -55,7 +55,7 @@ if (hasAnySessionMetadata) {
     );
   }
 } else if (browserFlow === "interactive") {
-  // 非 Session 页面保持既有入口；内部 Snapshot token 不经过公开状态检查。
+  // 非 Session 页面仅供预构建产物直接预览，不经过公开 Session 状态检查。
   const [{MapPage}, {MapSurfaceView}] = await Promise.all([
     import("./map-page.js"),
     import("../browser-map-flow/map-surface-view.js"),
