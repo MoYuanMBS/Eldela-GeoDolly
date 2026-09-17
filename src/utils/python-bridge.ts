@@ -34,7 +34,7 @@ import {AppError} from "./app-error.js";
 import { config } from "./config-loader.js";
 import {buildFinalSessionId} from "./session-id.js";
 
-const PYTHON_ENTRYPOINT = "python/main.py";
+const PYTHON_MODULE = "python.main";
 
 /**
  * 解析当前请求应使用的 Python 解释器。
@@ -186,7 +186,7 @@ function callPython<
 
   return new Promise((resolve, reject) => {
     // 启动 Python 入口程序。
-    const child = spawn(pythonExecutable, [PYTHON_ENTRYPOINT], {
+    const child = spawn(pythonExecutable, ["-m", PYTHON_MODULE], {
       // POSIX 使用独立进程组，取消时连同 Python 可能派生的子进程一起终止。
       detached: process.platform !== "win32",
       stdio: ["pipe", "pipe", "pipe"],

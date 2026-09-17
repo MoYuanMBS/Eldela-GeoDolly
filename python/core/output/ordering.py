@@ -133,15 +133,48 @@ def _to_geojson_geometry(geometry: overpass.OverlayGeometry) -> Overpass.Overlay
 
 ##### Shared ID Allocation #####
 
-def _collect_reserved_refs(features: list[overpass.MergedOverlayFeature]) -> set[str]:
-    """从聚合 properties 收集非空 ref，避免 canonical ID 与原始标识冲突。"""
+def _disambiguated_ref_candidate(
+    ref: str,
+    occurrence_index: int,
+    used_refs: set[str],
+    alphabet_pool: str
+) -> str:
+    """为重复 ref 生成可扩展后缀；候选仍冲突时继续在当前结果后追加后缀。"""
+    candidate = f"{ref}:{_bijective_alpha(occurrence_index, alphabet_pool)}"
+    collision_index = occurrence_index + 1
+    while candidate in used_refs:
+        candidate = f"{candidate}:{_bijective_alpha(collision_index, alphabet_pool)}"
+        collision_index += 1
+    return candidate
+
+
+def _disambiguate_refs_and_collect_reserved(
+    properties_by_feature: list[dict[str, list[str]]],
+    alphabet_pool: str
+) -> set[str]:
+    """先收齐命名空间内全部 ref，再为重复值按 Feature 顺序写入唯一后缀。"""
+    ref_positions_by_value: dict[str, list[tuple[int, int]]] = {}
     reserved_refs: set[str] = set()
-    for feature in features:
-        for ref in feature.properties.get("ref", []):
+
+    # 先保留全部原始 ref，生成的新值不能占用尚未遍历到的真实 ref。
+    for feature_index, properties in enumerate(properties_by_feature):
+        for ref_index, ref in enumerate(properties.get("ref", [])):
             normalized_ref = ref.strip().upper()
-            if normalized_ref:
-                reserved_refs.add(normalized_ref)
-    return reserved_refs
+            if not normalized_ref:
+                continue
+            reserved_refs.add(normalized_ref)
+            ref_positions_by_value.setdefault(normalized_ref, []).append((feature_index, ref_index))
+
+    used_refs = set(reserved_refs)
+    for ref, positions in ref_positions_by_value.items():
+        if len(positions) == 1:
+            continue
+        for occurrence_index, (feature_index, ref_index) in enumerate(positions, start=1):
+            candidate = _disambiguated_ref_candidate(ref, occurrence_index, used_refs, alphabet_pool)
+            properties_by_feature[feature_index]["ref"][ref_index] = candidate
+            used_refs.add(candidate)
+
+    return used_refs
 
 
 def _next_available_feature_id(
@@ -167,11 +200,15 @@ def _generate_namespace_feature_ids(
     alphabet_pool: str
 ) -> list[Overpass.IdentifiedOverlayFeature]:
     """为一个已排序类型命名空间依次分配唯一且不占用 ref 的 ID。"""
-    used_ids = _collect_reserved_refs(features)
+    properties_by_feature = [
+        {key: list(values) for key, values in feature.properties.items()}
+        for feature in features
+    ]
+    used_ids = _disambiguate_refs_and_collect_reserved(properties_by_feature, alphabet_pool)
     identified_features: list[Overpass.IdentifiedOverlayFeature] = []
     candidate_index = 1
 
-    for feature in features:
+    for feature, properties in zip(features, properties_by_feature):
         feature_id, candidate_index = _next_available_feature_id(
             candidate_index, used_ids, scheme, alphabet_pool
         )
@@ -179,7 +216,7 @@ def _generate_namespace_feature_ids(
             feature_id=feature_id,
             osm_id=list(feature.osm_id),
             feature_type=feature.feature_type,
-            properties={key: list(values) for key, values in feature.properties.items()},
+            properties=properties,
             geometry=_to_geojson_geometry(feature.geometry)
         ))
     return identified_features
@@ -205,16 +242,11 @@ def _generate_relation_feature_ids(
 ) -> list[Overpass.IdentifiedOverlayFeature]:
     """按 OSM ID 排序，为 Overlay relation 生成非空间 canonical ID。"""
     relation_inputs: list[tuple[int, dict[str, list[str]], list[Overpass.IdentifiedRelationMember]]] = []
-    reserved_refs: set[str] = set()
 
-    # 先收齐整个 relation 命名空间的 ref，再分配任何 ID，避免与较晚 relation 的 ref 冲突。
+    # relation 先按 OSM ID 完成稳定排序，之后与空间 Feature 使用同一套 ref 消歧规则。
     for osm_id, element in order_relations_by_osm_id(relations_by_id).items():
         tags = cast(dict[str, str], element["tags"])
         properties = {key: [value] for key, value in tags.items()}
-        for ref in properties.get("ref", []):
-            normalized_ref = ref.strip().upper()
-            if normalized_ref:
-                reserved_refs.add(normalized_ref)
 
         members = topology.relation_members_by_id.get(osm_id)
         if members is None:
@@ -227,6 +259,10 @@ def _generate_relation_feature_ids(
             {"type": member.type, "ref": member.ref, "role": member.role}
             for member in members
         ]))
+
+    reserved_refs = _disambiguate_refs_and_collect_reserved(
+        [properties for _, properties, _ in relation_inputs], alphabet_pool
+    )
 
     # relation 不参与空间排序；这里严格沿用上一步保存的 osm_id 升序。
     identified_relations: list[Overpass.IdentifiedOverlayFeature] = []
