@@ -1,24 +1,33 @@
 :root {
-  --geomcp-ui-text: #2f2f31;
-  --geomcp-ui-text-light: #5f5f5f;
-  --geomcp-ui-surface: #fff6f3;
-  --geomcp-ui-highlight: #ffc8bf;
-  --geomcp-ui-bar-end: #ff6a61;
-  --geomcp-background-color: #F2EEEA;
-  --geomcp-ui-border: #552c22;
-  --geomcp-ui-divider: #dc9292;
-  --geomcp-measurement-stroke: #585555;
-  --geomcp-measurement-band: #d8937c;
+  --geomcp-ui-text: #4F5158;
+  --geomcp-ui-text-light: #77747A;
+
+  --geomcp-ui-surface: #FFF7F2;
+  --geomcp-ui-highlight: #F2C1B5;
+  --geomcp-ui-bar-end: #DE715C;
+
+  --geomcp-background-color: #F3EEE8;
+
+  --geomcp-ui-border: #6D4038;
+  --geomcp-ui-divider: #C98E84;
+
+  --geomcp-measurement-stroke: #595A61;
+  --geomcp-measurement-band: #D9957F;
   --geomcp-measurement-band-opacity: 0.5;
-  --geomcp-scorebar-border: #552c22;
-  --geomcp-scorebar-fill: #f7c5bc;
-  --geomcp-scorebar-line: #9d312c;
-  --geomcp-scorebutton-hover: #f06b61;
+
+  --geomcp-scorebar-border: #6D4038;
+  --geomcp-scorebar-fill: #EEC2B7;
+  --geomcp-scorebar-line: #A44E42;
+
+  --geomcp-scorebutton-hover: #E86F5A;
   --geomcp-scorebutton-hover-opacity: 0.2;
-  --geomcp-scorebutton-pressed: #ec5d53;
+
+  --geomcp-scorebutton-pressed: #D95F4D;
   --geomcp-scorebutton-pressed-opacity: 0.3;
-  --geomcp-leaflet-hover: #f06b61;
+
+  --geomcp-leaflet-hover: #E86F5A;
   --geomcp-leaflet-hover-opacity: 0.3;
-  --geomcp-leaflet-selected: #ec5d53;
+
+  --geomcp-leaflet-selected: #D95F4D;
   --geomcp-leaflet-selected-opacity: 0.5;
 }
