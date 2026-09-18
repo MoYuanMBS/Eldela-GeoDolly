@@ -10,12 +10,14 @@
  * - `src/renderer/*`
  */
 
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import {registerAppTool} from "@modelcontextprotocol/ext-apps/server";
+import {McpServer} from "@modelcontextprotocol/sdk/server/mcp.js";
+import {StdioServerTransport} from "@modelcontextprotocol/sdk/server/stdio.js";
 
 import {closeMapHttpService, createMapHttpService, getInternalMapOrigin, listenMapHttpService} from "./http/map-http-service.js";
 import {SessionManager} from "./map-session/session-manager.js";
 import {SnapshotService} from "./map-session/snapshot-service.js";
+import {INTERACTIVE_MAP_LAUNCHER_URI, registerInteractiveMapLauncherResource} from "./mcp-apps/interactive-map-launcher-resource.js";
 import {
   type AiToolInputReqType,
   type LocSearchReplyRawType,
@@ -23,6 +25,7 @@ import {
   locSearchReplyRawSchema,
   AitoolInputReqSchema,
 } from "./models/backend/bridge-models.js";
+import type {PublishedToolFlowResultType} from "./models/backend/tool-flow-models.js";
 import type {ToolFlowServicesType} from "./tools/tool-flow.js";
 import {ToolExecutionScheduler} from "./tools/tool-execution-scheduler.js";
 import {funcToolA, funcToolB} from "./tools/tools.js";
@@ -48,6 +51,14 @@ function createTextToolResult(text: string, isError = false) {
       },
     ],
     isError,
+  };
+}
+
+/** 客户端 URL 只进入 `_meta`，AI-facing JSON 只序列化已经分离的 `ai_output`。 */
+function createPublishedToolResult(publication: PublishedToolFlowResultType) {
+  return {
+    ...createTextToolResult(JSON.stringify(publication.ai_output, null, 2)),
+    _meta: {"io.geomcp/interactiveMap": publication.client_output},
   };
 }
 
@@ -78,7 +89,7 @@ async function executeToolARequest(
   try {
     const cachedResponse = getCachedSearchResponse(args.session_id);
     const toolResponse = await scheduler.run((context) => funcToolA(cachedResponse, args, context, services));
-    return createTextToolResult(JSON.stringify(toolResponse, null, 2));
+    return createPublishedToolResult(toolResponse);
   } catch (error) {
     return createErrorToolResult(error);
   }
@@ -92,18 +103,19 @@ async function executeToolBRequest(
   try {
     const cachedResponse = getCachedSearchResponse(args.session_id);
     const toolResponse = await scheduler.run((context) => funcToolB(cachedResponse, args, context, services));
-    return createTextToolResult(JSON.stringify(toolResponse, null, 2));
+    return createPublishedToolResult(toolResponse);
   } catch (error) {
     return createErrorToolResult(error);
   }
 }
 
-function buildServer(scheduler: ToolExecutionScheduler, services: ToolFlowServicesType) {
+function buildServer(scheduler: ToolExecutionScheduler, services: ToolFlowServicesType, publicOrigin: string) {
   const toolPromptsConfig = getToolPromptsConfigWithHints();
   const server = new McpServer({
     name: "geomcp",
     version: "0.1.0",
   });
+  registerInteractiveMapLauncherResource(server, publicOrigin);
 
   server.registerTool(
     "location_search",
@@ -127,22 +139,26 @@ function buildServer(scheduler: ToolExecutionScheduler, services: ToolFlowServic
     },
   );
 
-  server.registerTool(
+  registerAppTool(
+    server,
     "tool_a",
     {
       title: toolPromptsConfig.tool_a.title,
       description: toolPromptsConfig.tool_a.description,
       inputSchema: AitoolInputReqSchema,
+      _meta: {ui: {resourceUri: INTERACTIVE_MAP_LAUNCHER_URI, visibility: ["model"]}},
     },
     async (args) => executeToolARequest(args, scheduler, services),
   );
 
-  server.registerTool(
+  registerAppTool(
+    server,
     "tool_b",
     {
       title: toolPromptsConfig.tool_b.title,
       description: toolPromptsConfig.tool_b.description,
       inputSchema: AitoolInputReqSchema,
+      _meta: {ui: {resourceUri: INTERACTIVE_MAP_LAUNCHER_URI, visibility: ["model"]}},
     },
     async (args) => executeToolBRequest(args, scheduler, services),
   );
@@ -160,7 +176,7 @@ async function main() {
   const toolScheduler = new ToolExecutionScheduler(webConfig.tool_execution);
   const mapHttpService = createMapHttpService(webConfig, sessionManager);
   // GeoMCP 当前先使用 stdio transport，供本地 MCP client / AI 进程拉起。
-  const server = buildServer(toolScheduler, {sessionManager, snapshotService});
+  const server = buildServer(toolScheduler, {sessionManager, snapshotService}, webConfig.http.map.public_origin);
   const transport = new StdioServerTransport();
   let shutdownPromise: Promise<void> | null = null;
 

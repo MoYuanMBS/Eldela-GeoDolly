@@ -156,6 +156,6 @@ export async function resolveSessionHttpRoute(
   return {
     statusCode: 200,
     body: html,
-    headers: {"content-type": "text/html; charset=utf-8"},
+    headers: {"content-type": "text/html; charset=utf-8", "referrer-policy": "no-referrer"},
   };
 }

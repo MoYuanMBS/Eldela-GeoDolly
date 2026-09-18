@@ -343,9 +343,12 @@ export async function publishToolFlow(
   const visualUrl = resolveAiVisualUrl(result.session_id, input.toolInput.visual_output);
 
   return Object.freeze({
-    session_id: result.session_id,
-    ...(aiOutputYaml === undefined ? {} : {ai_output_yaml: aiOutputYaml}),
-    ...(overlayOutputJson === undefined ? {} : {overlay_output_json: overlayOutputJson}),
-    ...(visualUrl === undefined ? {} : {visual_url: visualUrl}),
+    ai_output: Object.freeze({
+      session_id: result.session_id,
+      ...(aiOutputYaml === undefined ? {} : {ai_output_yaml: aiOutputYaml}),
+      ...(overlayOutputJson === undefined ? {} : {overlay_output_json: overlayOutputJson}),
+      ...(visualUrl === undefined ? {} : {visual_url: visualUrl}),
+    }),
+    client_output: Object.freeze({url: clientInteractiveUrl}),
   });
 }

@@ -109,10 +109,21 @@ export type RunToolFlowResultType = Readonly<{
   info: string;
 }>;
 
-/** `tools.ts` 返回给后续 MCP content 组装层的唯一已发布结果。 */
-export type PublishedToolFlowResultType = Readonly<{
+/** 只允许进入 MCP `content` 的 AI-facing 发布结果。 */
+export type AiPublishedToolFlowResultType = Readonly<{
   session_id: string;
   ai_output_yaml?: string;
   overlay_output_json?: string;
   visual_url?: string;
+}>;
+
+/** 只允许进入 MCP Tool Result `_meta` 的客户端完整 Interactive 地址。 */
+export type ClientPublishedToolFlowResultType = Readonly<{
+  url: string;
+}>;
+
+/** Tool Flow 在构造阶段就分离 AI 与客户端发布路径，禁止先混合再删除敏感字段。 */
+export type PublishedToolFlowResultType = Readonly<{
+  ai_output: AiPublishedToolFlowResultType;
+  client_output: ClientPublishedToolFlowResultType;
 }>;
