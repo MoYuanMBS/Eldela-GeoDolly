@@ -19,15 +19,14 @@ import {SessionManager} from "./map-session/session-manager.js";
 import {SnapshotService} from "./map-session/snapshot-service.js";
 import {INTERACTIVE_MAP_LAUNCHER_URI, registerInteractiveMapLauncherResource} from "./mcp-apps/interactive-map-launcher-resource.js";
 import {
-  type AiToolInputReqType,
   type LocSearchReplyRawType,
   locSearchQueryReqSchema,
   locSearchReplyRawSchema,
   AitoolInputReqSchema,
 } from "./models/backend/bridge-models.js";
-import type {PublishedToolFlowResultType} from "./models/backend/tool-flow-models.js";
 import type {ToolFlowServicesType} from "./tools/tool-flow.js";
 import {ToolExecutionScheduler} from "./tools/tool-execution-scheduler.js";
+import {createErrorToolResult, createPublishedMapToolHandler, createTextToolResult} from "./tools/mcp-tool-handler.js";
 import {funcToolA, funcToolB} from "./tools/tools.js";
 import {AppError} from "./utils/app-error.js";
 import { getToolPromptsConfigWithHints } from "./utils/prompt-hints.js";
@@ -42,35 +41,6 @@ import {logger} from "./utils/logger.js";
 //#################################################################################
 const searchResultCache = new Map<string, LocSearchReplyRawType>();
 
-function createTextToolResult(text: string, isError = false) {
-  return {
-    content: [
-      {
-        type: "text" as const,
-        text,
-      },
-    ],
-    isError,
-  };
-}
-
-/** 客户端 URL 只进入 `_meta`，AI-facing JSON 只序列化已经分离的 `ai_output`。 */
-function createPublishedToolResult(publication: PublishedToolFlowResultType) {
-  return {
-    ...createTextToolResult(JSON.stringify(publication.ai_output, null, 2)),
-    _meta: {"io.geomcp/interactiveMap": publication.client_output},
-  };
-}
-
-/**
- * 统一把运行时错误转换成 MCP text error result。
- * 这样 tool handler 不会把异常直接抛到 transport 层。
- */
-function createErrorToolResult(error: unknown) {
-  const appError = AppError.fromUnknown(error, "internal_error", "Unexpected TypeScript processing error");
-  return createTextToolResult(JSON.stringify(appError.toJSON(), null, 2), true);
-}
-
 function getCachedSearchResponse(sessionId: string): LocSearchReplyRawType {
   const cachedResponse = searchResultCache.get(sessionId);
 
@@ -81,34 +51,6 @@ function getCachedSearchResponse(sessionId: string): LocSearchReplyRawType {
   return cachedResponse;
 }
 
-async function executeToolARequest(
-  args: AiToolInputReqType,
-  scheduler: ToolExecutionScheduler,
-  services: ToolFlowServicesType,
-) {
-  try {
-    const cachedResponse = getCachedSearchResponse(args.session_id);
-    const toolResponse = await scheduler.run((context) => funcToolA(cachedResponse, args, context, services));
-    return createPublishedToolResult(toolResponse);
-  } catch (error) {
-    return createErrorToolResult(error);
-  }
-}
-
-async function executeToolBRequest(
-  args: AiToolInputReqType,
-  scheduler: ToolExecutionScheduler,
-  services: ToolFlowServicesType,
-) {
-  try {
-    const cachedResponse = getCachedSearchResponse(args.session_id);
-    const toolResponse = await scheduler.run((context) => funcToolB(cachedResponse, args, context, services));
-    return createPublishedToolResult(toolResponse);
-  } catch (error) {
-    return createErrorToolResult(error);
-  }
-}
-
 function buildServer(scheduler: ToolExecutionScheduler, services: ToolFlowServicesType, publicOrigin: string) {
   const toolPromptsConfig = getToolPromptsConfigWithHints();
   const server = new McpServer({
@@ -116,6 +58,7 @@ function buildServer(scheduler: ToolExecutionScheduler, services: ToolFlowServic
     version: "0.1.0",
   });
   registerInteractiveMapLauncherResource(server, publicOrigin);
+  const mapToolHandlerOptions = {scheduler, services, getCachedSelection: getCachedSearchResponse};
 
   server.registerTool(
     "location_search",
@@ -148,7 +91,7 @@ function buildServer(scheduler: ToolExecutionScheduler, services: ToolFlowServic
       inputSchema: AitoolInputReqSchema,
       _meta: {ui: {resourceUri: INTERACTIVE_MAP_LAUNCHER_URI, visibility: ["model"]}},
     },
-    async (args) => executeToolARequest(args, scheduler, services),
+    createPublishedMapToolHandler(funcToolA, mapToolHandlerOptions),
   );
 
   registerAppTool(
@@ -160,7 +103,7 @@ function buildServer(scheduler: ToolExecutionScheduler, services: ToolFlowServic
       inputSchema: AitoolInputReqSchema,
       _meta: {ui: {resourceUri: INTERACTIVE_MAP_LAUNCHER_URI, visibility: ["model"]}},
     },
-    async (args) => executeToolBRequest(args, scheduler, services),
+    createPublishedMapToolHandler(funcToolB, mapToolHandlerOptions),
   );
 
   return server;

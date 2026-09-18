@@ -1,8 +1,6 @@
 import {App, type McpUiHostContext} from "@modelcontextprotocol/ext-apps";
 
 const INTERACTIVE_MAP_META_KEY = "io.geomcp/interactiveMap";
-const DEFAULT_INLINE_HEIGHT_PX = 720;
-const LOAD_NOTICE_DELAY_MS = 8_000;
 const FINAL_SESSION_PATH_PATTERN = /^\/session\/\d{2}[0-9ab][0-9a-f]{8}-[1-9]\d*\/interactive$/u;
 
 function requireElement<T extends HTMLElement>(id: string): T {
@@ -11,9 +9,17 @@ function requireElement<T extends HTMLElement>(id: string): T {
   return element as T;
 }
 
+function readNumberMeta(name: string): number {
+  const rawValue = document.querySelector<HTMLMetaElement>(`meta[name="${name}"]`)?.content;
+  if (rawValue === undefined) throw new Error(`Launcher configuration is missing: ${name}`);
+  return Number(rawValue);
+}
+
 const publicOriginMeta = document.querySelector<HTMLMetaElement>('meta[name="geomcp-public-origin"]');
 if (publicOriginMeta === null) throw new Error("GeoMCP public origin metadata is missing");
 const publicOrigin = new URL(publicOriginMeta.content).origin;
+const preferredInlineHeightPx = readNumberMeta("geomcp-launcher-preferred-height-px");
+const loadNoticeDelayMs = readNumberMeta("geomcp-launcher-load-notice-delay-ms");
 const root = requireElement<HTMLElement>("app-root");
 const message = requireElement<HTMLElement>("launcher-message");
 const frameShell = requireElement<HTMLElement>("map-frame-shell");
@@ -75,7 +81,7 @@ function showInteractiveMap(url: string): void {
   root.dataset.state = "ready";
   loadNoticeTimer = window.setTimeout(() => {
     fallbackStatus.textContent = "If the map is blank or still loading, open it in a browser or copy the URL.";
-  }, LOAD_NOTICE_DELAY_MS);
+  }, loadNoticeDelayMs);
 }
 
 function readInteractiveMapUrl(meta: unknown): string | null {
@@ -99,7 +105,7 @@ function applyHostDimensions(context: McpUiHostContext | undefined): void {
   }
 
   const maximumHeight = dimensions !== undefined && "maxHeight" in dimensions ? positiveDimension(dimensions.maxHeight) : null;
-  const preferredHeight = maximumHeight === null ? DEFAULT_INLINE_HEIGHT_PX : Math.min(DEFAULT_INLINE_HEIGHT_PX, maximumHeight);
+  const preferredHeight = maximumHeight === null ? preferredInlineHeightPx : Math.min(preferredInlineHeightPx, maximumHeight);
   document.documentElement.style.height = `${preferredHeight}px`;
   root.style.height = `${preferredHeight}px`;
   if (appConnected) void app.sendSizeChanged({height: preferredHeight}).catch(() => undefined);

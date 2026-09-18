@@ -30,6 +30,7 @@ import type {
   NonCoreMapPayloadType,
 } from "../mapsurface/map-payload-models.js";
 import type {InteractiveMapArchiveType} from "./map-session-models.js";
+import type {ToolExecutionContextType} from "./tool-execution-models.js";
 import type {InteractiveMapDataType} from "../web/interactive-ui-models.js";
 import type {SnapshotMapDataType} from "../web/snapshot-ui-models.js";
 
@@ -127,3 +128,11 @@ export type PublishedToolFlowResultType = Readonly<{
   ai_output: AiPublishedToolFlowResultType;
   client_output: ClientPublishedToolFlowResultType;
 }>;
+
+/** MCP handler 可装饰的已发布地图 Tool executor；Services 保持泛型，避免 models 反向依赖实现层。 */
+export type PublishedMapToolExecutorType<ServicesType> = (
+  cachedSelection: LocSearchReplyRawType,
+  toolInput: AiToolInputReqType,
+  context: ToolExecutionContextType,
+  services: ServicesType,
+) => Promise<PublishedToolFlowResultType>;

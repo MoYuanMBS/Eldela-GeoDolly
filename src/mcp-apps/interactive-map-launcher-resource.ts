@@ -4,7 +4,9 @@ import path from "node:path";
 import {registerAppResource, RESOURCE_MIME_TYPE} from "@modelcontextprotocol/ext-apps/server";
 import type {McpServer} from "@modelcontextprotocol/sdk/server/mcp.js";
 
+import {mcpAppsConfigSchema} from "../models/backend/config-models.js";
 import {AppError} from "../utils/app-error.js";
+import {config} from "../utils/config-loader.js";
 
 export const INTERACTIVE_MAP_LAUNCHER_URI = "ui://geomcp/interactive-map-launcher/v1.html";
 
@@ -21,6 +23,7 @@ function escapeHtmlAttribute(value: string): string {
 }
 
 function buildLauncherHtml(publicOrigin: string, script: string): string {
+  const launcherConfig = config.getAppSection("mcp_apps", mcpAppsConfigSchema).interactive_map_launcher;
   const inlineScript = script.replace(/<\/script/giu, "<\\/script");
   return `<!doctype html>
 <html lang="en">
@@ -29,6 +32,8 @@ function buildLauncherHtml(publicOrigin: string, script: string): string {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
     <meta name="geomcp-public-origin" content="${escapeHtmlAttribute(publicOrigin)}" />
+    <meta name="geomcp-launcher-preferred-height-px" content="${launcherConfig.preferred_height_px}" />
+    <meta name="geomcp-launcher-load-notice-delay-ms" content="${launcherConfig.load_notice_delay_ms}" />
     <style>
       :root { background: transparent; color: CanvasText; font: 13px/1.4 system-ui, sans-serif; }
       * { box-sizing: border-box; }

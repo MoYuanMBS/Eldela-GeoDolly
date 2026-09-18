@@ -9,7 +9,7 @@ import path from "node:path";
 import type { ZodType } from "zod";
 import { parse } from "yaml";
 import {basemapProfileRegistrySchema, type BasemapProfileRegistryType} from "../models/common/basemap-models.js";
-import {basemapConfigSchema, browserMapConfigSchema, featureIdDisplayConfigSchema, iframeAdaptiveConfigSchema, leafletConfigSchema, outputConfigSchema, toolPromptsConfigSchema, uiConfigSchema, webConfigSchema, type WebConfigType} from "../models/backend/config-models.js";
+import {basemapConfigSchema, browserMapConfigSchema, featureIdDisplayConfigSchema, iframeAdaptiveConfigSchema, leafletConfigSchema, mcpAppsConfigSchema, outputConfigSchema, toolPromptsConfigSchema, uiConfigSchema, webConfigSchema, type WebConfigType} from "../models/backend/config-models.js";
 import {AppError} from "./app-error.js";
 
 /**
@@ -35,6 +35,7 @@ export class ConfigLoader {
     this.getAppSection("feature_id", featureIdDisplayConfigSchema);
     this.getAppSection("iframe_adaptive", iframeAdaptiveConfigSchema);
     this.getAppSection("browser_map", browserMapConfigSchema);
+    this.getAppSection("mcp_apps", mcpAppsConfigSchema);
     this.getAppSection("ui", uiConfigSchema);
     this.getAppSection("basemap", basemapConfigSchema);
     this.getAppSection("output", outputConfigSchema);

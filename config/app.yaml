@@ -173,6 +173,14 @@ browser_map:
   # 该值必须小于 ready_timeout_seconds，以便 Proxy 挂起时仍有时间回退到原始瓦片源。
   proxy_tile_timeout_seconds: 8
 
+# MCP Apps 客户端展示参数；协议字段与安全校验保持内建，不允许由配置改写。
+mcp_apps:
+  interactive_map_launcher:
+    # Host 没有提供固定高度时请求的首选 CSS 高度，仍会受 Host maxHeight 限制。
+    preferred_height_px: 720
+    # iframe 尚未明确可用时，经过此时长更新手动打开/复制提示。
+    load_notice_delay_ms: 8000
+
 # Basemap runtime 可选透明代理；null/空值表示直接使用 tiles.yaml 中的原始 URL。
 basemap:
   # 部署方可以配置 HTTP(S) proxy base URL；GeoMCP 会在运行时追加固定 namespace、profile ID 与 XYZ。

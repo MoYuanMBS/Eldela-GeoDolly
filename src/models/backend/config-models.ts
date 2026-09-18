@@ -275,6 +275,15 @@ export const browserMapConfigSchema = z.object({
   }
 });
 
+//#########################MCP Apps###############################
+
+export const mcpAppsConfigSchema = z.object({
+  interactive_map_launcher: z.object({
+    preferred_height_px: positiveIntegerSchema,
+    load_notice_delay_ms: nonNegativeIntegerSchema.max(2_147_483_647),
+  }).strict(),
+}).strict();
+
 //#########################browser UI###############################
 
 /** Browser UI 的部署配置；平铺保存彼此独立的公开尺寸参数。 */
