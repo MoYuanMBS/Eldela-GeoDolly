@@ -1,4 +1,5 @@
 import {App, type McpUiHostContext} from "@modelcontextprotocol/ext-apps";
+import {GEOMCP_NAME} from "../src/built-in-config/brand.js";
 
 const INTERACTIVE_MAP_META_KEY = "io.geomcp/interactiveMap";
 const FINAL_SESSION_PATH_PATTERN = /^\/session\/\d{2}[0-9ab][0-9a-f]{8}-[1-9]\d*\/interactive$/u;
@@ -16,7 +17,7 @@ function readNumberMeta(name: string): number {
 }
 
 const publicOriginMeta = document.querySelector<HTMLMetaElement>('meta[name="geomcp-public-origin"]');
-if (publicOriginMeta === null) throw new Error("GeoMCP public origin metadata is missing");
+if (publicOriginMeta === null) throw new Error(`${GEOMCP_NAME} public origin metadata is missing`);
 const publicOrigin = new URL(publicOriginMeta.content).origin;
 const preferredInlineHeightPx = readNumberMeta("geomcp-launcher-preferred-height-px");
 const loadNoticeDelayMs = readNumberMeta("geomcp-launcher-load-notice-delay-ms");
@@ -118,7 +119,7 @@ function selectUrlForManualCopy(): void {
 }
 
 const app = new App(
-  {name: "GeoMCP Interactive Map Launcher", version: "1.0.0"},
+  {name: `${GEOMCP_NAME} Interactive Map Launcher`, version: "1.0.0"},
   {},
   {autoResize: false},
 );

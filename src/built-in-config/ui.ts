@@ -4,6 +4,8 @@
  * 这些值属于 UI 实现约束，不通过部署配置或 config loader 覆盖。
  */
 
+import {GEOMCP_NAME} from "./brand.js";
+
 /** Vite Browser build 使用 app.yaml 注入值；非 Vite 的纯组件环境保持现有默认外观。 */
 export const UI_DECORATIONS_ENABLED = typeof __GEOMCP_DECORATIONS_ENABLED__ === "boolean" ? __GEOMCP_DECORATIONS_ENABLED__ : true;
 
@@ -62,7 +64,7 @@ export const UI_BUILT_IN_CONFIG = {
     separator: " | ",
     references: {
       tool: {
-        attribution: "GeoMCP",
+        attribution: GEOMCP_NAME,
         // 当前没有公开落地页；保留可空链接接口，不制造假 URL。
         attribution_url: null,
       },

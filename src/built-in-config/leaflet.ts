@@ -5,9 +5,6 @@
  * renderer 实现契约，修改时应同时核对 pane 覆盖顺序、标签碰撞和 CSS geometry seed 的语义。
  * 对象只包含浏览器安全的原始数据；导入本文件不会连带加载 Leaflet、DOM 或用户配置。
  */
-/** UI 使用原始大小写；Proxy namespace 在拼接时从同一常量转换为小写。 */
-export const GEOMCP_NAME = "GeoMCP";
-
 export const LEAFLET_INTERNAL_RENDER_CONFIG = Object.freeze({
   /**
    * Leaflet pane 按生命周期拆分。Snapshot 只读取 visual；Interactive attach 时才读取

@@ -2,6 +2,7 @@ import path from "node:path";
 import {fileURLToPath} from "node:url";
 import react from "@vitejs/plugin-react";
 import {defineConfig} from "vite";
+import {GEOMCP_NAME} from "./src/built-in-config/brand.js";
 import {basemapConfigSchema, browserMapConfigSchema, iframeAdaptiveConfigSchema, uiConfigSchema} from "./src/models/backend/config-models.js";
 import {config} from "./src/utils/config-loader.js";
 
@@ -11,10 +12,14 @@ const iframeAdaptiveConfig = config.getAppSection("iframe_adaptive", iframeAdapt
 const browserMapConfig = config.getAppSection("browser_map", browserMapConfigSchema);
 const uiConfig = config.getAppSection("ui", uiConfigSchema);
 const basemapConfig = config.getAppSection("basemap", basemapConfigSchema);
+const brandHtmlPlugin = {
+  name: "geomcp-brand-html",
+  transformIndexHtml: (html: string): string => html.replaceAll("__GEOMCP_NAME_HTML__", GEOMCP_NAME),
+};
 
 export default defineConfig({
   root: webRoot,
-  plugins: [react()],
+  plugins: [brandHtmlPlugin, react()],
   css: {
     transformer: "lightningcss",
   },

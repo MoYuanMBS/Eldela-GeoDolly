@@ -4,6 +4,7 @@ import path from "node:path";
 import {registerAppResource, RESOURCE_MIME_TYPE} from "@modelcontextprotocol/ext-apps/server";
 import type {McpServer} from "@modelcontextprotocol/sdk/server/mcp.js";
 
+import {GEOMCP_NAME} from "../built-in-config/brand.js";
 import {mcpAppsConfigSchema} from "../models/backend/config-models.js";
 import {AppError} from "../utils/app-error.js";
 import {config} from "../utils/config-loader.js";
@@ -18,11 +19,20 @@ function readLauncherScript(): string {
   }
 }
 
+function readLogoDataUrl(): string {
+  try {
+    const logo = readFileSync(path.resolve(process.cwd(), "assets", "logo", "graphic.svg"));
+    return `data:image/svg+xml;base64,${logo.toString("base64")}`;
+  } catch (error) {
+    throw AppError.fromUnknown(error, "mcp_app_logo_not_found", `${GEOMCP_NAME} logo could not be loaded`);
+  }
+}
+
 function escapeHtmlAttribute(value: string): string {
   return value.replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 }
 
-function buildLauncherHtml(publicOrigin: string, script: string): string {
+function buildLauncherHtml(publicOrigin: string, script: string, logoDataUrl: string): string {
   const launcherConfig = config.getAppSection("mcp_apps", mcpAppsConfigSchema).interactive_map_launcher;
   const inlineScript = script.replace(/<\/script/giu, "<\\/script");
   return `<!doctype html>
@@ -31,6 +41,8 @@ function buildLauncherHtml(publicOrigin: string, script: string): string {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
+    <link rel="icon" type="image/svg+xml" sizes="any" href="${escapeHtmlAttribute(logoDataUrl)}" />
+    <title>${GEOMCP_NAME}</title>
     <meta name="geomcp-public-origin" content="${escapeHtmlAttribute(publicOrigin)}" />
     <meta name="geomcp-launcher-preferred-height-px" content="${launcherConfig.preferred_height_px}" />
     <meta name="geomcp-launcher-load-notice-delay-ms" content="${launcherConfig.load_notice_delay_ms}" />
@@ -55,7 +67,7 @@ function buildLauncherHtml(publicOrigin: string, script: string): string {
     <main id="app-root" data-state="loading">
       <p id="launcher-message" role="status">Waiting for the Interactive map…</p>
       <div id="map-frame-shell" hidden>
-        <iframe id="interactive-map-frame" title="GeoMCP Interactive map"></iframe>
+        <iframe id="interactive-map-frame" title="${GEOMCP_NAME} Interactive map"></iframe>
       </div>
       <section id="map-fallback" aria-label="Interactive map fallback" hidden>
         <button id="open-map" type="button">Open map</button>
@@ -71,14 +83,14 @@ function buildLauncherHtml(publicOrigin: string, script: string): string {
 
 /** 注册只负责启动现有 Interactive 页面的轻量 MCP App Resource。 */
 export function registerInteractiveMapLauncherResource(server: McpServer, publicOrigin: string): void {
-  const html = buildLauncherHtml(publicOrigin, readLauncherScript());
+  const html = buildLauncherHtml(publicOrigin, readLauncherScript(), readLogoDataUrl());
   const uiMeta = {
     prefersBorder: false,
     csp: {frameDomains: [publicOrigin]},
     permissions: {clipboardWrite: {}},
   } as const;
-  registerAppResource(server, "GeoMCP Interactive Map Launcher", INTERACTIVE_MAP_LAUNCHER_URI, {
-    description: "Launches the existing GeoMCP Interactive map with a safe URL fallback.",
+  registerAppResource(server, `${GEOMCP_NAME} Interactive Map Launcher`, INTERACTIVE_MAP_LAUNCHER_URI, {
+    description: `Launches the existing ${GEOMCP_NAME} Interactive map with a safe URL fallback.`,
     _meta: {ui: uiMeta},
   }, async () => ({
     contents: [{
