@@ -38,7 +38,7 @@ const attributionUrlSchema = z.string().trim().min(1).superRefine((url, context)
   }
 });
 
-/** Leaflet 在线 raster URL 模板；首版要求标准 XYZ 坐标变量并只允许浏览器可访问的 HTTP(S)。 */
+/** 服务端在线 raster upstream 模板；要求标准 XYZ 坐标变量并只允许 HTTP(S)。 */
 const tileUrlTemplateSchema = z.string().trim().min(1).superRefine((template, context) => {
   let hasInvalidPlaceholder = false;
   for (const placeholder of template.match(TILE_URL_PLACEHOLDER_PATTERN) ?? []) {
@@ -83,8 +83,8 @@ const tileUrlTemplateSchema = z.string().trim().min(1).superRefine((template, co
 export const basemapProfileConfigSchema = z.object({
   /** Prompt 与 UI 展示名称，不参与 profile 查询。 */
   name: z.string().trim().min(1),
-  /** Interactive 与 Snapshot 共用的浏览器可访问 Leaflet raster URL 模板。 */
-  url: tileUrlTemplateSchema,
+  /** GeoMCP Tile Endpoint 访问的 provider URL 模板，不进入 Browser payload。 */
+  upstream: tileUrlTemplateSchema,
   /** 在线 raster provider 的最高原生层级，只传给在线 TileLayer.maxNativeZoom。 */
   max_native_zoom: z.number().int().positive(),
   /** 首版 Browser map 唯一允许的投影。 */
@@ -97,11 +97,9 @@ export const basemapProfileConfigSchema = z.object({
   full_attribution: z.string().trim().min(1).nullish().transform((attribution) => attribution ?? null),
 }).strict();
 
-/** Node 已从部署 registry 解析完成、带稳定 ID 且可直接序列化进 Browser payload 的底图快照。 */
-export const resolvedBasemapSchema = basemapProfileConfigSchema.extend({
+/** Node 已从部署 registry 解析完成、移除 upstream 且可直接序列化进 Browser payload 的底图快照。 */
+export const resolvedBasemapSchema = basemapProfileConfigSchema.omit({upstream: true}).extend({
   id: basemapProfileIdSchema,
-  /** null 表示直接使用原始 URL；非 null 时 Browser 优先尝试规范 XYZ Proxy template。 */
-  proxy_tile_url: tileUrlTemplateSchema.nullable(),
 });
 
 /** 完整 profile registry；空 registry 无法为 Tool Input 提供任何可用底图。 */

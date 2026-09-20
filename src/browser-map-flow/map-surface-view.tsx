@@ -99,7 +99,6 @@ export function MapSurfaceView({mapPayload, stylePayload, onMetricScaleChange, o
       },
       basemap,
       readyTimeoutMs: __GEOMCP_MAP_READY_TIMEOUT_MS__,
-      proxyTileTimeoutMs: __GEOMCP_PROXY_TILE_TIMEOUT_MS__,
       metricScaleMaxWidthPx: __GEOMCP_MAX_SCALE_WIDTH_PX__,
       overlay,
       coreOverlay,

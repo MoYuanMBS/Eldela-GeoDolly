@@ -47,7 +47,6 @@ export async function createInteractiveMapFlow(options: InteractiveMapFlowOption
       createBasemapRuntime({
         mapSurface,
         basemap: options.basemap,
-        proxyTileTimeoutMs: options.proxyTileTimeoutMs,
         warningReporter: options.warningReporter,
       }),
       createLeafletVisualRuntime({

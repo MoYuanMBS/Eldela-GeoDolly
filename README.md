@@ -23,3 +23,7 @@ Python side currently declares the initial required packages in `requirements.tx
 - `pyyaml`
 
 This is the initial scaffold, not the final dependency list. More packages may be added as implementation proceeds.
+
+## Basemap Tile Endpoint
+
+Browser maps load registered providers through the same-origin `/basemap/{source}/{z}/{x}/{y}` endpoint. GeoMCP does not cache these tiles; deployments are responsible for reviewing provider policies and configuring any required reverse-proxy or CDN cache.

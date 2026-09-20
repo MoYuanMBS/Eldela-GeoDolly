@@ -8,6 +8,7 @@ import type {WebConfigType} from "../models/backend/config-models.js";
 import type {SessionManager} from "../map-session/session-manager.js";
 import {AppError} from "../utils/app-error.js";
 import {logger} from "../utils/logger.js";
+import {resolveBasemapTileHttpRoute} from "./basemap-tile-route.js";
 import {resolveSessionHttpRoute} from "./session-http-routes.js";
 
 const INTERNAL_REQUEST_TIMEOUT_MS = 10_000;
@@ -29,6 +30,16 @@ function writeResponse(response: ServerResponse, statusCode: number, body: strin
     ...headers,
   });
   response.end(bodyBuffer);
+}
+
+/** Tile 成功响应只转发 provider 的缓存元数据；错误响应由 route 明确携带 no-store。 */
+function writeBasemapResponse(response: ServerResponse, statusCode: number, body: Buffer, headers: Readonly<Record<string, string>>): void {
+  response.writeHead(statusCode, {
+    "content-length": String(body.byteLength),
+    "x-content-type-options": "nosniff",
+    ...headers,
+  });
+  response.end(body);
 }
 
 function resolveAssetPath(assetsRootPath: string, encodedPathname: string): string | null {
@@ -77,6 +88,21 @@ export function createMapHttpService(webConfig: WebConfigType, sessionManager: S
       }
       if (requestUrl.search !== "") {
         writeResponse(response, 404);
+        return;
+      }
+
+      const requestController = new AbortController();
+      const abortUpstreamRequest = (): void => requestController.abort();
+      request.once("aborted", abortUpstreamRequest);
+      response.once("close", abortUpstreamRequest);
+      const basemapResponse = await resolveBasemapTileHttpRoute(requestUrl.pathname, request.headers, requestController.signal)
+        .finally(() => {
+          request.off("aborted", abortUpstreamRequest);
+          response.off("close", abortUpstreamRequest);
+        });
+      if (basemapResponse?.kind === "aborted") return;
+      if (basemapResponse !== null) {
+        writeBasemapResponse(response, basemapResponse.statusCode, basemapResponse.body, basemapResponse.headers);
         return;
       }
 

@@ -13,11 +13,7 @@ import {
  * 也不进入回传 payload。
  */
 function printBrowserWarning(warning: BrowserWarningReportType): void {
-  if (warning.event === "basemap_proxy_fallback") {
-    console.warn("[GeoMCP] Basemap proxy failed; switched to the original tile source.", warning.details);
-    return;
-  }
-  console.warn("[GeoMCP] Original basemap tile is unavailable; displaying an empty tile.", warning.details);
+  console.warn("[GeoMCP] Basemap tile is unavailable; displaying an empty tile.", warning.details);
 }
 
 /**

@@ -56,7 +56,6 @@ export async function createSnapshotMapFlow(options: SnapshotMapFlowOptions): Pr
       createSnapshotBasemapRuntime({
         mapSurface,
         basemap: options.basemap,
-        proxyTileTimeoutMs: options.proxyTileTimeoutMs,
         minimumInitialTileSuccessRatio: options.minimumInitialTileSuccessRatio,
         signal: flowSignal,
         warningReporter: options.warningReporter,

@@ -66,7 +66,6 @@ export function SnapshotMapSurfaceView({mapPayload, stylePayload, onMetricScaleS
       },
       basemap,
       readyTimeoutMs: __GEOMCP_MAP_READY_TIMEOUT_MS__,
-      proxyTileTimeoutMs: __GEOMCP_PROXY_TILE_TIMEOUT_MS__,
       minimumInitialTileSuccessRatio: __GEOMCP_SNAPSHOT_MIN_TILE_SUCCESS_RATIO__,
       metricScaleMaxWidthPx: __GEOMCP_MAX_SCALE_WIDTH_PX__,
       signal: abortController.signal,

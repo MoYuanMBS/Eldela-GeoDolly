@@ -263,17 +263,7 @@ export const iframeAdaptiveConfigSchema = iframeAdaptiveRawConfigSchema.superRef
 
 export const browserMapConfigSchema = z.object({
   ready_timeout_seconds: positiveFiniteNumberSchema,
-  proxy_tile_timeout_seconds: positiveFiniteNumberSchema,
-}).strict().superRefine((browserMapConfig, context) => {
-  // Proxy 超时后还要用剩余的 ready 时间创建并等待原始 TileLayer。
-  if (browserMapConfig.proxy_tile_timeout_seconds >= browserMapConfig.ready_timeout_seconds) {
-    context.addIssue({
-      code: "custom",
-      message: "proxy_tile_timeout_seconds must be less than ready_timeout_seconds",
-      path: ["proxy_tile_timeout_seconds"],
-    });
-  }
-});
+}).strict();
 
 //#########################MCP Apps###############################
 
@@ -294,26 +284,13 @@ export const uiConfigSchema = z.object({
   measurement_preview_refresh_interval_ms: positiveIntegerSchema,
 }).strict();
 
-//#########################basemap proxy###############################
+//#########################basemap endpoint###############################
 
-/** 只校验可拼接的 HTTP(S) URL 结构；部署可用性留给 Browser runtime 的 fallback 处理。 */
-const basemapProxyUrlSchema = z.string().trim().min(1).superRefine((proxyUrl, context) => {
-  try {
-    const parsedUrl = new URL(proxyUrl);
-    if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
-      context.addIssue({code: "custom", message: "basemap proxy_url must use HTTP or HTTPS"});
-    }
-  } catch {
-    context.addIssue({code: "custom", message: "basemap proxy_url must be a valid URL"});
-  }
-});
-
-/** 可选透明代理 base URL；省略、YAML null 或空字符串均表示直接使用 profile 原始 URL。 */
 export const basemapConfigSchema = z.object({
-  proxy_url: z.preprocess(
-    (proxyUrl) => typeof proxyUrl === "string" && proxyUrl.trim() === "" ? null : proxyUrl,
-    basemapProxyUrlSchema.nullish(),
-  ).transform((proxyUrl) => proxyUrl ?? null),
+  /** GeoMCP 请求上游 provider 时使用的部署标识。 */
+  user_agent: z.string().trim().min(1),
+  /** 单次上游瓦片请求的服务端超时秒数。 */
+  upstream_timeout_seconds: positiveFiniteNumberSchema,
   // 只用于 Snapshot 固定首屏；0 允许空底图，1 要求全部所需瓦片成功。
   snapshot_min_tile_success_ratio: z.number().finite().min(0).max(1),
 }).strict();

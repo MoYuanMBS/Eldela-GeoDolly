@@ -52,8 +52,6 @@ export interface BrowserFlowReadySummary extends MapFlowReadySummary {
 export interface BasemapRuntimeOptions {
   mapSurface: MapSurfaceHandle;
   basemap: ResolvedBasemapType;
-  /** 单块 Proxy 瓦片的请求上限；原始瓦片仍由 Flow ready timeout 统一兜底。 */
-  proxyTileTimeoutMs: number;
   /** 长期 warning sink 与一次性 ready status 分离；未接通诊断通道时可以省略。 */
   warningReporter?: BrowserWarningReporterType;
 }
@@ -115,8 +113,6 @@ export interface InteractiveMapFlowOptions extends Omit<LeafletVisualRuntimeOpti
   basemap: ResolvedBasemapType;
   /** app.yaml browser_map.ready_timeout_seconds 转换后的毫秒值。 */
   readyTimeoutMs: number;
-  /** app.yaml browser_map.proxy_tile_timeout_seconds 转换后的毫秒值。 */
-  proxyTileTimeoutMs: number;
   /** app.yaml ui.max_scale_width_px；只参与返回给 UI 的公制 Scale 计算。 */
   metricScaleMaxWidthPx: number;
   /** 仅供透明命中层使用；Visual runtime 不读取交互配置。 */
@@ -151,8 +147,6 @@ export interface SnapshotMapFlowOptions extends Omit<LeafletVisualRuntimeOptions
   basemap: ResolvedBasemapType;
   /** app.yaml browser_map.ready_timeout_seconds 转换后的毫秒值。 */
   readyTimeoutMs: number;
-  /** app.yaml browser_map.proxy_tile_timeout_seconds 转换后的毫秒值。 */
-  proxyTileTimeoutMs: number;
   /** app.yaml basemap.snapshot_min_tile_success_ratio。 */
   minimumInitialTileSuccessRatio: number;
   /** app.yaml ui.max_scale_width_px；只参与返回给 UI 的公制 Scale 计算。 */

@@ -29,71 +29,12 @@ function summarizeInitialTiles(records: ReadonlyMap<string, InitialTileRecord>, 
   };
 }
 
-/**
- * 为 TileLayer 中每个已发起的请求维护独立计时器。
- *
- * Leaflet 没有为单块图片提供请求超时；断网、Proxy 接口挂起或浏览器长时间不收到
- * HTTP 响应时，只依赖 `tileerror` 会使整个 ready/fallback 链路一直等待。这个监视器从
- * `tileloadstart` 开始计时，并在 load/error/abort/unload 的任一终态清理对应计时器。
- *
- * 返回的 detach 是幂等的：它同时解绑监听并清空所有未完成计时，供 ready 终态、fallback
- * 状态转换和 MapSurface 销毁共用。
- */
-export function attachTileRequestTimeoutMonitor(
-  tileLayer: TileLayer,
-  timeoutMs: number,
-  onTimeout: (coords: {x: number; y: number; z: number}) => void,
-): () => void {
-  const pendingTimers = new Map<HTMLImageElement, ReturnType<typeof setTimeout>>();
-  let detached = false;
-
-  const clearTileTimer = (tile: HTMLImageElement): void => {
-    const timer = pendingTimers.get(tile);
-    if (timer === undefined) return;
-    clearTimeout(timer);
-    pendingTimers.delete(tile);
-  };
-  const handleTileLoadStart = (event: TileEvent): void => {
-    if (detached) return;
-    // Leaflet 可能复用 tile element；重新开始前必须取消旧计时，避免过期回调误触发 fallback。
-    clearTileTimer(event.tile);
-    const coords = {x: event.coords.x, y: event.coords.y, z: event.coords.z};
-    const timer = setTimeout(() => {
-      pendingTimers.delete(event.tile);
-      if (!detached) onTimeout(coords);
-    }, timeoutMs);
-    pendingTimers.set(event.tile, timer);
-  };
-  const handleTileFinished = (event: TileEvent): void => {
-    clearTileTimer(event.tile);
-  };
-
-  tileLayer.on("tileloadstart", handleTileLoadStart);
-  tileLayer.on("tileload", handleTileFinished);
-  tileLayer.on("tileerror", handleTileFinished);
-  tileLayer.on("tileabort", handleTileFinished);
-  tileLayer.on("tileunload", handleTileFinished);
-
-  return (): void => {
-    if (detached) return;
-    detached = true;
-    tileLayer.off("tileloadstart", handleTileLoadStart);
-    tileLayer.off("tileload", handleTileFinished);
-    tileLayer.off("tileerror", handleTileFinished);
-    tileLayer.off("tileabort", handleTileFinished);
-    tileLayer.off("tileunload", handleTileFinished);
-    for (const timer of pendingTimers.values()) clearTimeout(timer);
-    pendingTimers.clear();
-  };
-}
-
 type InitialTileCycleResult =
   | {reason: "complete"; records: ReadonlyMap<string, InitialTileRecord>}
-  | {reason: "tile_error" | "tile_timeout"; records: ReadonlyMap<string, InitialTileRecord>; tile: {x: number; y: number; z: number}}
+  | {reason: "tile_error"; records: ReadonlyMap<string, InitialTileRecord>; tile: {x: number; y: number; z: number}}
   | {reason: "mount_error"; records: ReadonlyMap<string, InitialTileRecord>};
 
 interface InitialTileCycleOptions {
-  tileTimeoutMs?: number;
   stopOnTileError: boolean;
   countTileAbortAsFailure: boolean;
   signal?: AbortSignal;
@@ -111,7 +52,6 @@ function mountAndObserveInitialTileCycle(tileLayer: TileLayer, map: LeafletMap, 
     let settled = false;
     const tileRecords = new Map<string, InitialTileRecord>();
     const failedTileElements = new WeakSet<HTMLImageElement>();
-    let detachTileTimeout = (): void => {};
 
     const cleanup = (): void => {
       tileLayer.off("load", handleLoad);
@@ -120,7 +60,6 @@ function mountAndObserveInitialTileCycle(tileLayer: TileLayer, map: LeafletMap, 
       tileLayer.off("tileerror", handleTileError);
       tileLayer.off("tileabort", handleTileAbort);
       options.signal?.removeEventListener("abort", handleAbort);
-      detachTileTimeout();
     };
     const finish = (result: InitialTileCycleResult): void => {
       if (settled) return;
@@ -168,14 +107,6 @@ function mountAndObserveInitialTileCycle(tileLayer: TileLayer, map: LeafletMap, 
     tileLayer.on("tileerror", handleTileError);
     if (options.countTileAbortAsFailure) tileLayer.on("tileabort", handleTileAbort);
     options.signal?.addEventListener("abort", handleAbort, {once: true});
-    if (options.tileTimeoutMs !== undefined) {
-      detachTileTimeout = attachTileRequestTimeoutMonitor(tileLayer, options.tileTimeoutMs, (tile) => {
-        const key = tilePositionKey(tile);
-        const current = tileRecords.get(key);
-        if (current !== undefined) tileRecords.set(key, {...current, state: "failed"});
-        finish({reason: "tile_timeout", records: tileRecords, tile});
-      });
-    }
     try {
       // 监听必须先于 addTo，避免同步创建首批瓦片时错过事件。
       tileLayer.addTo(map);
@@ -186,14 +117,11 @@ function mountAndObserveInitialTileCycle(tileLayer: TileLayer, map: LeafletMap, 
 }
 
 /** 共享 Basemap 保持原契约：首个初始瓦片失败即发布 failed，不附加 Snapshot 统计。 */
-export async function mountTileLayerAndWaitForInitialReady(tileLayer: TileLayer, map: LeafletMap, tileTimeoutMs?: number): Promise<BasemapRuntimeStatus> {
-  const result = await mountAndObserveInitialTileCycle(tileLayer, map, {tileTimeoutMs, stopOnTileError: true, countTileAbortAsFailure: false});
+export async function mountTileLayerAndWaitForInitialReady(tileLayer: TileLayer, map: LeafletMap): Promise<BasemapRuntimeStatus> {
+  const result = await mountAndObserveInitialTileCycle(tileLayer, map, {stopOnTileError: true, countTileAbortAsFailure: false});
   if (result.reason === "complete") return {status: "ready", error: null};
   if (result.reason === "tile_error") {
     return {status: "failed", error: {code: "tile_load_failed", message: "A required basemap tile failed to load", details: {tile: result.tile}}};
-  }
-  if (result.reason === "tile_timeout") {
-    return {status: "failed", error: {code: "tile_load_timeout", message: "A required basemap tile timed out", details: {tile: result.tile}}};
   }
   return {status: "failed", error: {code: "tile_layer_init", message: "Basemap tile layer failed to mount", details: null}};
 }
@@ -204,15 +132,11 @@ export async function mountTileLayerAndWaitForSnapshotReady(
   map: LeafletMap,
   minimumSuccessRatio: number,
   signal: AbortSignal,
-  tileTimeoutMs?: number,
 ): Promise<SnapshotBasemapRuntimeResult> {
-  const result = await mountAndObserveInitialTileCycle(tileLayer, map, {tileTimeoutMs, stopOnTileError: false, countTileAbortAsFailure: true, signal});
+  const result = await mountAndObserveInitialTileCycle(tileLayer, map, {stopOnTileError: false, countTileAbortAsFailure: true, signal});
   const initialTiles = summarizeInitialTiles(result.records, minimumSuccessRatio);
   if (result.reason === "mount_error") {
     return {status: {status: "failed", error: {code: "tile_layer_init", message: "Basemap tile layer failed to mount", details: null}}, initialTiles};
-  }
-  if (result.reason === "tile_timeout") {
-    return {status: {status: "failed", error: {code: "tile_load_timeout", message: "A required basemap tile timed out", details: {tile: result.tile}}}, initialTiles};
   }
   if (initialTiles.total_count === 0) {
     return {status: {status: "failed", error: {code: "tile_initial_empty", message: "Basemap initial view did not request any tiles", details: null}}, initialTiles};

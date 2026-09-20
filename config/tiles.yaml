@@ -1,25 +1,25 @@
 # 在线 raster tile 底图 profile registry；部署修改后需要重启进程。
 #
-# 顶层 key 是 Tool Input 使用的稳定 profile ID，也是可选 Proxy URL 的单路径段：
+# 顶层 key 是 Tool Input 使用的稳定 profile ID，也是 `/basemap/{source}/...` 的单路径段：
 # - 只能使用小写字母、数字、下划线和连字符；
 # - 必须以小写字母或数字开头、结尾；
 # - 不允许 `/`、`.`、空格或其他需要 URL 转义的字符。
 #
 # 每个 profile 必须包含：
 # - name：Prompt/UI 展示名，不参与 URL 拼接；
-# - url：Browser 可以直接访问的原始在线 raster URL，Proxy 未配置或失败时也使用它；
+# - upstream：GeoMCP 服务端访问的在线 raster provider URL，不进入 Browser payload；
 # - max_native_zoom：provider 的最高原生瓦片层级，只对应 Leaflet maxNativeZoom；
 # - crs：首版固定为 EPSG:3857；
 # - attribution：紧凑 UI 文案；attribution_url 是其 HTTP(S) 版权链接；full_attribution 是可空的完整文案。
 #
-# url 必须是 HTTP(S) 模板并包含 `{z}`、`{x}`、`{y}`，三者顺序不受限制。
+# upstream 必须是 HTTP(S) 模板并包含 `{z}`、`{x}`、`{y}`，三者顺序不受限制。
 # 只额外允许可选 `{s}`、`{r}`；未知或畸形 placeholder 会使启动配置校验失败。
-# `{r}` 仅用于兼容模板识别，交给 Leaflet 前固定替换为空，DPR 不改变瓦片来源。
+# `{s}` 由服务端按 Leaflet 默认 `abc` 规则展开；`{r}` 固定替换为空。
 osm:
   # 面向用户的短名称。
   name: OpenStreetMap
   # 标准 XYZ 顺序；也可以像下方 ArcGIS 一样按 provider 要求重排。
-  url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+  upstream: "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
   # 高于 19 的地图 zoom 继续放大 z=19 瓦片，不限制 MapSurface/Overlay zoom。
   max_native_zoom: 19
   # 首版唯一支持的在线 raster CRS。
@@ -33,7 +33,7 @@ osm:
 arcgis_satellite:
   name: ArcGIS Satellite
   # ArcGIS REST tile path 使用 z/y/x；校验只要求变量齐全，不强制 XYZ 路径顺序。
-  url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+  upstream: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
   max_native_zoom: 22
   crs: EPSG:3857
   attribution: "Powered by Esri"
