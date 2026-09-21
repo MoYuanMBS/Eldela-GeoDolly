@@ -6,6 +6,8 @@
   width: var(--geomcp-tool-bar-width);
   overflow: visible;
   pointer-events: auto;
+  transform: scale(var(--geomcp-tool-bar-scale));
+  transform-origin: top left;
   user-select: none;
 }
 
@@ -98,18 +100,28 @@
 .geomcp-reference-bar-content {
   position: relative;
   z-index: 3;
-  display: grid;
+  display: flex;
   min-height: calc(var(--geomcp-standard-ui-min-height) - 2px);
-  grid-template-columns:
-    calc(var(--geomcp-scale-max-width) + 16px)
-    var(--geomcp-standard-ui-divider-width)
-    minmax(0, 1fr);
   align-items: center;
 }
 
+.geomcp-reference-bar-content > .geomcp-standard-scale {
+  width: var(--geomcp-scale-max-width);
+  flex: 0 0 var(--geomcp-scale-max-width);
+}
+
+.geomcp-reference-bar-content > .geomcp-reference-bar-divider {
+  flex: 0 0 var(--geomcp-standard-ui-divider-width);
+  margin-inline: auto;
+}
+
+.geomcp-reference-bar-content > .geomcp-standard-attribution {
+  flex: 0 1 auto;
+}
+
 /* Scale omitted 是 Snapshot 的显式恢复终态；Attribution 改为独占完整宽度。 */
-.geomcp-reference-bar-without-scale .geomcp-reference-bar-content {
-  grid-template-columns: minmax(0, 1fr);
+.geomcp-reference-bar-without-scale .geomcp-standard-attribution {
+  flex: 1 1 auto;
 }
 
 .geomcp-standard-scale {
@@ -211,7 +223,7 @@
 /* Feature UI：折叠标题和额外树区域均不参与 MapSurface 尺寸。 */
 .geomcp-feature-bar {
   position: relative;
-  width: min(720px, calc(100% - 32px));
+  width: 100%;
   margin: var(--geomcp-feature-bar-gap) auto 0;
   border: var(--geomcp-ui-frame-width) solid var(--geomcp-ui-border);
   border-radius: 7px;

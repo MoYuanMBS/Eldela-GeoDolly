@@ -55,6 +55,7 @@ export const UI_BUILT_IN_CONFIG = {
   toolbar: {
     minWidth: 600,
     minHeight: 50,
+    scale: 1.25,
     // 三段背景使用实际栏宽；body 高度由按钮行数和行高决定，端帽保持素材比例。
     widthPx: 40,
     controlHeightPx: 34,

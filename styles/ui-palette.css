@@ -1,5 +1,5 @@
 :root {
-  --geomcp-ui-text: #4F5158;
+  --geomcp-ui-text: #4B4F58;
   --geomcp-ui-text-light: #77747A;
 
   --geomcp-ui-surface: #FFF7F2;
@@ -11,7 +11,7 @@
   --geomcp-ui-border: #6D4038;
   --geomcp-ui-divider: #C98E84;
 
-  --geomcp-measurement-stroke: #595A61;
+  --geomcp-measurement-stroke: #5b4346;
   --geomcp-measurement-band: #D9957F;
   --geomcp-measurement-band-opacity: 0.5;
 

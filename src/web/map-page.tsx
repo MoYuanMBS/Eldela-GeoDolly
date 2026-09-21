@@ -48,6 +48,7 @@ interface MapPageStyle extends CSSProperties {
   "--geomcp-popup-max-width": string;
   "--geomcp-popup-min-height": string;
   "--geomcp-popup-max-height": string;
+  "--geomcp-tool-bar-scale": string;
   "--geomcp-tool-bar-width": string;
   "--geomcp-tool-bar-control-height": string;
   "--geomcp-tool-bar-left-offset": string;
@@ -216,6 +217,7 @@ export function MapPage({mapDataUrl, onArchived, MapSurfaceComponent}: MapPagePr
     "--geomcp-popup-max-width": `${UI_BUILT_IN_CONFIG.popup.maxWidthPx}px`,
     "--geomcp-popup-min-height": `${UI_BUILT_IN_CONFIG.popup.minHeightPx}px`,
     "--geomcp-popup-max-height": `${UI_BUILT_IN_CONFIG.popup.maxHeightPx}px`,
+    "--geomcp-tool-bar-scale": String(UI_BUILT_IN_CONFIG.toolbar.scale),
     "--geomcp-tool-bar-width": `${UI_BUILT_IN_CONFIG.toolbar.widthPx}px`,
     "--geomcp-tool-bar-control-height": `${UI_BUILT_IN_CONFIG.toolbar.controlHeightPx}px`,
     "--geomcp-tool-bar-left-offset": `${UI_BUILT_IN_CONFIG.toolbar.leftOffsetPx}px`,
