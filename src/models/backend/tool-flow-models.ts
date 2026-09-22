@@ -22,7 +22,7 @@ import type {
   IdentifiedOverlayGroupsWithDisplayIdType,
   RelationMemberFeaturesByRelationType,
   RelationMembershipByFeatureIdType,
-} from "./map-data-models.js";
+} from "../common/map-data-models.js";
 import type {
   BasemapOnlyMapPayloadType,
   CoreMapPayloadType,

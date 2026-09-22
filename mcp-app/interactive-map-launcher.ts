@@ -1,5 +1,5 @@
 import {App, type McpUiHostContext} from "@modelcontextprotocol/ext-apps";
-import {GEOMCP_NAME} from "../src/built-in-config/brand.js";
+import {GEOMCP_NAME} from "../src/shared/brand.js";
 
 const INTERACTIVE_MAP_META_KEY = "io.geomcp/interactiveMap";
 const FINAL_SESSION_PATH_PATTERN = /^\/session\/\d{2}[0-9ab][0-9a-f]{8}-[1-9]\d*\/interactive$/u;

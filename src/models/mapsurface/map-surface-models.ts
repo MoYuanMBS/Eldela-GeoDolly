@@ -1,7 +1,7 @@
 /** 固定尺寸 MapSurface 的初始化输入。 */
 
 import type {LatLngBoundsLiteral, LatLngTuple} from "leaflet";
-import type {IframePaddingConfigType} from "../backend/config-models.js";
+import type {IframePaddingConfigType} from "./map-config-models.js";
 
 /** MapSurface 只接受已经由上游校验、且足以确定初始视口的稳定输入。 */
 export interface MapSurfaceOptions {

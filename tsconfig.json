@@ -17,9 +17,13 @@
     "skipLibCheck": true
   },
   "include": [
-    "src/**/*.ts"
+    "src/index.ts",
+    "src/server/**/*.ts",
+    "src/shared/**/*.ts",
+    "src/models/**/*.ts"
   ],
   "exclude": [
+    "src/browser",
     "dist",
     "node_modules"
   ]

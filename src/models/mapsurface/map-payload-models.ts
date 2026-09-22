@@ -12,12 +12,12 @@
 
 import {z} from "zod";
 import {resolvedBasemapSchema} from "../common/basemap-models.js";
-import {jsonDictSchema} from "../backend/bridge-models.js";
-import {leafletConfigSchema} from "../backend/config-models.js";
+import {jsonDictSchema} from "../common/json-models.js";
+import {leafletConfigSchema} from "./map-config-models.js";
 import {
   identifiedOverlayGroupsWithDisplayIdSchema,
   relationMemberFeaturesByRelationSchema,
-} from "../backend/map-data-models.js";
+} from "../common/map-data-models.js";
 
 const finiteNumberSchema = z.number().finite();
 const positiveIntegerSchema = z.number().int().positive();

@@ -1,7 +1,8 @@
 /** Browser Map Flow、Basemap 与共享 Visual runtime 的模型。 */
 
-import type {AppErrorType, JsonValueType} from "../backend/bridge-models.js";
-import type {LeafletConfigType} from "../backend/config-models.js";
+import type {AppErrorType} from "../common/error-models.js";
+import type {JsonValueType} from "../common/json-models.js";
+import type {LeafletConfigType} from "./map-config-models.js";
 import type {ResolvedBasemapType} from "../common/basemap-models.js";
 import type {BrowserWarningReporterType} from "../common/browser-warning-models.js";
 import type {CoreOverlayRendererOptions, CoreOverlayRenderResult} from "./core-render-models.js";

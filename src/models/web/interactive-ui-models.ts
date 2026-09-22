@@ -4,7 +4,7 @@ import {
   displayIdByFeatureIdSchema,
   type IdentifiedOverlayFeatureKindType,
   relationMembershipByFeatureIdSchema,
-} from "../backend/map-data-models.js";
+} from "../common/map-data-models.js";
 import {commonVisualMapPayloadSchema} from "../mapsurface/map-payload-models.js";
 import {renderStylePayloadSchema} from "../mapsurface/style/user-css-style-models.js";
 

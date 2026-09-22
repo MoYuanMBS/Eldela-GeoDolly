@@ -1,8 +1,8 @@
 /** Leaflet Overlay renderer 的浏览器运行时模型；不进入 Bridge 或 session 序列化。 */
 
 import type {LatLng, LatLngBounds, LatLngTuple, LayerGroup, Map as LeafletMap, Path, Point, Renderer} from "leaflet";
-import type {LeafletConfigType} from "../backend/config-models.js";
-import type {IdentifiedOverlayGroupsWithDisplayIdType, RelationMemberFeaturesByRelationType} from "../backend/map-data-models.js";
+import type {LeafletConfigType} from "./map-config-models.js";
+import type {IdentifiedOverlayGroupsWithDisplayIdType, RelationMemberFeaturesByRelationType} from "../common/map-data-models.js";
 import type {CanvasRelationMembershipStyle, CanvasSpatialFeatureType} from "./style/base-canvas-style.js";
 import type {RuntimeStylePlan} from "./style/runtime-style-models.js";
 

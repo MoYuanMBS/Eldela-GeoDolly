@@ -8,8 +8,19 @@
 import { z } from "zod";
 
 import {basemapProfileIdSchema} from "../common/basemap-models.js";
-import { pyToolResultSchema } from "./map-data-models.js";
+import {appErrorSchema, type AppErrorType} from "../common/error-models.js";
+import {jsonDictSchema, type JsonDictType} from "../common/json-models.js";
+import {pyToolResultSchema} from "../common/map-data-models.js";
 import {finalSessionIdSchema, searchSessionIdSchema} from "./session-id-models.js";
+
+export {appErrorSchema, type AppErrorType} from "../common/error-models.js";
+export {
+  jsonDictSchema,
+  jsonValueSchema,
+  type JsonDictType,
+  type JsonPrimitiveType,
+  type JsonValueType,
+} from "../common/json-models.js";
 
 export const toolTypeSchema = z.enum(["tool_a", "tool_b"]);
 export const searchStatusSchema = z.enum(["needs_confirmation", "no_match"]);
@@ -21,23 +32,6 @@ export type ToolType = z.infer<typeof toolTypeSchema>;
 export type SearchStatus = z.infer<typeof searchStatusSchema>;
 export type OsmType = z.infer<typeof osmTypeSchema>;
 export type VisualOutputType = z.infer<typeof visualOutputSchema>;
-
-export type JsonPrimitiveType = null | boolean | number | string;
-export type JsonValueType = JsonPrimitiveType | JsonValueType[] | { [key: string]: JsonValueType };
-export type JsonDictType = { [key: string]: JsonValueType };
-
-export const jsonValueSchema: z.ZodType<JsonValueType> = z.lazy(() =>
-  z.union([
-    z.null(),
-    z.boolean(),
-    z.number(),
-    z.string(),
-    z.array(jsonValueSchema),
-    z.record(z.string(), jsonValueSchema),
-  ]),
-);
-
-export const jsonDictSchema = z.record(z.string(), jsonValueSchema);
 
 export const locSearchQuerySchema = z
   .object({
@@ -114,14 +108,6 @@ export const AitoolInputReqSchema = z
   })
   .strict();
 
-export const appErrorSchema = z
-  .object({
-    code: z.string(),
-    message: z.string(),
-    details: jsonValueSchema.optional(),
-  })
-  .strict();
-
 export const bridgeActionSchema = z.enum([
   "search_location",
   "tool_a",
@@ -176,7 +162,6 @@ export type LocSearchReplyType = z.infer<typeof locSearchReplySchema>;
 export type AiToolInputReqType = z.infer<typeof AitoolInputReqSchema>;
 export type PyToolReqType = z.infer<typeof pyToolReqSchema>;
 export type PyToolReplyType = z.infer<typeof pyToolReplySchema>;
-export type AppErrorType = z.infer<typeof appErrorSchema>;
 export type BridgeActionType = z.infer<typeof bridgeActionSchema>;
 export type BridgeRequestType<T extends JsonDictType> = {
   action: BridgeActionType;

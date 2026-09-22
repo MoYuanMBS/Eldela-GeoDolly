@@ -5,38 +5,38 @@
  * - connect stdio transport
  *
  * Tool business logic should stay thin here. Heavy work belongs in:
- * - `src/utils/python-bridge.ts`
- * - `src/tools/*`
- * - `src/renderer/*`
+ * - `src/server/utils/python-bridge.ts`
+ * - `src/server/tools/*`
+ * - `src/browser/*`
  */
 
 import {registerAppTool} from "@modelcontextprotocol/ext-apps/server";
 import {McpServer} from "@modelcontextprotocol/sdk/server/mcp.js";
 import {StdioServerTransport} from "@modelcontextprotocol/sdk/server/stdio.js";
 
-import {closeMapHttpService, createMapHttpService, getInternalMapOrigin, listenMapHttpService} from "./http/map-http-service.js";
-import {SessionManager} from "./map-session/session-manager.js";
-import {SnapshotService} from "./map-session/snapshot-service.js";
-import {INTERACTIVE_MAP_LAUNCHER_URI, registerInteractiveMapLauncherResource} from "./mcp-apps/interactive-map-launcher-resource.js";
+import {closeMapHttpService, createMapHttpService, getInternalMapOrigin, listenMapHttpService} from "./server/http/map-http-service.js";
+import {SessionManager} from "./server/map-session/session-manager.js";
+import {SnapshotService} from "./server/map-session/snapshot-service.js";
+import {INTERACTIVE_MAP_LAUNCHER_URI, registerInteractiveMapLauncherResource} from "./server/interactive-map-launcher-resource.js";
 import {
   type LocSearchReplyRawType,
   locSearchQueryReqSchema,
   locSearchReplyRawSchema,
   AitoolInputReqSchema,
 } from "./models/backend/bridge-models.js";
-import type {ToolFlowServicesType} from "./tools/tool-flow.js";
-import {ToolExecutionScheduler} from "./tools/tool-execution-scheduler.js";
-import {createErrorToolResult, createPublishedMapToolHandler, createTextToolResult} from "./tools/mcp-tool-handler.js";
-import {funcToolA, funcToolB} from "./tools/tools.js";
-import {AppError} from "./utils/app-error.js";
-import { getToolPromptsConfigWithHints } from "./utils/prompt-hints.js";
+import type {ToolFlowServicesType} from "./server/tools/tool-flow.js";
+import {ToolExecutionScheduler} from "./server/tools/tool-execution-scheduler.js";
+import {createErrorToolResult, createPublishedMapToolHandler, createTextToolResult} from "./server/tools/mcp-tool-handler.js";
+import {funcToolA, funcToolB} from "./server/tools/tools.js";
+import {AppError} from "./shared/app-error.js";
+import { getToolPromptsConfigWithHints } from "./server/utils/prompt-hints.js";
 import {
   callBridge,
   sanitizeSearchResponseForAI,
-} from "./utils/python-bridge.js";
-import {config} from "./utils/config-loader.js";
-import {initializeUserStyle} from "./utils/user-style-rule.js";
-import {logger} from "./utils/logger.js";
+} from "./server/utils/python-bridge.js";
+import {config} from "./server/utils/config-loader.js";
+import {initializeUserStyle} from "./server/utils/user-style/user-style-rule.js";
+import {logger} from "./server/utils/logger.js";
 
 //#################################################################################
 const searchResultCache = new Map<string, LocSearchReplyRawType>();

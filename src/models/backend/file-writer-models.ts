@@ -2,7 +2,7 @@
 
 import {z} from "zod";
 
-import {identifiedOverlayGroupsWithDisplayIdSchema} from "./map-data-models.js";
+import {identifiedOverlayGroupsWithDisplayIdSchema} from "../common/map-data-models.js";
 import {interactiveMapArchiveSchema, selectedQueryArchiveSchema} from "./map-session-models.js";
 
 /** 新版最终 Session ID schema 接入前，只确认调用边界收到字符串。 */

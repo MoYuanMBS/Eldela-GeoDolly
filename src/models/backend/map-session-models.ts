@@ -13,7 +13,7 @@ import {
   identifiedOverlayGroupsWithDisplayIdSchema,
   relationMemberFeaturesByRelationSchema,
   relationMembershipByFeatureIdSchema,
-} from "./map-data-models.js";
+} from "../common/map-data-models.js";
 import {finalSessionIdSchema} from "./session-id-models.js";
 import {
   locSearchCandidateRawSchema,
