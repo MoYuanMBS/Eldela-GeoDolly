@@ -48,7 +48,7 @@ export const UI_BUILT_IN_CONFIG = {
   popup: {
     // Popup 优先使用窄布局；长单词只在该区间内推动卡片扩宽，超过上限后换行。
     minWidthPx: 240,
-    maxWidthPx: 320,
+    maxWidthPx: 325,
     minHeightPx: 160,
     maxHeightPx: 480,
   },
@@ -59,6 +59,7 @@ export const UI_BUILT_IN_CONFIG = {
     // 三段背景使用实际栏宽；body 高度由按钮行数和行高决定，端帽保持素材比例。
     widthPx: 40,
     controlHeightPx: 34,
+    dividerHeightPx: 2,
     leftOffsetPx: 15,
   },
   attribution: {

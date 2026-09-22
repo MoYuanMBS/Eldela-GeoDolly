@@ -20,7 +20,7 @@ function osmRef(osmType: InteractiveOsmTagGroupType["osmType"], osmId: number): 
 
 function formatTagText(text: string): string {
   // 只转换显示文本；AI record、React key 和 OSM identity 始终保留原值，星号不替换。
-  return text.replace(/_/g, "-").replace(/[-:]/g, "$&\u200b");
+  return text.replace(/_/g, "-").replace(/[-:\/|;,@]/g, "$&\u200b");
 }
 
 function SectionTitle({children}: {children: string}) {

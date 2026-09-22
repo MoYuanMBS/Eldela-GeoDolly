@@ -51,6 +51,7 @@ interface MapPageStyle extends CSSProperties {
   "--geomcp-tool-bar-scale": string;
   "--geomcp-tool-bar-width": string;
   "--geomcp-tool-bar-control-height": string;
+  "--geomcp-tool-bar-divider-height": string;
   "--geomcp-tool-bar-left-offset": string;
   "--geomcp-scale-max-width": string;
 }
@@ -220,6 +221,7 @@ export function MapPage({mapDataUrl, onArchived, MapSurfaceComponent}: MapPagePr
     "--geomcp-tool-bar-scale": String(UI_BUILT_IN_CONFIG.toolbar.scale),
     "--geomcp-tool-bar-width": `${UI_BUILT_IN_CONFIG.toolbar.widthPx}px`,
     "--geomcp-tool-bar-control-height": `${UI_BUILT_IN_CONFIG.toolbar.controlHeightPx}px`,
+    "--geomcp-tool-bar-divider-height": `${UI_BUILT_IN_CONFIG.toolbar.dividerHeightPx}px`,
     "--geomcp-tool-bar-left-offset": `${UI_BUILT_IN_CONFIG.toolbar.leftOffsetPx}px`,
     "--geomcp-scale-max-width": `${__GEOMCP_MAX_SCALE_WIDTH_PX__}px`,
   };

@@ -1,4 +1,4 @@
-import {useEffect, useState, type CSSProperties} from "react";
+import {Fragment, useEffect, useState, type CSSProperties} from "react";
 import {UI_SVG_ASSETS} from "../built-in-config/ui-svg.js";
 import {UI_BUILT_IN_CONFIG} from "../built-in-config/ui.js";
 import type {MeasureToolModeType} from "../models/measure-tools/measure-tool-models.js";
@@ -49,7 +49,7 @@ export function DrawingToolbar({mode, disabled, onZoomIn, onZoomOut, onModeChang
 
   // body.svg 的画板为 32 × 16；先等比适应栏宽，再只拉伸纵向，不改 SVG 文件。
   const toolbarStyle = {
-    "--geomcp-tool-bar-body-scale-y": TOOLBAR_CONTROLS.length * UI_BUILT_IN_CONFIG.toolbar.controlHeightPx / (UI_BUILT_IN_CONFIG.toolbar.widthPx / 2),
+    "--geomcp-tool-bar-body-scale-y": (TOOLBAR_CONTROLS.length * UI_BUILT_IN_CONFIG.toolbar.controlHeightPx + UI_BUILT_IN_CONFIG.toolbar.dividerHeightPx) / (UI_BUILT_IN_CONFIG.toolbar.widthPx / 2),
   } as CSSProperties;
   return (
     <nav className={`geomcp-tool-bar geomcp-tool-bar-mode-${mode.replace("_", "-")}`} style={toolbarStyle} aria-label="Map and drawing tools" data-drawing-mode={mode}>
@@ -62,51 +62,53 @@ export function DrawingToolbar({mode, disabled, onZoomIn, onZoomOut, onModeChang
             const isActive = isModeControl && mode === control.mode;
             // 选中的绘制工具始终 select，连按住也不替换；其余按钮才按 pressed > hover 显示。
             const effect = disabled ? null : isActive ? "toolSelect" : pressedControl === control.classSuffix ? "toolPressed" : hoveredControl === control.classSuffix ? "toolHover" : null;
+            const controlKey = isModeControl ? control.mode : control.command;
             return (
-              <div className={`geomcp-tool-bar-control geomcp-tool-bar-control-${control.classSuffix}`} key={isModeControl ? control.mode : control.command}>
-                {/* 只分隔缩放命令组与测量工具组，组内按钮之间不添加 divider。 */}
+              <Fragment key={controlKey}>
                 {isModeControl && TOOLBAR_CONTROLS[index - 1]?.kind === "command" ? (
-                  <span className={`geomcp-tool-bar-divider geomcp-tool-bar-divider-before-${control.classSuffix}`} aria-hidden="true">
+                  <div className={`geomcp-tool-bar-divider geomcp-tool-bar-divider-before-${control.classSuffix}`} aria-hidden="true">
                     <img className="geomcp-ui-decoration geomcp-ui-decoration-tool-divider" src={UI_SVG_ASSETS.decorations.toolBarDivider} alt="" draggable={false} />
-                  </span>
+                  </div>
                 ) : null}
-                <button
-                  className={`geomcp-tool-bar-button geomcp-tool-bar-button-${control.classSuffix}${isActive ? " geomcp-tool-bar-button-active" : ""}${disabled ? " geomcp-tool-bar-button-disabled" : ""}`}
-                  type="button"
-                  aria-label={control.label}
-                  aria-pressed={isModeControl ? isActive : undefined}
-                  data-tool-effect={effect ?? "none"}
-                  disabled={disabled}
-                  onPointerEnter={(event) => {
-                    if (event.pointerType !== "touch") setHoveredControl(control.classSuffix);
-                  }}
-                  onPointerLeave={() => setHoveredControl((current) => current === control.classSuffix ? null : current)}
-                  onPointerDown={(event) => {
-                    if (event.button === 0) setPressedControl(control.classSuffix);
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === " " || event.key === "Enter") setPressedControl(control.classSuffix);
-                  }}
-                  onKeyUp={(event) => {
-                    if (event.key === " " || event.key === "Enter") setPressedControl(null);
-                  }}
-                  onBlur={() => setPressedControl(null)}
-                  onClick={() => {
-                    if (isModeControl) {
-                      onModeChange(isActive ? "idle" : control.mode);
-                    } else if (control.command === "zoom_in") {
-                      onZoomIn();
-                    } else {
-                      onZoomOut();
-                    }
-                  }}
-                >
-                  {effect === null ? null : <img className="geomcp-ui-effect geomcp-ui-effect-tool" src={UI_SVG_ASSETS.hover[effect]} alt="" draggable={false} aria-hidden="true" />}
-                  {isModeControl
-                    ? <img className={`geomcp-ui-icon geomcp-ui-icon-tool geomcp-ui-icon-tool-${control.classSuffix}`} src={control.iconUrl} alt="" draggable={false} aria-hidden="true" />
-                    : <span className={`geomcp-tool-bar-zoom-symbol geomcp-tool-bar-zoom-symbol-${control.classSuffix}`} aria-hidden="true">{control.text}</span>}
-                </button>
-              </div>
+                <div className={`geomcp-tool-bar-control geomcp-tool-bar-control-${control.classSuffix}`}>
+                  <button
+                    className={`geomcp-tool-bar-button geomcp-tool-bar-button-${control.classSuffix}${isActive ? " geomcp-tool-bar-button-active" : ""}${disabled ? " geomcp-tool-bar-button-disabled" : ""}`}
+                    type="button"
+                    aria-label={control.label}
+                    aria-pressed={isModeControl ? isActive : undefined}
+                    data-tool-effect={effect ?? "none"}
+                    disabled={disabled}
+                    onPointerEnter={(event) => {
+                      if (event.pointerType !== "touch") setHoveredControl(control.classSuffix);
+                    }}
+                    onPointerLeave={() => setHoveredControl((current) => current === control.classSuffix ? null : current)}
+                    onPointerDown={(event) => {
+                      if (event.button === 0) setPressedControl(control.classSuffix);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === " " || event.key === "Enter") setPressedControl(control.classSuffix);
+                    }}
+                    onKeyUp={(event) => {
+                      if (event.key === " " || event.key === "Enter") setPressedControl(null);
+                    }}
+                    onBlur={() => setPressedControl(null)}
+                    onClick={() => {
+                      if (isModeControl) {
+                        onModeChange(isActive ? "idle" : control.mode);
+                      } else if (control.command === "zoom_in") {
+                        onZoomIn();
+                      } else {
+                        onZoomOut();
+                      }
+                    }}
+                  >
+                    {effect === null ? null : <img className="geomcp-ui-effect geomcp-ui-effect-tool" src={UI_SVG_ASSETS.hover[effect]} alt="" draggable={false} aria-hidden="true" />}
+                    {isModeControl
+                      ? <img className={`geomcp-ui-icon geomcp-ui-icon-tool geomcp-ui-icon-tool-${control.classSuffix}`} src={control.iconUrl} alt="" draggable={false} aria-hidden="true" />
+                      : <span className={`geomcp-tool-bar-zoom-symbol geomcp-tool-bar-zoom-symbol-${control.classSuffix}`} aria-hidden="true">{control.text}</span>}
+                  </button>
+                </div>
+              </Fragment>
             );
           })}
         </div>
