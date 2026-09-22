@@ -305,8 +305,15 @@
   display: grid;
   min-width: 0;
   margin: 0;
-  grid-template-columns: minmax(72px, auto) minmax(0, 1fr);
   gap: 8px;
+}
+
+.geomcp-ai-output-field-row {
+  grid-template-columns: minmax(72px, auto) minmax(0, 1fr);
+}
+
+.geomcp-ai-output-tag-row {
+  grid-template-columns: clamp(120px, 34%, 220px) minmax(0, 1fr);
 }
 
 .geomcp-ai-output-field-row > dd,

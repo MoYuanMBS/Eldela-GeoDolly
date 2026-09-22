@@ -195,7 +195,7 @@ output:
 # Browser UI 可公开调节参数。
 ui:
   # 是否挂载 Interactive UI 的 8 个可选装饰 SVG；关闭不影响 divider、图标和其他必要 UI 素材。
-  decorations_enabled: false
+  decorations_enabled: true
   # 公制 Scale 在当前视口中心纬度处用于换算距离的最大逻辑像素宽度。
   max_scale_width_px: 100
   # Feature UI 展开内容超过此高度后在面板内部滚动，不挤入 iframe 保证高度。
