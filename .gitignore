@@ -1,7 +1,4 @@
 # ---------- user_setting ----------
-doc/
-test/
-local_test/
 cache/
 test.py
 test2.py
@@ -121,7 +118,6 @@ output/
 python/core/output/__pycache__/
 results/
 exports/
-*.png
 *.jpg
 *.jpeg
 *.pdf
