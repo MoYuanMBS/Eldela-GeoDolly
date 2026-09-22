@@ -38,7 +38,7 @@ nominatim:
   user_agent: "geomcp/test"
   # Nominatim HTTP 请求超时秒数。
   # 超时后会进入上游 HTTP 错误处理流程。
-  timeout_seconds: 30.00
+  timeout_seconds: 60.00
 
 # Overpass 运行参数。
 overpass:
@@ -65,7 +65,7 @@ overpass:
   # 发给 Overpass API 的 User-Agent。
   user_agent: "geomcp/test"
   # Overpass Query 与 HTTP 请求共用的超时秒数。
-  timeout_seconds: 60
+  timeout_seconds: 180
   # 请求失败后的重试次数。
   retry_attempts: 3
   # 每次重试前的基础等待秒数。
@@ -168,7 +168,7 @@ iframe_adaptive:
 # Browser Map Flow 的初始 ready 配置。
 browser_map:
   # 等待初始瓦片与视觉子流程全部完成的统一上限。
-  ready_timeout_seconds: 30
+  ready_timeout_seconds: 90
 
 # MCP Apps 客户端展示参数；协议字段与安全校验保持内建，不允许由配置改写。
 mcp_apps:
@@ -183,7 +183,7 @@ basemap:
   # GeoMCP 服务端访问在线瓦片 provider 时发送的 User-Agent。
   user_agent: "GeoMCP/0.1"
   # 单次上游瓦片请求的超时秒数；Browser 只等待同源 endpoint 的返回。
-  upstream_timeout_seconds: 8
+  upstream_timeout_seconds: 15
   # Snapshot 固定首屏所需瓦片的最低成功比例；缺失但达到阈值时 warning 后继续发布。
   snapshot_min_tile_success_ratio: 0.8
 

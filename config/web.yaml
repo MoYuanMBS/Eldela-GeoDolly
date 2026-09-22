@@ -22,7 +22,7 @@ tool_execution:
   # 0 表示 worker 全忙时不排队，直接返回 busy。
   max_queue_length: 12
   # 单次取得 worker 后的总预算，覆盖 Python、整理、截图、写盘与发布。
-  timeout_seconds: 3000
+  timeout_seconds: 300
 
 # RAM Session 生命周期和 sessions.json 低频 checkpoint。
 session:
