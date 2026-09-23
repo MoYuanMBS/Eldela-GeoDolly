@@ -9,23 +9,57 @@ prompts:
     title: "Location Search"
     # 工具说明文案。
     # 建议保持英文，避免影响不同 AI / MCP client 的理解。
-    description: >
-      Search and shortlist a location candidate before any heavy analysis.
-      Call this tool first.
+    description: >-
+      Resolve one place, address, landmark, or administrative area to
+      OpenStreetMap/Nominatim candidates before map analysis. Submit exactly
+      one item in "queries"; optional two-letter country codes may be used for
+      disambiguation.
+
+      Compare returned candidate details and ask the user to confirm when
+      ambiguous. Retain the returned "session_id" and pass exactly one returned
+      candidate "index" to tool_a or tool_b. Never invent a candidate, index,
+      or session ID. Military use is prohibited.
   tool_a:
     # Tool A 的展示标题。
-    title: "Road And Traffic Analysis"
+    title: "Regional Context And Network Analysis"
     # Tool A 的说明文案。
-    description: >
-      Heavy road and traffic analysis.
-      Call location_search first, then pass the confirmed session and selection.
+    description: >-
+      Analyze OpenStreetMap features across an expanded bounding-box context
+      without exhaustive core-area collection. Prefer this tool for broader
+      areas, road and rail networks, street hierarchy, intersections, transport
+      corridors, connectivity, and surrounding infrastructure.
+
+      Call location_search first and pass its "session_id" plus exactly one
+      candidate index. Explicitly choose a basemap and "visual_output":
+      "none", "screenshot", or "interactive". Set "include_overlay_geojson"
+      only when complete enriched overlay geometry is needed.
+
+      Large areas may fall back to a basemap-only preview. Do not issue
+      concurrent duplicate calls for the same session and candidate. This tool
+      does not provide routing, live traffic, or real-time operational data.
+      Military use, including targeting, reconnaissance, tactical planning,
+      force deployment, or operational intelligence, is prohibited.
   tool_b:
     # Tool B 的展示标题。
-    title: "Area And Facility Analysis"
+    title: "Regional And Facility Analysis"
     # Tool B 的说明文案。
-    description: >
-      Heavy area and facility analysis.
-      Call location_search first, then pass the confirmed session and selection.
+    description: >-
+      Analyze a confirmed place as a core area together with surrounding
+      OpenStreetMap context and relevant facilities. Prefer this tool for parks,
+      campuses, districts, complexes, administrative areas, and other bounded
+      places where the selected geometry should remain distinct. Select
+      configured experts only when relevant.
+
+      Call location_search first and pass its "session_id" plus exactly one
+      candidate index. Explicitly choose a basemap and "visual_output":
+      "none", "screenshot", or "interactive". Set "include_overlay_geojson"
+      only when complete enriched overlay geometry is needed.
+
+      Oversized areas may downgrade to bounding-box mode or a basemap-only
+      preview. Do not issue concurrent duplicate calls for the same session
+      and candidate. Military use, including targeting, reconnaissance,
+      tactical planning, force deployment, or operational intelligence, is
+      prohibited.
 
 # Nominatim 运行参数。
 # 主要供 Python 侧 `nominatim.py` 使用。
@@ -74,11 +108,11 @@ overpass:
 # Geometry 模块统一运行参数；字段名明确标注各自单位。
 geometry:
   # LineString / MultiLineString 投影到本地米制 CRS 后的 buffer 距离。
-  line_buffer_meter: 50.00
+  line_buffer_meter: 200.00
   # Tool A 查询 bbox 的扩展距离，调用 geometry 前转换为米。
-  tool_a_bbox_expand_km: 0.75
+  tool_a_bbox_expand_km: 1.00
   # Tool B tile bbox 的扩展距离，调用 geometry 前转换为米。
-  tool_b_bbox_expand_km: 0.75
+  tool_b_bbox_expand_km: 1.00
 
   # --- Compression 运行参数 ---
   # tolerance 预测公式内部的算法调参常量仍定义在 compression.py 文件头。
@@ -86,16 +120,16 @@ geometry:
   base_tolerance_meter: 10.00
   max_tolerance_meter: 200.00
   # 全部 exterior open-ring 节点数的最终硬上限。
-  max_node: 150
+  max_node: 210
   # 初始预测失败后的最大反馈修正次数。
   max_retry: 3
   # --- Tool 面积限制 ---
   # 配置单位为 km²；面积模块内部统一换算为 m²。
   # Tool A 是 Tool B 超限后的宽松内部查询模式。
-  tool_a_max_area_km2: 180.00
-  tool_b_max_area_km2: 150.00
+  tool_a_max_area_km2: 230.00
+  tool_b_max_area_km2: 180.00
   # Overpass core polygon 的独立面积上限，不与最终 tile bbox 面积共用。
-  max_core_area_km2: 120.00
+  max_core_area_km2: 150.00
 
 # Feature ID 的共享生成与显示配置。
 # Python 生成 node / way / area / relation Feature ID；TypeScript 处理 display ID。
@@ -128,7 +162,7 @@ iframe_adaptive:
 
 # --- Python 内容复杂度与面积倍率参数 ---
   # 单个最终 node Feature 对内容复杂度的贡献权重。
-  node_weight: 1.0
+  node_weight: 0.5
   # 单个最终 way Feature 对内容复杂度的贡献权重。
   way_weight: 0.8
   # 单个最终 area 计数单位的贡献权重；不展开或统计 area 内部元素。
@@ -143,12 +177,12 @@ iframe_adaptive:
 # --- TypeScript ScreenshotSpec 与 iframe 参数 ---
   # MapSurface 的逻辑尺寸范围；不包含单独测量并锁高的 Reference UI。
   # loader 会把不足以容纳最小显示尺寸、参考面积或比例端点的上限自动提高，并记录 warning。
-  min_screenshot_width: 800
-  max_screenshot_width: 1600
-  min_screenshot_height: 500
-  max_screenshot_height: 1000
+  min_screenshot_width: 600
+  max_screenshot_width: 5000
+  min_screenshot_height: 600
+  max_screenshot_height: 5000
   # 逻辑像素预算；不足时 loader 会按有效尺寸自动提高。
-  max_screenshot_pixels: 1600000
+  max_screenshot_pixels: 49000000
   # recommended_viewport_area_factor=1 时的参考逻辑面积。
   reference_screenshot_area: 400000
   # 截图画布允许使用的极端宽高比范围。
@@ -156,14 +190,14 @@ iframe_adaptive:
   max_aspect_ratio: 3.2
   # Leaflet 初始视口为 bbox 四周预留的对称安全距离。
   padding:
-    top: 32
-    right: 32
-    bottom: 32
-    left: 32
+    top: 8
+    right: 8
+    bottom: 8
+    left: 8
   # MapSurface 缩放后的最小可读尺寸，同时作为 screenshot 下限的最低约束。
   # Reference UI 的实际高度由 Browser 完成布局后单独测量，不计入这里的 MapSurface 高度。
   min_map_display_width: 600
-  min_map_display_height: 300
+  min_map_display_height: 600
 
 # Browser Map Flow 的初始 ready 配置。
 browser_map:
@@ -181,7 +215,7 @@ mcp_apps:
 # GeoMCP Basemap Tile Endpoint 的上游访问配置。
 basemap:
   # GeoMCP 服务端访问在线瓦片 provider 时发送的 User-Agent。
-  user_agent: "GeoMCP/0.1"
+  user_agent: "GeoMCP/test"
   # 单次上游瓦片请求的超时秒数；Browser 只等待同源 endpoint 的返回。
   upstream_timeout_seconds: 15
   # Snapshot 固定首屏所需瓦片的最低成功比例；缺失但达到阈值时 warning 后继续发布。

@@ -4,7 +4,7 @@ http:
   listen_host: "127.0.0.1"
   warning:
     # Browser 固定同源 POST /browser-warnings，由部署层转发到此内部端口。
-    port: 8787
+    port: 23446
     # 单条 warning payload 很小；解析 JSON 前先限制累计请求体字节数。
     max_body_bytes: 4096
     # 所有 Interactive sessions 共用该通道；限流只保护服务，不替代 Browser 页面内去重。
@@ -12,9 +12,9 @@ http:
     max_requests_per_window: 600
   map:
     # 正式 Session、公开 Snapshot 与内部一次性 Snapshot route 共用此端口。
-    port: 8788
+    port: 23336
     # 对外返回的固定 HTTP(S) origin；正式部署时替换为反向代理公开地址。
-    public_origin: "http://127.0.0.1:8788"
+    public_origin: "http://127.0.0.1:23336"
 
 # location_search、tool_a 与 tool_b 共用有界 worker；排队时间不计入执行超时。
 tool_execution:
@@ -35,4 +35,4 @@ session:
 # Headless Snapshot 执行器的全局资源边界；deviceScaleFactor 固定为 1，不配置。
 snapshot:
   # 完整 MapSurface + Reference UI wrapper 的最大物理像素数。
-  max_wrapper_physical_pixels: 2000000
+  max_wrapper_physical_pixels: 64000000
