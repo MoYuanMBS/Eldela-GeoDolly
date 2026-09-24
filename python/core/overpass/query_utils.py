@@ -85,6 +85,9 @@ def _build_positive_filter_fragments(overpass_rules: OverpassFilterRule) -> tupl
             filters.append(f'[{_quote_ql_string(key)}={_quote_ql_string(value)}]')
         else:
             filters.append(f'[{_quote_ql_string(key)}~{_quote_ql_string(_build_exact_value_regex(values))}]')
+    for key in sorted(overpass_rules.include_value_patterns_by_key):
+        for pattern_source in sorted(overpass_rules.include_value_patterns_by_key[key]):
+            filters.append(f'[{_quote_ql_string(key)}~{_quote_ql_string(pattern_source)}]')
     return tuple(filters)
 
 

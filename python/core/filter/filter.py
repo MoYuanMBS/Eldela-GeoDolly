@@ -10,7 +10,7 @@ TagValue = TypeVar("TagValue", str, list[str])
 def filter_include_tags(tags: dict[str, str], rules: TagFilterRule) -> bool:
     """正向筛选 tags；命中任意 pass 规则时返回原 tags。"""
     for key, value in tags.items():
-        if key in rules.wildcard_keys or value in rules.values_by_key.get(key, set()):
+        if key in rules.wildcard_keys or value in rules.values_by_key.get(key, set()) or any(pattern.fullmatch(value) for pattern in rules.value_patterns_by_key.get(key, [])):
             return True
     return False
 
@@ -55,6 +55,10 @@ def filter_output_tags(tags: dict[str, str], rules: TagFilterRule) -> dict[str, 
     cleaned_tags = clean_regex_tags(clean_tags(tags, rules), rules)
     if not cleaned_tags:
         return None
-    if all(value in rules.drop_if_only_tags.get(key, set()) for key, value in cleaned_tags.items()):
+    if all(
+        value in rules.drop_if_only_tags.get(key, set())
+        or any(pattern.fullmatch(key) for pattern in rules.drop_if_only_key_patterns)
+        for key, value in cleaned_tags.items()
+    ):
         return None
     return cleaned_tags

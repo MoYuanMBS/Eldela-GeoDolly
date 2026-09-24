@@ -121,8 +121,10 @@ class TagFilterRule(StrictModel):
 
     wildcard_keys: set[str] = Field(default_factory=set)
     values_by_key: dict[str, set[str]] = Field(default_factory=dict)
+    value_patterns_by_key: dict[str, list[re.Pattern[str]]] = Field(default_factory=dict)
     remove_tag_key_patterns: list[re.Pattern[str]] = Field(default_factory=list)
     drop_if_only_tags: dict[str, set[str]] = Field(default_factory=dict)
+    drop_if_only_key_patterns: list[re.Pattern[str]] = Field(default_factory=list)
 
 
 class OverpassFilterRule(StrictModel):
@@ -130,6 +132,7 @@ class OverpassFilterRule(StrictModel):
 
     include_wildcard_keys: set[str] = Field(default_factory=set)
     include_exact_rules: set[tuple[str, str]] = Field(default_factory=set)
+    include_value_patterns_by_key: dict[str, set[str]] = Field(default_factory=dict)
     deny_wildcard_keys: set[str] = Field(default_factory=set)
     deny_exact_rules: set[tuple[str, str]] = Field(default_factory=set)
 

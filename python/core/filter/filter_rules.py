@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
+import re
 import sys
 from typing import Any, ClassVar
 
@@ -122,15 +123,61 @@ class FilterRuleContext:
         if value == "*":
             target.wildcard_keys.add(key)
             target.values_by_key.pop(key, None)
+            target.value_patterns_by_key.pop(key, None)
             return
         if key in target.wildcard_keys:
             return
         target.values_by_key.setdefault(key, set()).add(value)
 
-    def _merge_tag_strings(self, tag_rules: list[str], rule_source: str) -> TagFilterRule:
-        """合并 `key=*` / `key=value` 字符串规则。"""
+    def _parse_value_regex_rule(self, tag_rule: str, rule_source: str) -> tuple[str, re.Pattern[str]] | None:
+        """解析固定 key 的 POSIX-compatible value regex。"""
+        key, separator, pattern_source = tag_rule.partition("~=")
+        key = key.strip()
+        pattern_source = pattern_source.strip()
+        if not separator or not key or not pattern_source:
+            warning_logger.warning(
+                "skip_invalid_tag_rule",
+                extra={"geomcp_extra": {"status": "skipped", "reason": "invalid_tag_rule", "rule_source": rule_source, "tag_rule": tag_rule}}
+            )
+            return None
+        if not pattern_source.startswith("^") or not pattern_source.endswith("$"):
+            warning_logger.warning(
+                "skip_invalid_tag_rule",
+                extra={"geomcp_extra": {"status": "skipped", "reason": "regex_must_be_anchored", "rule_source": rule_source, "tag_rule": tag_rule}}
+            )
+            return None
+        if "(?" in pattern_source or re.search(r"\\[AbBdDsSwWZ1-9]", pattern_source) or re.search(r"(?:[*+?]|\{\d+(?:,\d*)?\})\?", pattern_source):
+            warning_logger.warning(
+                "skip_invalid_tag_rule",
+                extra={"geomcp_extra": {"status": "skipped", "reason": "unsupported_regex_syntax", "rule_source": rule_source, "tag_rule": tag_rule}}
+            )
+            return None
+        try:
+            return key, re.compile(pattern_source)
+        except re.error as error:
+            warning_logger.warning(
+                "skip_invalid_tag_rule",
+                extra={"geomcp_extra": {"status": "skipped", "reason": "invalid_regex", "rule_source": rule_source, "tag_rule": tag_rule, "error": str(error)}}
+            )
+            return None
+
+    def _merge_value_pattern(self, target: TagFilterRule, key: str, pattern: re.Pattern[str]) -> None:
+        """把 value regex 合并进目标规则集合。"""
+        if key in target.wildcard_keys:
+            return
+        patterns = target.value_patterns_by_key.setdefault(key, [])
+        if all(existing.pattern != pattern.pattern for existing in patterns):
+            patterns.append(pattern)
+
+    def _merge_tag_strings(self, tag_rules: list[str], rule_source: str, allow_value_regex: bool = False) -> TagFilterRule:
+        """合并 tag 字符串规则；Base / Expert 可额外使用 value regex。"""
         merged_rules = TagFilterRule()
         for tag_rule in tag_rules:
+            if allow_value_regex and "~=" in tag_rule:
+                parsed_regex_rule = self._parse_value_regex_rule(tag_rule, rule_source)
+                if parsed_regex_rule is not None:
+                    self._merge_value_pattern(merged_rules, *parsed_regex_rule)
+                continue
             parsed_rule = self._parse_tag_rule(tag_rule, rule_source)
             if parsed_rule is None:
                 continue
@@ -145,6 +192,9 @@ class FilterRuleContext:
         for key, values in source.values_by_key.items():
             for value in values:
                 self._merge_tag_rule(target, key, value)
+        for key, patterns in source.value_patterns_by_key.items():
+            for pattern in patterns:
+                self._merge_value_pattern(target, key, pattern)
 
     ##### Overpass Rules #####
 
@@ -153,16 +203,18 @@ class FilterRuleContext:
         merged_rules = TagFilterRule(
             wildcard_keys=set(include_rules.wildcard_keys),
             values_by_key={key: set(values) for key, values in include_rules.values_by_key.items()},
+            value_patterns_by_key={key: list(patterns) for key, patterns in include_rules.value_patterns_by_key.items()},
         )
 
         for key in deny_rules.wildcard_keys:
-            if key in merged_rules.wildcard_keys or key in merged_rules.values_by_key:
+            if key in merged_rules.wildcard_keys or key in merged_rules.values_by_key or key in merged_rules.value_patterns_by_key:
                 warning_logger.warning(
                     "skip_denied_positive_overpass_tag_rule",
                     extra={"geomcp_extra": {"status": "skipped", "reason": "internal_deny_wildcard", "tag_key": key}}
                 )
             merged_rules.wildcard_keys.discard(key)
             merged_rules.values_by_key.pop(key, None)
+            merged_rules.value_patterns_by_key.pop(key, None)
 
         for key, denied_values in deny_rules.values_by_key.items():
             if key not in merged_rules.values_by_key:
@@ -194,14 +246,14 @@ class FilterRuleContext:
         """合并 Expert overpass_tags。"""
         merged_rules = TagFilterRule()
         for expert_config in expert_configs:
-            self._merge_compiled_rules(merged_rules, self._merge_tag_strings(expert_config.overpass_tags, "expert.overpass_tags"))
+            self._merge_compiled_rules(merged_rules, self._merge_tag_strings(expert_config.overpass_tags, "expert.overpass_tags", allow_value_regex=True))
         return merged_rules
 
     def _merge_base_expert_overpass_rules(self, base_config: ExpertConfig | None, expert_configs: list[ExpertConfig]) -> TagFilterRule:
         """合并 Base / Expert overpass_tags。"""
         merged_rules = TagFilterRule()
         if base_config is not None:
-            self._merge_compiled_rules(merged_rules, self._merge_tag_strings(base_config.overpass_tags, "base.overpass_tags"))
+            self._merge_compiled_rules(merged_rules, self._merge_tag_strings(base_config.overpass_tags, "base.overpass_tags", allow_value_regex=True))
         self._merge_compiled_rules(merged_rules, self._merge_expert_overpass_rules(expert_configs))
         return merged_rules
 
@@ -215,6 +267,7 @@ class FilterRuleContext:
         return OverpassFilterRule(
             include_wildcard_keys=include_rules.wildcard_keys,
             include_exact_rules=include_exact_rules,
+            include_value_patterns_by_key={key: {pattern.pattern for pattern in patterns} for key, patterns in include_rules.value_patterns_by_key.items()},
             deny_wildcard_keys=set(self.deny_object_rules.deny_wildcard_keys),
             deny_exact_rules=set(self.deny_object_rules.deny_exact_rules),
         )
@@ -228,7 +281,7 @@ class FilterRuleContext:
             overlay_matches.extend(rule.match for rule in base_config.overlay_rules)
         for expert_config in expert_configs:
             overlay_matches.extend(rule.match for rule in expert_config.overlay_rules)
-        return self._merge_tag_strings(overlay_matches, "overlay_rules")
+        return self._merge_tag_strings(overlay_matches, "overlay_rules", allow_value_regex=True)
 
     def _merge_output_remove_tag_rules(self) -> TagFilterRule:
         """合并 filters.yaml 与 internal remove_tag_rules。"""
@@ -237,13 +290,18 @@ class FilterRuleContext:
         self._merge_compiled_rules(merged_rules, self.rule_store.remove_tag_rules)
         merged_rules.remove_tag_key_patterns = list(self.config.filters.remove_tag_key_patterns)
         # drop_if_only_tags 只来自 filters.yaml，独立编译后直接放入，不参与任何 tag rules merge。
-        merged_rules.drop_if_only_tags = self._compile_drop_if_only_tags(self.config.filters.drop_if_only_tags)
+        merged_rules.drop_if_only_tags, merged_rules.drop_if_only_key_patterns = self._compile_drop_if_only_tags(self.config.filters.drop_if_only_tags)
         return merged_rules
 
-    def _compile_drop_if_only_tags(self, tag_rules: list[str]) -> dict[str, set[str]]:
-        """独立编译低信息量对象规则；只接受精确 `key=value`。"""
+    def _compile_drop_if_only_tags(self, tag_rules: list[str | re.Pattern[str]]) -> tuple[dict[str, set[str]], list[re.Pattern[str]]]:
+        """独立编译低信息量对象的 exact 与 tag key regex。"""
         values_by_key: dict[str, set[str]] = {}
+        key_patterns: list[re.Pattern[str]] = []
         for tag_rule in tag_rules:
+            if isinstance(tag_rule, re.Pattern):
+                if all(existing.pattern != tag_rule.pattern for existing in key_patterns):
+                    key_patterns.append(tag_rule)
+                continue
             parsed_rule = self._parse_tag_rule(tag_rule, "filters.drop_if_only_tags")
             if parsed_rule is None:
                 continue
@@ -255,7 +313,7 @@ class FilterRuleContext:
                 )
                 continue
             values_by_key.setdefault(key, set()).add(value)
-        return values_by_key
+        return values_by_key, key_patterns
 
     ##### Annotation Rules #####
 

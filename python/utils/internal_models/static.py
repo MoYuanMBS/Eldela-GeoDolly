@@ -60,7 +60,7 @@ class FiltersConfig(StrictModel):
 
     remove_tags: list[str] = Field(default_factory=list)
     remove_tag_key_patterns: list[re.Pattern[str]] = Field(default_factory=list)
-    drop_if_only_tags: list[str] = Field(default_factory=list)
+    drop_if_only_tags: list[str | re.Pattern[str]] = Field(default_factory=list)
 
     @field_validator("remove_tag_key_patterns", mode="before")
     @classmethod
@@ -88,6 +88,33 @@ class FiltersConfig(StrictModel):
                     }}
                 )
         return compiled_patterns
+
+    @field_validator("drop_if_only_tags", mode="before")
+    @classmethod
+    def compile_drop_if_only_tag_key_patterns(cls, rules: object) -> object:
+        """保留 exact 规则，并编译不含等号的 tag key regex。"""
+        if not isinstance(rules, list):
+            return rules
+
+        compiled_rules: list[object] = []
+        for rule in rules:
+            if not isinstance(rule, str) or "=" in rule:
+                compiled_rules.append(rule)
+                continue
+            try:
+                compiled_rules.append(re.compile(rule))
+            except re.error as error:
+                warning_logger.warning(
+                    "skip_invalid_tag_key_pattern",
+                    extra={"geomcp_extra": {
+                        "status": "skipped",
+                        "reason": "invalid_regex",
+                        "rule_source": "filters.drop_if_only_tags",
+                        "pattern": rule,
+                        "error": str(error)
+                    }}
+                )
+        return compiled_rules
 
 
 class FeatureIdScheme(StrictModel):
