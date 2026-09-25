@@ -40,6 +40,22 @@ function wayStyle(
   };
 }
 
+/** 跑道、滑行道与管道只需要一条普通线，不额外增加道路式 casing。 */
+function simpleWayStyle(color: string, width: number, dash?: ReadonlyArray<number>): CanvasBaseStyleRecipe {
+  return {
+    featureType: "way",
+    operations: [{
+      kind: "line",
+      color,
+      opacity: 1,
+      width,
+      lineCap: dash === undefined ? "round" : "butt",
+      lineJoin: "round",
+      ...(dash === undefined ? {} : {dash}),
+    }],
+  };
+}
+
 /**
  * Area Base 使用一次填充加边线；mainColor 留给后续 relation 内侧填充带合成自身颜色。
  */
@@ -107,6 +123,10 @@ export const BUILT_IN_CANVAS_STYLES = {
   "way-highway-cycleway": wayStyle("#58a9ed", "#ffffff", 5, 3, [6, 6]),
   "way-highway-bridleway": wayStyle("#e06d5f", "#ffffff", 5, 3, [6, 6]),
   "way-highway-steps": wayStyle("#ffffff", "#81d25c", 5, 3, [3, 3]),
+  "way-railway-rail": wayStyle("#555861", "#f2efeb", 5, 3, [6, 6]),
+  "way-aeroway-runway": simpleWayStyle("#626873", 4),
+  "way-aeroway-taxiway": simpleWayStyle("#d0a84f", 3),
+  "way-man-made-pipeline": simpleWayStyle("#9b6255", 3, [8, 5]),
 
   // Area mainColor 除了 Base fill，也会在 Relation membership 内侧带中作为最高优先主色复用。
   "area-default": areaStyle("#aaaaaa", 0.18),

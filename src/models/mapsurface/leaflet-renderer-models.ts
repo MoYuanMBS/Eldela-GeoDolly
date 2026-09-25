@@ -1,6 +1,6 @@
 /** Leaflet Overlay renderer 的浏览器运行时模型；不进入 Bridge 或 session 序列化。 */
 
-import type {LatLng, LatLngBounds, LatLngTuple, LayerGroup, Map as LeafletMap, Path, Point, Renderer} from "leaflet";
+import type {LatLng, LatLngBounds, LatLngTuple, Layer, LayerGroup, Map as LeafletMap, Path, Point, Renderer} from "leaflet";
 import type {LeafletConfigType} from "./map-config-models.js";
 import type {IdentifiedOverlayGroupsWithDisplayIdType, RelationMemberFeaturesByRelationType} from "../common/map-data-models.js";
 import type {CanvasRelationMembershipStyle, CanvasSpatialFeatureType} from "./style/base-canvas-style.js";
@@ -82,6 +82,14 @@ export type LeafletSpatialGeometry =
 /** MultiPoint 保持多个独立点，不把它们错误折叠成一条 Node geometry。 */
 export type LeafletMultiPointGeometry = Readonly<{featureType: "multiPoint"; centers: Array<LatLngTuple>}>;
 export type LeafletGeoJsonGeometry = LeafletSpatialGeometry | LeafletMultiPointGeometry;
+
+/** 固定素材 Node 使用 SVG image，并与 CircleMarker 共用 zoom、测量和显隐生命周期。 */
+export type OverlayNodeIconLayer = Layer & Readonly<{
+  getElement(): SVGImageElement | null;
+  getVisualRadius(): number;
+  setZoomScale(scale: number): void;
+  whenReady(): Promise<void>;
+}>;
 
 /** 单 Canvas Label layer 使用的轻量候选；geometry 已经展开到连续世界。 */
 export interface OverlayLabelCandidate {

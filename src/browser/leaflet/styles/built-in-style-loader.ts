@@ -48,10 +48,15 @@ function freezeRule(rule: BuiltInStyleRule<BuiltInStyleId>): CompiledStyleRule<B
   if (!Number.isInteger(rule.priority) || rule.priority < 0 || rule.priority >= USER_STYLE_PRIORITY_OFFSET) {
     throw new AppError("invalid_builtin_style", `Built-in style rule "${rule.id}" priority must be an integer from 0 to ${USER_STYLE_PRIORITY_OFFSET - 1}`);
   }
+  if (rule.kind === "css" && rule.nodeIcon !== undefined) {
+    if (rule.featureType !== "node" || rule.renderLayer !== "base") throw new AppError("invalid_builtin_style", `Built-in node icon rule "${rule.id}" must target the Node Base layer`);
+    if (rule.nodeIcon.src.length === 0 || !Number.isFinite(rule.nodeIcon.sizePx) || rule.nodeIcon.sizePx <= 0) throw new AppError("invalid_builtin_style", `Built-in node icon rule "${rule.id}" has invalid icon metadata`);
+  }
   const frozenRule = {
     ...rule,
     key: freezeMatcher(rule.key),
     value: freezeMatcher(rule.value),
+    ...(rule.kind === "css" && rule.nodeIcon !== undefined ? {nodeIcon: Object.freeze({...rule.nodeIcon})} : {}),
   };
   switch (frozenRule.renderLayer) {
     case "border": return Object.freeze(frozenRule);

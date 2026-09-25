@@ -7,15 +7,12 @@ context:
     - "Tool A 与 Outer/context 共用的默认基础查询规则"
 
   overpass_tags:
-    - highway=*
-    - railway=*
-    - public_transport=*
-    - route=bus
-    - route=train
+    - highway~=^(motorway|trunk|primary|secondary)(_link)?$
+    - railway~=^(rail|station)$
+    - landuse=*
 
   overlay_rules:
-    - match: "highway=*"
-    - match: "railway=*"
-    - match: "public_transport=*"
+    - match: "highway~=^(motorway|trunk|primary|secondary)(_link)?$"
+    - match: "railway~=^(rail|station)$"
 
   tag_annotations: []

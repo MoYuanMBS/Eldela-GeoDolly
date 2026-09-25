@@ -6,6 +6,7 @@
  */
 
 import {LayerGroup, type CircleMarker, type Map as LeafletMap} from "leaflet";
+import type {OverlayNodeIconLayer} from "../../../models/mapsurface/leaflet-renderer-models.js";
 import type {LeafletConfigType} from "../../../models/mapsurface/map-config-models.js";
 
 interface NodeCircleRegistration {
@@ -17,6 +18,7 @@ interface NodeCircleRegistration {
 interface NodeFeatureRegistration {
   group: LayerGroup;
   circles: ReadonlyArray<NodeCircleRegistration>;
+  icons: ReadonlyArray<OverlayNodeIconLayer>;
 }
 
 /** Node 使用屏幕像素半径；按已校验配置分级隐藏和恢复，避免低 zoom 被大量圆点覆盖。 */
@@ -52,11 +54,12 @@ export class NodeZoomController extends LayerGroup {
     return this;
   }
 
-  registerFeature(group: LayerGroup, visualCircles: ReadonlyArray<CircleMarker>): void {
+  registerFeature(group: LayerGroup, visualCircles: ReadonlyArray<CircleMarker>, visualIcons: ReadonlyArray<OverlayNodeIconLayer> = []): void {
     // interaction CircleMarker 不属于 Visual group，也不能传入这里随视觉比例一起收缩。
     const registration = {
       group,
       circles: visualCircles.map((layer) => ({layer, baseRadius: layer.getRadius()})),
+      icons: visualIcons,
     } satisfies NodeFeatureRegistration;
     this.registrations.push(registration);
     this.applyScale(registration, getNodeZoomScale(this._map.getZoom(), this.config));
@@ -69,6 +72,7 @@ export class NodeZoomController extends LayerGroup {
 
   private applyScale(registration: NodeFeatureRegistration, scale: number): void {
     for (const {layer, baseRadius} of registration.circles) layer.setRadius(baseRadius * scale);
+    for (const icon of registration.icons) icon.setZoomScale(scale);
     // 半径 0 的 Visual group 直接卸载；透明 hit Path 由 measurement 订阅者在自己的 root 中移除。
     if (scale === 0) {
       if (this.hasLayer(registration.group)) super.removeLayer(registration.group);

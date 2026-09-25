@@ -9,6 +9,10 @@ import type {BuiltInStyleRule} from "../../../../models/mapsurface/built-in-styl
 import type {CanvasSpatialFeatureType} from "../../../../models/mapsurface/style/base-canvas-style.js";
 import type {BUILT_IN_CANVAS_STYLES} from "./built-in-style.js";
 
+const AIRPORT_ICON_URL = new URL("../../../../../assets/leaflet/icon/airport.svg", import.meta.url).href;
+const TRAIN_STATION_ICON_URL = new URL("../../../../../assets/leaflet/icon/train-station.svg", import.meta.url).href;
+const VOLCANO_ICON_URL = new URL("../../../../../assets/leaflet/icon/volcano.svg", import.meta.url).href;
+
 export const DEFAULT_CANVAS_BASE_STYLE_IDS = {
   node: "node-default",
   way: "way-default",
@@ -16,7 +20,29 @@ export const DEFAULT_CANVAS_BASE_STYLE_IDS = {
 } as const satisfies Record<CanvasSpatialFeatureType, keyof typeof BUILT_IN_CANVAS_STYLES>;
 
 export const BUILT_IN_STYLE_RULES = [
-  // Node 特殊符号走 SVG/CSS Base；geometry/radius 仍由默认 Node recipe 提供稳定种子。
+  // 三个固定素材走 SVG image Base；其他 Node CSS 仍使用默认 recipe 提供的 CircleMarker geometry。
+  {
+    id: "node-airport",
+    renderLayer: "base",
+    featureType: "node",
+    priority: 160,
+    key: "aeroway",
+    value: "aerodrome",
+    kind: "css",
+    className: "geomcp-built-in-node-airport",
+    nodeIcon: {src: AIRPORT_ICON_URL, sizePx: 16},
+  },
+  {
+    id: "node-volcano",
+    renderLayer: "base",
+    featureType: "node",
+    priority: 155,
+    key: "natural",
+    value: "volcano",
+    kind: "css",
+    className: "geomcp-built-in-node-volcano",
+    nodeIcon: {src: VOLCANO_ICON_URL, sizePx: 16},
+  },
   {
     id: "node-highway-traffic-signals",
     renderLayer: "base",
@@ -36,6 +62,7 @@ export const BUILT_IN_STYLE_RULES = [
     value: /^(?:station|halt|tram_stop)$/u,
     kind: "css",
     className: "geomcp-built-in-node-rail-station",
+    nodeIcon: {src: TRAIN_STATION_ICON_URL, sizePx: 16},
   },
   {
     id: "node-medical",
@@ -56,6 +83,47 @@ export const BUILT_IN_STYLE_RULES = [
     value: /^(?:bus_stop|platform|stop_position)$/u,
     kind: "css",
     className: "geomcp-built-in-node-transit-stop",
+  },
+  // 铁路统一使用同一 recipe；机场线保持轻量，管道用稀疏虚线与交通线区分。
+  {
+    id: "railway-rail",
+    renderLayer: "base",
+    featureType: "way",
+    priority: 130,
+    key: "railway",
+    value: "rail",
+    kind: "canvas",
+    styleId: "way-railway-rail",
+  },
+  {
+    id: "aeroway-runway",
+    renderLayer: "base",
+    featureType: "way",
+    priority: 125,
+    key: "aeroway",
+    value: "runway",
+    kind: "canvas",
+    styleId: "way-aeroway-runway",
+  },
+  {
+    id: "aeroway-taxiway",
+    renderLayer: "base",
+    featureType: "way",
+    priority: 125,
+    key: "aeroway",
+    value: "taxiway",
+    kind: "canvas",
+    styleId: "way-aeroway-taxiway",
+  },
+  {
+    id: "man-made-pipeline",
+    renderLayer: "base",
+    featureType: "way",
+    priority: 120,
+    key: "man_made",
+    value: "pipeline",
+    kind: "canvas",
+    styleId: "way-man-made-pipeline",
   },
   // Highway Base 走 Canvas recipe；同 priority 的不同 highway value 互斥，不需要合并 operations。
   {

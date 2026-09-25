@@ -32,7 +32,6 @@
 /* 特殊 Node 共用非缩放描边；地图缩放时仍保持一致的屏幕像素宽度。 */
 .geomcp-built-in-node-traffic-signals,
 .geomcp-built-in-node-transit-stop,
-.geomcp-built-in-node-rail-station,
 .geomcp-built-in-node-medical {
   fill-opacity: 1;
   stroke-opacity: 1;
@@ -52,10 +51,12 @@
   stroke: #fff;
 }
 
-/* 铁路 station / halt / tram_stop 使用紫色，避免与普通公交站混淆。 */
-.geomcp-built-in-node-rail-station {
-  fill: #8e44ad;
-  stroke: #fff;
+/* 固定 Node 素材挂在 Node Base SVG pane；实际颜色保留在各自 SVG 中。 */
+.geomcp-built-in-node-airport,
+.geomcp-built-in-node-rail-station,
+.geomcp-built-in-node-volcano {
+  opacity: 1;
+  pointer-events: none;
 }
 
 /* hospital / clinic / doctors 使用医疗设施的红白配色。 */

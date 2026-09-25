@@ -1,20 +1,178 @@
-# GeoMCP experts configuration
-# 当前权威来源: doc/GeoMCP 技术规范文档.md
+# GeoMCP default experts configuration
 
-example_expert:
-  name: "example_expert"
+amusement:
+  name: "amusement"
   hints:
-    - "osm_tag = value 表示含义"
-    - "example_tag = example_value 示例"
+    - "主题公园、水上乐园、游乐设施与过山车细节"
 
   overpass_tags:
-    - osm_tag=*
-    - example_tag=example_value
+    - tourism=theme_park
+    - leisure=water_park
+    - attraction=*
+    - roller_coaster=*
+    - shop=*
+    - amenity=*
 
   overlay_rules:
-    - match: "osm_tag=*"
-    - match: "example_tag=example_value"
+    - match: "tourism=theme_park"
+    - match: "leisure=water_park"
+    - match: "attraction=*"
+    - match: "roller_coaster=*"
+    - match: "shop=*"
+    - match: "amenity=*"
+
+  tag_annotations: []
+
+shopping:
+  name: "shopping"
+  hints:
+    - "商场、百货商店、超市、零售区、市场与各类店铺"
+
+  overpass_tags:
+    - shop=*
+    - amenity= *
+    - entrance=*
+    - landuse=retail
+    - highway=footway
+    - building~=^(retail|supermarket)$
+
+  overlay_rules:
+    - match: "shop=*"
+    - match: "landuse=retail"
+    - match: "building~=^(retail|supermarket)$"
+    - match: "amenity=*"
+    - match: "entrance=*"
+
+  tag_annotations: []
+
+sports:
+  name: "sports"
+  hints:
+    - "体育场、体育中心、球场、跑道、游泳池与专项运动设施"
+
+  overpass_tags:
+    - leisure~=^(stadium|sports_centre|sports_hall|pitch|track|swimming_pool|fitness_centre|golf_course|ice_rink)$
+    - sport=*
+    - building~=^(stadium|sports_hall|grandstand)$
+    - highway=raceway
+    - amenity=*
+    - shop=*
+
+  overlay_rules:
+    - match: "leisure~=^(stadium|sports_centre|sports_hall|pitch|track|swimming_pool|fitness_centre|golf_course|ice_rink)$"
+    - match: "sport=*"
+    - match: "building~=^(stadium|sports_hall|grandstand)$"
+    - match: "highway=raceway"
+    - match: "amenity=*"
+    - match: "shop=*"
+
+  tag_annotations: []
+
+outdoor:
+  name: "outdoor"
+  hints:
+    - "营地、山屋、徒步与骑行道路、路线关系、登山口和路径指示设施"
+    - "接管 Base 不再默认加载的 path、footway 等高密度户外道路"
+
+  overpass_tags:
+    - highway~=^(path|footway|cycleway|bridleway|track|trailhead)$
+    - route~=^(hiking|foot|bicycle|mtb)$
+    - tourism~=^(camp_site|camp_pitch|caravan_site|wilderness_hut|alpine_hut|picnic_site)$
+    - camp_site=*
+    - amenity= *
+    - shelter_type~=^(basic_hut|lean_to|picnic_shelter)$
+    - information~=^(guidepost|route_marker)$
+
+  overlay_rules:
+    - match: "highway~=^(path|footway|cycleway|bridleway|track|trailhead)$"
+    - match: "route~=^(hiking|foot|bicycle|mtb)$"
+    - match: "tourism~=^(camp_site|camp_pitch|caravan_site|wilderness_hut|alpine_hut|picnic_site)$"
+    - match: "camp_site=*"
+    - match: "shelter_type~=^(basic_hut|lean_to|picnic_shelter)$"
+    - match: "information~=^(guidepost|route_marker)$"
+    - match: "amenity=*"
 
   tag_annotations:
-    - match: "example_tag=example_value"
-      annotation: "示例专家 tag"
+    - match: "network=iwn"
+      annotation: "国际徒步路线网络"
+    - match: "network=nwn"
+      annotation: "国家徒步路线网络"
+    - match: "network=rwn"
+      annotation: "区域徒步路线网络"
+    - match: "network=lwn"
+      annotation: "本地徒步路线网络"
+    - match: "network=icn"
+      annotation: "国际自行车路线网络"
+    - match: "network=ncn"
+      annotation: "国家自行车路线网络"
+    - match: "network=rcn"
+      annotation: "区域自行车路线网络"
+    - match: "network=lcn"
+      annotation: "本地自行车路线网络"
+
+volcano:
+  name: "volcano"
+  hints:
+    - "火山、火山口缘、喷口、熔岩地貌与相关地热现象, 艾雅法拉/埃尔黛拉彩蛋"
+
+  overpass_tags:
+    - natural~=^(volcano|geyser|hot_spring|fumarole|geothermal)$
+    - geological~=^(volcanic_caldera_rim|volcanic_vent|volcanic_lava_field|mud_volcano|volcanic_mofetta)$
+    - volcano:type=*
+    - volcano:status=*
+    - volcano:last_eruption=*
+    - highway~=^(path|footway|cycleway|bridleway|track|trailhead)$
+    - route~=^(hiking|foot|bicycle|mtb)$
+    - tourism~=^(camp_site|camp_pitch|caravan_site|wilderness_hut|alpine_hut|picnic_site)$
+    - amenity= *
+    - information~=^(guidepost|route_marker)$
+
+  overlay_rules:
+    - match: "highway~=^(path|footway|cycleway|bridleway|track|trailhead)$"
+    - match: "route~=^(hiking|foot|bicycle|mtb)$"
+    - match: "tourism~=^(camp_site|camp_pitch|caravan_site|wilderness_hut|alpine_hut|picnic_site)$"
+    - match: "natural~=^(volcano|geyser|hot_spring|fumarole|geothermal)$"
+    - match: "geological~=^(volcanic_caldera_rim|volcanic_vent|volcanic_lava_field|mud_volcano|volcanic_mofetta)$"
+    - match: "volcano:type=*"
+    - match: "volcano:status=*"
+    - match: "volcano:last_eruption=*"
+    - match: "amenity=*"
+
+
+  tag_annotations:
+    - match: "geological=volcanic_lava_field"
+      annotation: "火山熔岩原"
+    - match: "geological=mud_volcano"
+      annotation: "泥火山"
+    - match: "geological=volcanic_mofetta"
+      annotation: "火山冷喷气孔"
+    - match: "volcano:type=*"
+      annotation: "火山类型"
+    - match: "volcano:type=stratovolcano"
+      annotation: "层状火山"
+    - match: "volcano:type=shield"
+      annotation: "盾状火山"
+    - match: "volcano:type=scoria"
+      annotation: "火山渣锥"
+    - match: "volcano:type=lava_dome"
+      annotation: "熔岩穹丘"
+    - match: "volcano:type=maar"
+      annotation: "玛珥火山"
+    - match: "volcano:type=caldera"
+      annotation: "破火山口"
+    - match: "volcano:type=mud_volcano"
+      annotation: "泥火山"
+    - match: "volcano:status=*"
+      annotation: "火山活动状态"
+    - match: "volcano:status=active"
+      annotation: "活火山"
+    - match: "volcano:status=dormant"
+      annotation: "休眠火山"
+    - match: "volcano:status=extinct"
+      annotation: "死火山"
+    - match: "volcano:last_eruption=*"
+      annotation: "最后喷发时间"
+    - match: "volcanic_vent:type=*"
+      annotation: "火山喷口类型"
+    - match: "geyser:type=*"
+      annotation: "间歇泉类型"

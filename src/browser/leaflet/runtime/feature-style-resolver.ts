@@ -97,7 +97,12 @@ export function resolveFeatureStyle(feature: IdentifiedOverlayFeatureType, plan:
     ? Object.freeze({kind: "canvas" as const, styleId: plan.defaultBaseStyleIds[feature.feature_type], rule: null})
     : baseRule.kind === "canvas"
       ? Object.freeze({kind: "canvas" as const, styleId: baseRule.styleId, rule: baseRule})
-      : Object.freeze({kind: "css" as const, className: baseRule.className, rule: baseRule});
+      : Object.freeze({
+          kind: "css" as const,
+          className: baseRule.className,
+          ...(baseRule.nodeIcon === undefined ? {} : {nodeIcon: baseRule.nodeIcon}),
+          rule: baseRule,
+        });
   return Object.freeze({
     base,
     // Addon 仍按 effectType 去重，因此 bridge 与 tunnel 可以并存，同类效果只保留一个胜者。

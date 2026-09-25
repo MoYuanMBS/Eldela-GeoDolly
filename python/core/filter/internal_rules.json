@@ -3,12 +3,31 @@
     "boundary": [
       "administrative",
       "military",
-      "military_district"
+      "military_district",
+      "timezone"
     ],
     "landuse": [
-      "military"
+      "military",
+      "prison"
     ],
     "military": [
+      "*"
+    ],
+    "amenity": [
+      "prison",
+      "prison_camp",
+      "detention_centre"
+    ],
+    "building": [
+      "prison"
+    ],
+    "prison": [
+      "*"
+    ],
+    "detention": [
+      "*"
+    ],
+    "addr:interpolation": [
       "*"
     ]
   },

@@ -9,10 +9,16 @@ export type StyleRenderLayer = "border" | "base" | "translucent";
 // 0-499 保留给内置规则；浏览器编译用户规则时统一加 500，之后只比较最终 priority。
 export const USER_STYLE_PRIORITY_OFFSET = 500;
 
+/** 内置 Node 图标由 SVG image 承载；尺寸仍由 JS rule 固定，CSS 只负责 presentation。 */
+export interface CssNodeIconStyle {
+  src: string;
+  sizePx: number;
+}
+
 /** CSS 与 Canvas 字段直接展开到 rule；kind 保证 className/styleId 不会形成非法组合。 */
 export type StyleRuleStyleFields<StyleId extends string = string> =
   | Readonly<{kind: "canvas"; styleId: StyleId}>
-  | Readonly<{kind: "css"; className: string}>;
+  | Readonly<{kind: "css"; className: string; nodeIcon?: Readonly<CssNodeIconStyle>}>;
 
 interface BuiltInStyleRuleCommon {
   /** 用于配置定位和并列 warning，不参与排序。 */

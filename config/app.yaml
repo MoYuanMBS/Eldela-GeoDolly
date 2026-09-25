@@ -81,11 +81,11 @@ overpass:
   # Overlay relation member relation 的向下递归深度；0 只读取根 members，"all" 递归到没有新 relation。
   relation_member_depth: 2
   # Overlay 二阶段单批 skel 查询的 ID 数量；同时作为 area way 无 bbox 补抓的单次 ID 总上限。
-  overlay_skel_id_batch_size: 1000
+  overlay_skel_id_batch_size: 3000
   # Overlay 二阶段 skel 批次最大并发数；默认 1，调高时仍会按 batch delay 错开请求启动。
   overlay_skel_concurrency: 1
   # Overlay 二阶段 skel 批次请求启动间隔秒数；降低公共服务限流概率。
-  overlay_skel_batch_delay_seconds: 3.00
+  overlay_skel_batch_delay_seconds: 2.00
   # Overpass API 请求地址。
   endpoint: "https://overpass-api.de/api/interpreter"
   # 可选 Overpass API 请求地址池；为空时只使用 endpoint。
@@ -95,7 +95,7 @@ overpass:
     - "https://maps.mail.ru/osm/tools/overpass/api/interpreter"
     - "https://lz4.overpass-api.de/api/interpreter"
   # endpoint 地址池策略：failover 优先单服务并在失败后切换；round_robin 每个请求轮流选择服务。
-  endpoint_strategy: "failover"
+  endpoint_strategy: "round_robin"
   # 发给 Overpass API 的 User-Agent。
   user_agent: "geomcp/test"
   # Overpass Query 与 HTTP 请求共用的超时秒数。

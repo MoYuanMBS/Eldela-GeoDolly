@@ -10,6 +10,7 @@ import {CircleMarker, Layer, type Map as LeafletMap, type Path} from "leaflet";
 import type {LeafletConfigType} from "../../../models/mapsurface/map-config-models.js";
 import type {
   OverlayCssPresentationMeasurement,
+  OverlayNodeIconLayer,
   OverlayVisualMeasurement,
   OverlayVisualMeasurementListener,
   OverlayVisualMeasurementSource,
@@ -22,6 +23,7 @@ interface OverlayVisualMeasurementRegistration {
   featureType: CanvasSpatialFeatureType;
   visualLayers: ReadonlyArray<Path>;
   cssLayers: ReadonlySet<Path>;
+  nodeIconLayers: ReadonlyArray<OverlayNodeIconLayer>;
 }
 
 interface MeasuredOverlayFeature {
@@ -111,7 +113,7 @@ function measureOptionPath(featureType: CanvasSpatialFeatureType, layer: Path): 
   return measurePresentedPath(featureType, layer, getOptionPresentation(featureType, layer));
 }
 
-function isComputedPathContainerVisible(style: CSSStyleDeclaration): boolean {
+function isComputedContainerVisible(style: CSSStyleDeclaration): boolean {
   const opacity = parseCssNumber(style.opacity, 1);
   return style.display !== "none" && style.visibility !== "hidden" && style.visibility !== "collapse" && opacity > 0;
 }
@@ -124,7 +126,7 @@ function measureComputedPresentation(
   featureType: CanvasSpatialFeatureType,
   style: CSSStyleDeclaration,
 ): OverlayCssPresentationMeasurement {
-  if (!isComputedPathContainerVisible(style)) return {fillVisible: false, strokeVisible: false, strokeWidthPx: 0};
+  if (!isComputedContainerVisible(style)) return {fillVisible: false, strokeVisible: false, strokeWidthPx: 0};
   const fillVisible = featureType !== "way" && hasVisibleColor(style.fill) && parseCssNumber(style.fillOpacity, 1) > 0;
   const parsedStrokeWidth = parseCssPixels(style.strokeWidth) ?? 0;
   const strokeVisible = hasVisibleColor(style.stroke) && parseCssNumber(style.strokeOpacity, 1) > 0 && parsedStrokeWidth > 0;
@@ -151,7 +153,7 @@ export class OverlayVisualMeasurementController extends Layer implements Overlay
   }
 
   /**
-   * 注册一个 canonical Feature 的全部视觉 Path；这里只保存稳定引用，不提前读取 DOM。
+   * 注册一个 canonical Feature 的全部视觉 Path / Node icon；这里只保存稳定引用，不提前读取 DOM。
    * 同一 type + feature_id 重复注册表示 Visual 索引已经失去唯一性，因此直接失败。
    */
   registerFeature(
@@ -159,12 +161,13 @@ export class OverlayVisualMeasurementController extends Layer implements Overlay
     featureType: CanvasSpatialFeatureType,
     visualLayers: ReadonlyArray<Path>,
     cssLayers: ReadonlyArray<Path>,
+    nodeIconLayers: ReadonlyArray<OverlayNodeIconLayer>,
   ): void {
     if (this.disposed) throw new AppError("disposed_overlay_measurement", "Overlay visual measurement controller has been disposed");
     const key = getFeatureKey(featureType, featureId);
     if (this.registrationKeys.has(key)) throw new AppError("duplicate_overlay_feature", `Duplicate ${featureType} feature_id "${featureId}" in Overlay visual measurement`);
     this.registrationKeys.add(key);
-    this.registrations.push({featureId, featureType, visualLayers, cssLayers: new Set(cssLayers)});
+    this.registrations.push({featureId, featureType, visualLayers, cssLayers: new Set(cssLayers), nodeIconLayers});
   }
 
   /** 返回最近一次完整批次的测量；调用方必须等待 synchronizeAfterMount() 完成。 */
@@ -273,6 +276,14 @@ export class OverlayVisualMeasurementController extends Layer implements Overlay
         : measureOptionPath(registration.featureType, layer);
       hasVisiblePaint ||= measurement.hasVisiblePaint;
       visualSizePx = Math.max(visualSizePx, measurement.visualSizePx);
+    }
+    for (const icon of registration.nodeIconLayers) {
+      const radiusPx = icon.getVisualRadius();
+      const element = icon.getElement();
+      const style = element?.ownerDocument.defaultView?.getComputedStyle(element);
+      const visible = radiusPx > 0 && style !== undefined && isComputedContainerVisible(style);
+      hasVisiblePaint ||= visible;
+      if (visible) visualSizePx = Math.max(visualSizePx, radiusPx);
     }
     return {hasVisiblePaint, visualSizePx};
   }
