@@ -88,7 +88,7 @@ export type OverlayNodeIconLayer = Layer & Readonly<{
   getElement(): SVGImageElement | null;
   getVisualRadius(): number;
   setZoomScale(scale: number): void;
-  whenReady(): Promise<void>;
+  whenReady(): Promise<boolean>;
 }>;
 
 /** 单 Canvas Label layer 使用的轻量候选；geometry 已经展开到连续世界。 */

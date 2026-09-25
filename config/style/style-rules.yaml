@@ -1,4 +1,29 @@
 rules:
+  - id: node-airport
+    kind: css
+    renderLayer: base
+    featureType: node
+    priority: 160
+    key: aeroway
+    value: aerodrome
+    className: geomcp-user-node-airport
+    nodeIcon:
+      asset: icon/airport.svg
+      sizePx: 16
+
+  - id: node-rail-station
+    kind: css
+    renderLayer: base
+    featureType: node
+    priority: 145
+    key: railway
+    value:
+      regex: "^(station|halt|tram_stop)$"
+    className: geomcp-user-node-rail-station
+    nodeIcon:
+      asset: icon/train-station.svg
+      sizePx: 16
+
   - id: user-amenity-node
     kind: css
     renderLayer: base

@@ -50,7 +50,8 @@ function freezeRule(rule: BuiltInStyleRule<BuiltInStyleId>): CompiledStyleRule<B
   }
   if (rule.kind === "css" && rule.nodeIcon !== undefined) {
     if (rule.featureType !== "node" || rule.renderLayer !== "base") throw new AppError("invalid_builtin_style", `Built-in node icon rule "${rule.id}" must target the Node Base layer`);
-    if (rule.nodeIcon.src.length === 0 || !Number.isFinite(rule.nodeIcon.sizePx) || rule.nodeIcon.sizePx <= 0) throw new AppError("invalid_builtin_style", `Built-in node icon rule "${rule.id}" has invalid icon metadata`);
+    const source = "asset" in rule.nodeIcon ? rule.nodeIcon.asset : rule.nodeIcon.url;
+    if (source.length === 0 || !Number.isFinite(rule.nodeIcon.sizePx) || rule.nodeIcon.sizePx <= 0) throw new AppError("invalid_builtin_style", `Built-in node icon rule "${rule.id}" has invalid icon metadata`);
   }
   const frozenRule = {
     ...rule,

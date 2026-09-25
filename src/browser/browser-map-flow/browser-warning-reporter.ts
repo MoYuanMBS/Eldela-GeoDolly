@@ -12,7 +12,7 @@ import {
  * 这里故意只显示 profile、阶段与稳定原因码；完整 URL、provider token 和底层异常对象既不打印，
  * 也不进入回传 payload。
  */
-function printBrowserWarning(warning: BrowserWarningReportType): void {
+function printBasemapWarning(warning: BrowserWarningReportType): void {
   console.warn("[GeoMCP] Basemap tile is unavailable; displaying an empty tile.", warning.details);
 }
 
@@ -31,7 +31,7 @@ export function createBrowserWarningReporter(): BrowserWarningReporterType {
     if (publishedWarningKeys.has(warningKey)) return;
     publishedWarningKeys.add(warningKey);
 
-    printBrowserWarning(warning);
+    printBasemapWarning(warning);
     try {
       // keepalive 允许页面在 warning 后很快卸载时继续发送这条小型诊断消息。
       void fetch(BROWSER_WARNING_ROUTE, {

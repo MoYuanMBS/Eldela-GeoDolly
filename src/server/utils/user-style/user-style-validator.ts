@@ -7,13 +7,14 @@ import {logger} from "../logger.js";
 function getRuleSignature(rule: UserCssStyleRuleConfig): string {
   const valueMatcher = typeof rule.value === "string" ? ["exact", rule.value] : ["regex", rule.value.regex];
   const effectType = rule.renderLayer === "base" ? null : rule.effectType;
-  return JSON.stringify([rule.kind, rule.renderLayer, rule.featureType, effectType, rule.key, valueMatcher, rule.className]);
+  return JSON.stringify([rule.kind, rule.renderLayer, rule.featureType, effectType, rule.key, valueMatcher, rule.className, rule.nodeIcon ?? null]);
 }
 
 function freezeRule(rule: UserCssStyleRuleConfig): UserCssStyleRuleConfig {
   // regex object 也要复制并冻结，最终缓存不能继续引用 loader 返回的 raw 对象。
   const value = typeof rule.value === "string" ? rule.value : Object.freeze({...rule.value});
-  return Object.freeze({...rule, value});
+  const nodeIcon = rule.nodeIcon === undefined ? undefined : Object.freeze({...rule.nodeIcon});
+  return Object.freeze({...rule, value, ...(nodeIcon === undefined ? {} : {nodeIcon})});
 }
 
 /**

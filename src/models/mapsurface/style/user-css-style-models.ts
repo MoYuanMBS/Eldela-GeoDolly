@@ -8,6 +8,11 @@ const valueMatcherSchema = z.union([
   z.object({regex: z.string().min(1).max(512)}).strict(),
 ]);
 
+const nodeIconSchema = z.union([
+  z.object({asset: z.string().min(1), sizePx: z.number().positive()}).strict(),
+  z.object({url: z.url(), sizePx: z.number().positive()}).strict(),
+]);
+
 const commonRuleFields = {
   id: z.string().min(1),
   // 用户当前只支持 CSS；仍显式传输 kind，使 Node 与浏览器共用同一拍平规则结构。
@@ -18,6 +23,8 @@ const commonRuleFields = {
   value: valueMatcherSchema,
   // 用户 class 必须保留独立命名空间，避免与固定 built-in selector 形成身份冲突。
   className: z.string().regex(/^geomcp-user-[A-Za-z0-9_-]+$/u),
+  // 图片仍由 CSS class 控制 presentation；asset/url 与像素尺寸属于 renderer 输入。
+  nodeIcon: nodeIconSchema.optional(),
 };
 
 // 三种 render layer 与内置规则保持同样的 feature/effectType 约束，但结果改为 CSS class。
@@ -39,7 +46,11 @@ export const userCssStyleRuleConfigSchema = z.discriminatedUnion("renderLayer", 
     featureType: z.enum(["node", "way", "area"]),
     effectType: z.string().min(1),
   }).strict(),
-]);
+]).superRefine((rule, context) => {
+  if (rule.nodeIcon !== undefined && (rule.renderLayer !== "base" || rule.featureType !== "node")) {
+    context.addIssue({code: "custom", path: ["nodeIcon"], message: "nodeIcon is only allowed on Node Base rules"});
+  }
+});
 
 // 顶层结构错误会终止加载；单条 rule 留给 ConfigLoader 独立校验并 warning 跳过。
 export const userCssStyleRulesDocumentSchema = z.object({

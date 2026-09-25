@@ -16,7 +16,8 @@
     "amenity": [
       "prison",
       "prison_camp",
-      "detention_centre"
+      "detention_centre",
+      "parking_space"
     ],
     "building": [
       "prison"

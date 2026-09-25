@@ -1,5 +1,28 @@
 # GeoMCP default experts configuration
 
+# Copy this entry, rename `example_expert`, and adjust its rules for the deployment.
+# The top-level key is the expert ID used by `attention_experts`; `name` is its display name.
+example_expert:
+  name: "Example Expert"
+  hints:
+    - "Example facilities and their nearby information features"
+
+  overpass_tags:
+    - amenity~=^(library|community_centre)$
+    - tourism=information
+    - information=*
+
+  overlay_rules:
+    - match: "amenity~=^(library|community_centre)$"
+    - match: "tourism=information"
+    - match: "information=*"
+
+  tag_annotations:
+    - match: "amenity=library"
+      annotation: "Library"
+    - match: "amenity=community_centre"
+      annotation: "Community centre"
+
 amusement:
   name: "amusement"
   hints:

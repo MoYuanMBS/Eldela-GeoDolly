@@ -9,10 +9,6 @@ import type {BuiltInStyleRule} from "../../../../models/mapsurface/built-in-styl
 import type {CanvasSpatialFeatureType} from "../../../../models/mapsurface/style/base-canvas-style.js";
 import type {BUILT_IN_CANVAS_STYLES} from "./built-in-style.js";
 
-const AIRPORT_ICON_URL = new URL("../../../../../assets/leaflet/icon/airport.svg", import.meta.url).href;
-const TRAIN_STATION_ICON_URL = new URL("../../../../../assets/leaflet/icon/train-station.svg", import.meta.url).href;
-const VOLCANO_ICON_URL = new URL("../../../../../assets/leaflet/icon/volcano.svg", import.meta.url).href;
-
 export const DEFAULT_CANVAS_BASE_STYLE_IDS = {
   node: "node-default",
   way: "way-default",
@@ -20,18 +16,7 @@ export const DEFAULT_CANVAS_BASE_STYLE_IDS = {
 } as const satisfies Record<CanvasSpatialFeatureType, keyof typeof BUILT_IN_CANVAS_STYLES>;
 
 export const BUILT_IN_STYLE_RULES = [
-  // 三个固定素材走 SVG image Base；其他 Node CSS 仍使用默认 recipe 提供的 CircleMarker geometry。
-  {
-    id: "node-airport",
-    renderLayer: "base",
-    featureType: "node",
-    priority: 160,
-    key: "aeroway",
-    value: "aerodrome",
-    kind: "css",
-    className: "geomcp-built-in-node-airport",
-    nodeIcon: {src: AIRPORT_ICON_URL, sizePx: 16},
-  },
+  // 固定素材走 SVG image Base；其他 Node CSS 仍使用默认 recipe 提供的 CircleMarker geometry。
   {
     id: "node-volcano",
     renderLayer: "base",
@@ -41,7 +26,7 @@ export const BUILT_IN_STYLE_RULES = [
     value: "volcano",
     kind: "css",
     className: "geomcp-built-in-node-volcano",
-    nodeIcon: {src: VOLCANO_ICON_URL, sizePx: 16},
+    nodeIcon: {asset: "icon/volcano.svg", sizePx: 16},
   },
   {
     id: "node-highway-traffic-signals",
@@ -52,17 +37,6 @@ export const BUILT_IN_STYLE_RULES = [
     value: "traffic_signals",
     kind: "css",
     className: "geomcp-built-in-node-traffic-signals",
-  },
-  {
-    id: "node-rail-station",
-    renderLayer: "base",
-    featureType: "node",
-    priority: 145,
-    key: "railway",
-    value: /^(?:station|halt|tram_stop)$/u,
-    kind: "css",
-    className: "geomcp-built-in-node-rail-station",
-    nodeIcon: {src: TRAIN_STATION_ICON_URL, sizePx: 16},
   },
   {
     id: "node-medical",

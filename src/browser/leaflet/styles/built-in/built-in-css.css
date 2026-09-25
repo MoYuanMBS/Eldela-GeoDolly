@@ -51,9 +51,7 @@
   stroke: #fff;
 }
 
-/* 固定 Node 素材挂在 Node Base SVG pane；实际颜色保留在各自 SVG 中。 */
-.geomcp-built-in-node-airport,
-.geomcp-built-in-node-rail-station,
+/* 固定 Node 素材挂在 Node Base SVG pane；实际颜色保留在 SVG 中。 */
 .geomcp-built-in-node-volcano {
   opacity: 1;
   pointer-events: none;

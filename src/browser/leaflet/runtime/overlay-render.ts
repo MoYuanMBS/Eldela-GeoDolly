@@ -40,6 +40,7 @@ import type {
   OrderedOverlayFeatureLayers,
 } from "../../../models/mapsurface/leaflet-renderer-models.js";
 import type {CanvasBaseStyleRecipe, CanvasDrawOperation, CanvasSpatialFeatureType} from "../../../models/mapsurface/style/base-canvas-style.js";
+import type {CssNodeIconStyle} from "../../../models/mapsurface/built-in-style-models.js";
 import type {ResolvedBaseStyle, RuntimeStylePlan, RuntimeStyleRule} from "../../../models/mapsurface/style/runtime-style-models.js";
 import {AppError} from "../../../shared/app-error.js";
 import {LEAFLET_INTERNAL_RENDER_CONFIG} from "../../built-in-config/leaflet.js";
@@ -94,21 +95,53 @@ function activateRenderer(rootLayer: LayerGroup, renderers: OverlayRendererColle
 
 type SvgRendererInternals = Renderer & {_rootGroup?: SVGGElement};
 
-const nodeIconReadyBySource = new Map<string, Promise<void>>();
+/**
+ * 页面模块生命周期内按最终 src 复用图片加载结果，只避免重复请求和解码；
+ * 不去重或拒绝引用同一资源的样式规则，也不改变加载失败后 warning + skip 的语义。
+ */
+const nodeIconReadyBySource = new Map<string, Promise<boolean>>();
+let leafletAssetUrls: Readonly<Record<string, string>> | null = null;
 
-/** 固定本地素材必须在 ready 前完成浏览器解码，避免 Snapshot 偶发截到空白图标。 */
-function waitForNodeIconAsset(src: string): Promise<void> {
+/** Vite 在构建期展开固定目录；tsx 单元测试没有该宏时返回空表，不伪造本地资源。 */
+function getLeafletAssetUrls(): Readonly<Record<string, string>> {
+  if (leafletAssetUrls !== null) return leafletAssetUrls;
+  try {
+    leafletAssetUrls = Object.freeze(import.meta.glob<string>(
+      "../../../../assets/leaflet/**/*.{svg,png,jpg,jpeg,webp,gif,avif,bmp,ico}",
+      {eager: true, query: "?url", import: "default"},
+    ));
+  } catch {
+    leafletAssetUrls = Object.freeze({});
+  }
+  return leafletAssetUrls;
+}
+
+function resolveNodeIconSource(icon: CssNodeIconStyle): string | null {
+  if ("url" in icon) return icon.url;
+  return getLeafletAssetUrls()[`../../../../assets/leaflet/${icon.asset}`] ?? null;
+}
+
+/** Node 图标是 Browser 资源，warning 只留在前端 console，不进入 Node warning 协议。 */
+function warnNodeIconFailure(warnedKeys: Set<string>, ruleId: string, sourceKind: "asset" | "url", reasonCode: "missing_asset" | "load_failed"): void {
+  const warningKey = `${ruleId}:${sourceKind}:${reasonCode}`;
+  if (warnedKeys.has(warningKey)) return;
+  warnedKeys.add(warningKey);
+  console.warn("[GeoMCP] node_icon_load_failed", {rule_id: ruleId, source_kind: sourceKind, reason_code: reasonCode});
+}
+
+/** 图片必须在 ready 前完成浏览器加载；失败返回 false，由调用方 warning 后移除该图层。 */
+function waitForNodeIconAsset(src: string): Promise<boolean> {
   const cached = nodeIconReadyBySource.get(src);
   if (cached !== undefined) return cached;
-  const ready = new Promise<void>((resolve, reject) => {
+  const ready = new Promise<boolean>((resolve) => {
     const view = document.defaultView;
     if (view === null) {
-      reject(new AppError("overlay_render", "Node icon cannot load without a browser window"));
+      resolve(false);
       return;
     }
     const image = new view.Image();
-    image.addEventListener("load", () => resolve(), {once: true});
-    image.addEventListener("error", () => reject(new AppError("overlay_render", `Node icon asset failed to load: ${src}`)), {once: true});
+    image.addEventListener("load", () => resolve(true), {once: true});
+    image.addEventListener("error", () => resolve(false), {once: true});
     image.src = src;
   });
   nodeIconReadyBySource.set(src, ready);
@@ -119,7 +152,7 @@ function waitForNodeIconAsset(src: string): Promise<void> {
 class SvgNodeIconLayer extends Layer implements OverlayNodeIconLayer {
   private element: SVGImageElement | null = null;
   private zoomScale = 1;
-  private readonly ready: Promise<void>;
+  private readonly ready: Promise<boolean>;
 
   constructor(
     private readonly center: LatLngTuple,
@@ -168,7 +201,7 @@ class SvgNodeIconLayer extends Layer implements OverlayNodeIconLayer {
     this.updatePosition();
   }
 
-  whenReady(): Promise<void> {
+  whenReady(): Promise<boolean> {
     return this.ready;
   }
 
@@ -321,16 +354,29 @@ function renderCanvasRule(group: LayerGroup, geometry: LeafletSpatialGeometry, r
  * Base 只绘制 resolver 选中的唯一结果。返回 Canvas recipe 是为了让 Area Relation 复用 mainColor；
  * CSS Base 不反读 computed style，因此返回 null，保持 CSS/Canvas 数据边界。
  */
-function renderBase(rootLayer: LayerGroup, group: LayerGroup, geometry: LeafletSpatialGeometry, base: ResolvedBaseStyle, defaultRecipe: CanvasBaseStyleRecipe, plan: RuntimeStylePlan, featureRenderers: OverlayFeatureRenderers, renderers: OverlayRendererCollection, cssLayers: Array<Path>, nodeIconLayers: Array<OverlayNodeIconLayer>): CanvasBaseStyleRecipe | null {
+function renderBase(rootLayer: LayerGroup, group: LayerGroup, geometry: LeafletSpatialGeometry, base: ResolvedBaseStyle, defaultRecipe: CanvasBaseStyleRecipe, plan: RuntimeStylePlan, featureRenderers: OverlayFeatureRenderers, renderers: OverlayRendererCollection, cssLayers: Array<Path>, nodeIconLayers: Array<OverlayNodeIconLayer>, nodeIconReadyPromises: Array<Promise<void>>, warnedNodeIconFailureKeys: Set<string>): CanvasBaseStyleRecipe | null {
   if (base.kind === "css") {
-    activateRenderer(rootLayer, renderers, featureRenderers.baseSvg);
     if (base.nodeIcon !== undefined) {
-      if (geometry.featureType !== "node") throw new AppError("invalid_render_style", "A built-in Node icon can only render Node geometry");
-      const iconLayer = new SvgNodeIconLayer(geometry.center, featureRenderers.baseSvg, base.className, base.nodeIcon.src, base.nodeIcon.sizePx);
+      if (geometry.featureType !== "node" || base.rule === null) throw new AppError("invalid_render_style", "A Node icon can only render a Node Base rule");
+      const ruleId = base.rule.id;
+      const sourceKind = "asset" in base.nodeIcon ? "asset" : "url";
+      const src = resolveNodeIconSource(base.nodeIcon);
+      if (src === null) {
+        warnNodeIconFailure(warnedNodeIconFailureKeys, ruleId, sourceKind, "missing_asset");
+        return null;
+      }
+      activateRenderer(rootLayer, renderers, featureRenderers.baseSvg);
+      const iconLayer = new SvgNodeIconLayer(geometry.center, featureRenderers.baseSvg, base.className, src, base.nodeIcon.sizePx);
       nodeIconLayers.push(iconLayer);
       group.addLayer(iconLayer);
+      nodeIconReadyPromises.push(iconLayer.whenReady().then((ready) => {
+        if (ready) return;
+        group.removeLayer(iconLayer);
+        warnNodeIconFailure(warnedNodeIconFailureKeys, ruleId, sourceKind, "load_failed");
+      }));
       return null;
     }
+    activateRenderer(rootLayer, renderers, featureRenderers.baseSvg);
     const cssLayer = createCssLayer(geometry, defaultRecipe, base.className, "base", featureRenderers.baseSvg);
     cssLayers.push(cssLayer);
     group.addLayer(cssLayer);
@@ -550,6 +596,7 @@ export async function renderOverlay(options: OverlayRendererOptions): Promise<Ov
   };
   const mutableOrderedLayers: MutableOrderedOverlayFeatureLayers = {node: [], way: [], area: []};
   const nodeIconReadyPromises: Array<Promise<void>> = [];
+  const warnedNodeIconFailureKeys = new Set<string>();
 
   const renderFeature = (feature: IdentifiedOverlaySpatialFeatureWithDisplayIdType): void => {
     if (hasFeatureEntry(mutableLayerIndex, feature.feature_type, feature.feature_id)) throw new AppError("duplicate_overlay_feature", `Duplicate ${feature.feature_type} feature_id "${feature.feature_id}" in Overlay renderer`);
@@ -564,7 +611,7 @@ export async function renderOverlay(options: OverlayRendererOptions): Promise<Ov
 
     // Pane 决定跨层覆盖关系；同一阶段内仍保持 Border → Base → Translucent 的稳定创建顺序。
     renderAddonRules(rootLayer, featureLayer, geometry, resolvedStyle.border, defaultRecipe, options.stylePlan, featureRenderers.baseCanvas, featureRenderers.baseSvg, renderers, cssLayers);
-    const selectedBaseRecipe = renderBase(rootLayer, featureLayer, geometry, resolvedStyle.base, defaultRecipe, options.stylePlan, featureRenderers, renderers, cssLayers, nodeIconLayers);
+    const selectedBaseRecipe = renderBase(rootLayer, featureLayer, geometry, resolvedStyle.base, defaultRecipe, options.stylePlan, featureRenderers, renderers, cssLayers, nodeIconLayers, nodeIconReadyPromises, warnedNodeIconFailureKeys);
     renderAddonRules(rootLayer, featureLayer, geometry, resolvedStyle.translucent, defaultRecipe, options.stylePlan, featureRenderers.specialCanvas, featureRenderers.specialSvg, renderers, cssLayers);
 
     const relationFeatureIds = relationContext.membershipByFeatureId[feature.feature_type][feature.feature_id];
@@ -598,7 +645,6 @@ export async function renderOverlay(options: OverlayRendererOptions): Promise<Ov
     // Node group 由 zoom controller 持有，低 zoom 时只卸载视觉层；Interaction 会根据零尺寸测量移除 hit Path。
     if (feature.feature_type === "node") {
       nodeZoomController.registerFeature(featureLayer, nodeVisualCircles, nodeIconLayers);
-      for (const icon of nodeIconLayers) nodeIconReadyPromises.push(icon.whenReady());
     }
     else rootLayer.addLayer(featureLayer);
     registerFeatureEntry(mutableLayerIndex, mutableOrderedLayers, feature, geometry, featureLayer);
