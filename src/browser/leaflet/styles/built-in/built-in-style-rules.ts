@@ -26,7 +26,7 @@ export const BUILT_IN_STYLE_RULES = [
     value: "volcano",
     kind: "css",
     className: "geomcp-built-in-node-volcano",
-    nodeIcon: {asset: "icon/volcano.svg", sizePx: 16},
+    nodeIcon: {asset: "icon/volcano.svg", sizePx: 8},
   },
   {
     id: "node-highway-traffic-signals",

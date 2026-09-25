@@ -9,7 +9,7 @@ rules:
     className: geomcp-user-node-airport
     nodeIcon:
       asset: icon/airport.svg
-      sizePx: 16
+      sizePx: 8
 
   - id: node-rail-station
     kind: css
@@ -22,7 +22,7 @@ rules:
     className: geomcp-user-node-rail-station
     nodeIcon:
       asset: icon/train-station.svg
-      sizePx: 16
+      sizePx: 8
 
   - id: user-amenity-node
     kind: css
