@@ -29,12 +29,14 @@ amusement:
     - "主题公园、水上乐园、游乐设施与过山车细节"
 
   overpass_tags:
-    - tourism=theme_park
+    - tourism=*
     - leisure=water_park
     - attraction=*
     - roller_coaster=*
     - shop=*
     - amenity=*
+    - highway~=^(path|footway|cycleway|steps|pedestrian|service)$
+    - building~=^(retail|commercial)$
 
   overlay_rules:
     - match: "tourism=theme_park"
@@ -43,6 +45,7 @@ amusement:
     - match: "roller_coaster=*"
     - match: "shop=*"
     - match: "amenity=*"
+    - match: "highway=*"
 
   tag_annotations: []
 
@@ -65,6 +68,7 @@ shopping:
     - match: "building~=^(retail|supermarket)$"
     - match: "amenity=*"
     - match: "entrance=*"
+    - match: "highway=*"
 
   tag_annotations: []
 
@@ -76,8 +80,8 @@ sports:
   overpass_tags:
     - leisure~=^(stadium|sports_centre|sports_hall|pitch|track|swimming_pool|fitness_centre|golf_course|ice_rink)$
     - sport=*
-    - building~=^(stadium|sports_hall|grandstand)$
-    - highway=raceway
+    - building~=^(stadium|sports_hall|grandstand|commercial)$
+    - highway=^(raceway|steps|service|path|footway|cycleway)$
     - amenity=*
     - shop=*
 
@@ -85,9 +89,10 @@ sports:
     - match: "leisure~=^(stadium|sports_centre|sports_hall|pitch|track|swimming_pool|fitness_centre|golf_course|ice_rink)$"
     - match: "sport=*"
     - match: "building~=^(stadium|sports_hall|grandstand)$"
-    - match: "highway=raceway"
+    - match: "highway=~=^(raceway|steps|service|path|footway|cycleway)$"
     - match: "amenity=*"
     - match: "shop=*"
+    - match: "highway=*"
 
   tag_annotations: []
 
@@ -98,7 +103,7 @@ outdoor:
     - "接管 Base 不再默认加载的 path、footway 等高密度户外道路"
 
   overpass_tags:
-    - highway~=^(path|footway|cycleway|bridleway|track|trailhead)$
+    - highway~=^(path|footway|steps|pedestrian|service|cycleway|bridleway|track|trailhead)$
     - route~=^(hiking|foot|bicycle|mtb)$
     - tourism~=^(camp_site|camp_pitch|caravan_site|wilderness_hut|alpine_hut|picnic_site)$
     - camp_site=*
@@ -107,7 +112,7 @@ outdoor:
     - information~=^(guidepost|route_marker)$
 
   overlay_rules:
-    - match: "highway~=^(path|footway|cycleway|bridleway|track|trailhead)$"
+    - match: "highway~=^(path|footway|steps|pedestrian|service|cycleway|bridleway|track|trailhead)$"
     - match: "route~=^(hiking|foot|bicycle|mtb)$"
     - match: "tourism~=^(camp_site|camp_pitch|caravan_site|wilderness_hut|alpine_hut|picnic_site)$"
     - match: "camp_site=*"
