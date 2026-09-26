@@ -83,9 +83,9 @@ Both analysis tools accept the same request fields:
 | --- | --- | --- |
 | `session_id` | Yes | The **search** `session_id` returned by `location_search`. |
 | `selected_indices` | Yes | An array with exactly one returned candidate `index`, for example `[0]` if that candidate actually has `index: 0`. |
-| `basemap` | Yes | A configured [basemap profile](03-tiles-and-filters.md#basemap-profiles). The bundled IDs are `osm` and `arcgis_satellite`. |
+| `basemap` | Yes | A configured [basemap profile](05-tiles-and-filters.md#basemap-profiles). The bundled IDs are `osm` and `arcgis_satellite`. |
 | `visual_output` | Yes | `none`, `screenshot`, or `interactive`. See [Map Output](#reading-the-result). |
-| `attention_experts` | No | An array of configured [Expert IDs](04-base-and-experts.md), only when that subject focus is relevant. |
+| `attention_experts` | No | An array of configured [Expert IDs](06-base-and-experts.md), only when that subject focus is relevant. |
 | `include_overlay_geojson` | No | Set to `true` only when you need a separate Overlay JSON result; the deployment must also allow it. |
 
 For example, after confirming a returned candidate, a `tool_a` request has this shape. Replace the ID and index with values from your own search:
@@ -103,7 +103,7 @@ The tools currently process one candidate per call. They do not choose a default
 
 ## Reading the result
 
-`tool_a` and `tool_b` return a new map session ID. When analysis data is available, the result also contains structured YAML for feature lookup, records, and summary information. `include_overlay_geojson: true` asks for a **separate** Overlay JSON result. It appears only when [`output.allow_overlay_geojson`](02-configuration.md#appyaml) is enabled and the analysis contains Overlay data.
+`tool_a` and `tool_b` return a new map session ID. When analysis data is available, the result also contains structured YAML for feature lookup, records, and summary information. `include_overlay_geojson: true` asks for a **separate** Overlay JSON result. It appears only when [`output.allow_overlay_geojson`](03-app-yaml.md#output) is enabled and the analysis contains Overlay data.
 
 `visual_output` selects the visual link in the tool's text response:
 
@@ -129,4 +129,4 @@ For an oversized area, a tool may produce a basemap-only preview without analysi
 | A map link does not open | Confirm the server is still running and the browser can reach the configured map address. The default `127.0.0.1` address is local to the server machine. |
 | The analysis tool reports a missing search session | Run `location_search` again. Search selections do not survive a server restart and can expire. |
 
-[← User Guide](00-index.md) · [Configuration](02-configuration.md) · [Base and Experts](04-base-and-experts.md)
+[← User Guide](00-index.md) · [Configuration](02-configuration.md)

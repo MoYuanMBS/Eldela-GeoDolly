@@ -14,6 +14,8 @@ remove_tags:
   - url=*
   - phone=*
   - menu=*
+  - fax=*
+  - email=*
 
 # 按完整 tag key 正则匹配，同时清理 AI Output 与最终 Overlay properties。
 remove_tag_key_patterns:

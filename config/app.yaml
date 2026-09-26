@@ -75,7 +75,7 @@ nominatim:
   location_limit: 30
   # 发给 Nominatim 的 User-Agent。
   # 部署时建议替换为正式服务标识，避免长期使用测试值。
-  user_agent: "geomcp/test"
+  user_agent: "GeoDolly"
   # Nominatim HTTP 请求超时秒数。
   # 超时后会进入上游 HTTP 错误处理流程。
   timeout_seconds: 60.00
@@ -217,7 +217,7 @@ mcp_apps:
 # GeoMCP Basemap Tile Endpoint 的上游访问配置。
 basemap:
   # GeoMCP 服务端访问在线瓦片 provider 时发送的 User-Agent。
-  user_agent: "GeoMCP/test"
+  user_agent: "GeoDolly"
   # 单次上游瓦片请求的超时秒数；Browser 只等待同源 endpoint 的返回。
   upstream_timeout_seconds: 15
   # Snapshot 固定首屏所需瓦片的最低成功比例；缺失但达到阈值时 warning 后继续发布。
@@ -226,7 +226,7 @@ basemap:
 # AI-facing 独立输出开关。
 output:
   # false 时即使 Tool 请求 include_overlay_geojson=true，也不返回或写入 Overlay JSON。
-  allow_overlay_geojson: true
+  allow_overlay_geojson: False
 
 # Browser UI 可公开调节参数。
 ui:

@@ -1,6 +1,6 @@
-# 05 · 用户地图样式
+# 07 · 用户地图样式
 
-[English](../en/05-user-styles.md) · **简体中文**
+[English](../en/07-user-styles.md) · **简体中文**
 
 GeoDolly 的用户样式由两部分配合完成：YAML 规则把 OSM tag 映射到 CSS class，CSS 决定匹配到的地图 Overlay 如何显示。现有入口是 [`config/style/style-rules.yaml`](../../config/style/style-rules.yaml) 和 [`config/style/style.css`](../../config/style/style.css)；主 CSS 已导入 `config/style/layers/` 下的示例文件。
 
@@ -51,4 +51,4 @@ GeoDolly 的用户样式由两部分配合完成：YAML 规则把 OSM tag 映射
 
 用户样式作用于支持 CSS 的地图 Overlay；它不改写内置 Canvas 要素、Core 绘制或固定页面 UI。若 CSS 不合法，服务可能无法启动；若 YAML 单条规则无效、class 缺失或 ID 冲突，规则可能被跳过并记录 warning。检查日志，并对照仓库已有机场、车站、道路和区域样式逐项修改。
 
-[← 用户指南](00-index.md) · [配置总览](02-configuration.md) · [快速开始](01-getting-started.md)
+[← 用户指南](00-index.md) · [Base & Expert](06-base-and-experts.md)

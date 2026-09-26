@@ -1,6 +1,6 @@
-# 04 · Base and Experts
+# 06 · Base and Experts
 
-**English** · [简体中文](../zh/04-base-and-experts.md)
+**English** · [简体中文](../zh/06-base-and-experts.md)
 
 Base rules apply by default to regional queries. Experts add a subject only when a request names their ID. Both use query rules and Overlay selection rules; use the Base for shared defaults and an Expert for optional topics.
 
@@ -73,4 +73,4 @@ Alternatively, place one Expert in `config/expert/<id>.yaml`. That file begins d
 
 Restart the service and confirm the new ID is available. Use the same place with and without `attention_experts` to compare the analysis and map, and check configuration warnings in the logs. For rules that should apply to every request, edit [Base](#edit-the-default-base) instead of requiring every caller to select an Expert.
 
-[← User Guide](00-index.md) · [Configuration](02-configuration.md) · [Basemaps and Filters](03-tiles-and-filters.md)
+[← User Guide](00-index.md) · [Basemaps and Filters](05-tiles-and-filters.md) · [User Map Styles](07-user-styles.md)

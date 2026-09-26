@@ -1,10 +1,10 @@
-# 03 · 底图与 Filter
+# 05 · Basemap & Filter
 
-[English](../en/03-tiles-and-filters.md) · **简体中文**
+[English](../en/05-tiles-and-filters.md) · **简体中文**
 
 本页集中说明背景底图与输出 tag 清理。两份配置用途不同：`tiles.yaml` 选择底图提供商，`filters.yaml` 清理分析和地图属性。
 
-## 底图 Profile
+## Basemap Profile
 
 工具请求的 `basemap` 必须是 [`config/tiles.yaml`](../../config/tiles.yaml) 中已有的顶层 ID。内置 ID 为 `osm` 与 `arcgis_satellite`。要添加底图，可以复制其中一个完整条目，改成新的 ID，并填写提供商的 URL 模板、名称和版权信息。一个条目的结构如下；地址和版权信息仅是占位示例，不能直接用于真实服务：
 
@@ -41,8 +41,8 @@ drop_if_only_tags:
 | `remove_tag_key_patterns` | 对完整 tag key 使用正则；建议用 `^...$` 锚定 | 同时从 AI 分析输出和最终地图 Overlay 属性中删除匹配 key。 |
 | `drop_if_only_tags` | 精确 `key=value`，或不含等号的 tag key 正则 | tag 清理后，如果一个普通 AI 对象的所有剩余 tag 都命中这些规则，就从 AI 分析输出中删除该对象。 |
 
-`drop_if_only_tags` 不负责删除单个 tag，也不删除地图中的 Overlay 要素。这里的 `key=*` 不是有效的低信息量规则；要匹配某个 key 的任意值，可以使用该 key 的正则，例如 `^addr:.*$`。`remove_tags` 也不会改变默认查询或地图要素选择。若要控制地图上出现哪些要素，请改 [Base 或 Expert](04-base-and-experts.md) 的 `overlay_rules`。
+`drop_if_only_tags` 不负责删除单个 tag，也不删除地图中的 Overlay 要素。这里的 `key=*` 不是有效的低信息量规则；要匹配某个 key 的任意值，可以使用该 key 的正则，例如 `^addr:.*$`。`remove_tags` 也不会改变默认查询或地图要素选择。若要控制地图上出现哪些要素，请改 [Base & Expert](06-base-and-experts.md) 的 `overlay_rules`。
 
 修改任一文件后请重启 GeoDolly，生成一张新地图；效果与预期不符时检查配置 warning。
 
-[← 用户指南](00-index.md) · [配置总览](02-configuration.md) · [Base 与 Expert](04-base-and-experts.md)
+[← 用户指南](00-index.md) · [web.yaml](04-web-yaml.md) · [Base & Expert](06-base-and-experts.md)

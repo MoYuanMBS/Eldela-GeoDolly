@@ -83,9 +83,9 @@ Windows 用户可以运行 `py -3.12 -m venv .venv` 创建虚拟环境，再用 
 | --- | --- | --- |
 | `session_id` | 是 | `location_search` 返回的**搜索** `session_id`。 |
 | `selected_indices` | 是 | 仅含一个实际候选 `index` 的数组；例如该候选确实返回 `index: 0` 时才填写 `[0]`。 |
-| `basemap` | 是 | 已配置的[底图 Profile](03-tiles-and-filters.md#底图-profile)。内置 ID 为 `osm` 和 `arcgis_satellite`。 |
+| `basemap` | 是 | 已配置的[底图 Profile](05-tiles-and-filters.md#basemap-profile)。内置 ID 为 `osm` 和 `arcgis_satellite`。 |
 | `visual_output` | 是 | `none`、`screenshot` 或 `interactive`；详见[地图输出](#阅读结果)。 |
-| `attention_experts` | 否 | 已配置的 [Expert ID](04-base-and-experts.md) 数组；只在该专题与问题相关时填写。 |
+| `attention_experts` | 否 | 已配置的 [Expert ID](06-base-and-experts.md) 数组；只在该专题与问题相关时填写。 |
 | `include_overlay_geojson` | 否 | 需要独立 Overlay JSON 时设为 `true`；部署方也必须允许此输出。 |
 
 确认候选地点后，`tool_a` 的请求形式如下。请将 ID 和 index 替换为自己的搜索结果：
@@ -103,7 +103,7 @@ Windows 用户可以运行 `py -3.12 -m venv .venv` 创建虚拟环境，再用 
 
 ## 阅读结果
 
-`tool_a` 与 `tool_b` 返回新的地图 Session ID。有分析数据时，结果还包含结构化 YAML，用于查找要素、查看记录和概要信息。`include_overlay_geojson: true` 请求的是**独立**的 Overlay JSON；只有 [`output.allow_overlay_geojson`](02-configuration.md#appyaml) 已启用且本次确有 Overlay 数据时才会返回。
+`tool_a` 与 `tool_b` 返回新的地图 Session ID。有分析数据时，结果还包含结构化 YAML，用于查找要素、查看记录和概要信息。`include_overlay_geojson: true` 请求的是**独立**的 Overlay JSON；只有 [`output.allow_overlay_geojson`](03-app-yaml.md#output) 已启用且本次确有 Overlay 数据时才会返回。
 
 `visual_output` 只决定工具文本结果附带哪一种视觉链接：
 
@@ -129,4 +129,4 @@ Windows 用户可以运行 `py -3.12 -m venv .venv` 创建虚拟环境，再用 
 | 地图链接打不开 | 确认服务仍在运行，且浏览器能访问配置的地图地址。默认 `127.0.0.1` 仅指向服务所在机器。 |
 | 分析工具提示搜索 Session 不存在 | 重新调用 `location_search`。搜索候选不会在服务重启后保留，也可能过期。 |
 
-[← 用户指南](00-index.md) · [配置总览](02-configuration.md) · [Base 与 Expert](04-base-and-experts.md)
+[← 用户指南](00-index.md) · [配置总览](02-configuration.md)

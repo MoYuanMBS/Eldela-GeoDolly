@@ -1,6 +1,6 @@
-# 05 · User Map Styles
+# 07 · User Map Styles
 
-**English** · [简体中文](../zh/05-user-styles.md)
+**English** · [简体中文](../zh/07-user-styles.md)
 
 A GeoDolly user style has two parts: a YAML rule maps an OSM tag to a CSS class, and CSS controls the appearance of the matching map Overlay. The entry points are [`config/style/style-rules.yaml`](../../config/style/style-rules.yaml) and [`config/style/style.css`](../../config/style/style.css). The main CSS file already imports examples from `config/style/layers/`.
 
@@ -51,4 +51,4 @@ User CSS selectors must stay within `.geomcp-user-overlay`. They cannot refer to
 
 User styles affect CSS-capable map Overlays. They do not rewrite built-in Canvas features, Core drawing, or fixed page UI. Invalid CSS can prevent startup. An invalid individual YAML rule, a missing class, or an ID collision may instead skip that rule with a warning. Check the logs and compare your changes with the supplied airport, station, road, and area examples.
 
-[← User Guide](00-index.md) · [Configuration](02-configuration.md) · [Getting Started](01-getting-started.md)
+[← User Guide](00-index.md) · [Base and Experts](06-base-and-experts.md)

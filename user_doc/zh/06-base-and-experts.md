@@ -1,6 +1,6 @@
-# 04 · Base 与 Expert
+# 06 · Base & Expert
 
-[English](../en/04-base-and-experts.md) · **简体中文**
+[English](../en/06-base-and-experts.md) · **简体中文**
 
 Base 是区域查询的默认规则；Expert 只有在请求中指定 ID 时才参与专题分析。二者都包含查询与 Overlay 选择规则：通用默认项放入 Base，按需启用的专题放入 Expert。
 
@@ -73,4 +73,4 @@ libraries:
 
 重启服务，确认新 ID 可被选择；使用同一个地点分别调用不带和带 `attention_experts` 的工具，比较分析结果和地图。检查启动或运行日志中的配置 warning。如果要调整所有请求都适用的默认规则，请改 [Base](#修改默认-base)，不要让所有调用方都显式传入一个 Expert。
 
-[← 用户指南](00-index.md) · [配置总览](02-configuration.md) · [底图与 Filter](03-tiles-and-filters.md)
+[← 用户指南](00-index.md) · [Basemap & Filter](05-tiles-and-filters.md) · [用户地图样式](07-user-styles.md)
