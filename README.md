@@ -36,3 +36,7 @@ The map tools can return structured YAML, a WebP snapshot URL, or a simplified m
 - [Tools](user_doc/en/01-getting-started.md#map-tool-inputs) — choose an analysis and fill in its request fields.
 
 GeoDolly relies on online place, feature, and basemap services, and results depend on OpenStreetMap coverage. It does not provide routing or live traffic. The public tool names are `location_search`, `tool_a`, and `tool_b`.
+
+## License and policies
+
+GeoDolly is source-available under the [License](LICENSE), which permits specified noncommercial and research uses and reserves project artwork and branding rights. Commercial and operational military use are prohibited. Read the bilingual [Use and Data Policy](POLICY.md) before redistribution or deployment.

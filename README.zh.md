@@ -36,3 +36,7 @@
 - [工具说明](user_doc/zh/01-getting-started.md#地图工具请求字段)：选择工具并填写请求参数。
 
 GeoDolly 依赖在线地点、要素及底图服务，分析内容受 OpenStreetMap 数据覆盖影响；它不提供路径规划或实时交通。公开工具名为 `location_search`、`tool_a`、`tool_b`。
+
+## 许可与政策
+
+GeoDolly 依据英文 [LICENSE](LICENSE) 以源码可见方式发布，允许的非商业与研究用途、禁止事项、素材和品牌权利均以该文件为准。商业用途和现实军事行动用途被禁止。再分发或部署前，请阅读[使用与数据政策（中文）](POLICY.md#简体中文)。

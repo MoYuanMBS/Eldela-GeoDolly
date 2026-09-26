@@ -1,0 +1,51 @@
+GeoDolly Source-Available License 1.0
+
+Copyright (c) 2026 MoYuanMBS
+
+This English text is the controlling license text. GeoDolly is source-available, not released under an OSI-approved open-source license.
+
+1. Scope
+
+"Software" means the original GeoDolly code, default configuration, and user or developer documentation that a copyright holder distributes under this license. This license does not relicense third-party components, map data, basemap tiles, or fonts. The text of this license and POLICY.md is not Software; you may reproduce these texts unchanged as required for distribution, but editing them does not change the original copyright holders' grant. Project artwork and names have the separate treatment in Sections 7 and 8.
+
+2. Permission
+
+Subject to every condition below, each copyright holder licensing a part of the Software grants you a non-exclusive, worldwide, royalty-free license to access, copy, run, study, modify, and distribute that part, in source or compiled form, solely for Permitted Uses. You may distribute modified versions for Permitted Uses if you identify your changes, preserve copyright and attribution notices, include this LICENSE and POLICY.md, and make clear that your version is unofficial. You may not sublicense the Software or grant recipients broader rights than you received.
+
+3. Permitted Uses
+
+Permitted Uses are personal study and noncommercial use; education and teaching; academic, charitable, and public-interest work; public-sector work and research; and noncommercial modification, testing, and redistribution. A military academy or research institution may use the Software for historical, educational, or other non-operational research. Funding by a government, charity, or research grant does not by itself make otherwise permitted research commercial.
+
+4. Commercial Use is prohibited
+
+"Commercial Use" means using the Software for a commercial product or business operation, a paid or revenue-generating service, paid consulting, work delivered to a commercial client, or a purpose intended to produce a commercial advantage. This includes commercial internal use even when access to the Software itself is free. An institution's name or legal status alone does not determine whether a particular use is permitted. A separate written license from the relevant copyright holder is required for Commercial Use.
+
+5. Operational Military Use is prohibited
+
+"Operational Military Use" means use in, for, or to directly support an actual or planned real-world military operation, including operational planning, target selection, reconnaissance, military intelligence, troop movement or deployment, and operational logistics. The prohibition applies regardless of whether the user calls the activity research, whether the Software is modified, or whether the result is provided to another party. Non-operational teaching and research allowed by Section 3 do not authorize Operational Military Use.
+
+6. Unlawful political activity
+
+You may not use the Software to conduct or knowingly facilitate political propaganda or incitement, broadcasting or communications activity, separatist incitement, or other political activity that is unlawful under the law applicable where the activity is conducted. Political, historical, and geographic research is not prohibited merely because its subject is sensitive or disputed. This section does not require the Software to determine what any jurisdiction's law allows.
+
+7. Project artwork and third-party assets
+
+Only original artwork owned by the GeoDolly rights holder in `assets/ui/**` and `assets/logo/**` is covered by this paragraph. It is All Rights Reserved. You may load and display supplied copies with an authorized GeoDolly installation for its Permitted Use and make copies technically necessary to install, run, or back up that installation. No permission is granted to extract, edit, republish, redistribute, sell, or use this artwork in another project. A redistributed Software fork must replace or omit reserved artwork and branding unless the rights holder gives separate written permission.
+
+`assets/leaflet/fonts/SourceHanSansCN-VF.woff2` is third-party font software under SIL Open Font License 1.1; its notice remains at `assets/leaflet/fonts/LICENSE-SourceHanSans.txt`. This license does not override it. The provenance and reuse terms of `assets/leaflet/icon/**` have not been verified here; this license grants no new rights in those files. Verify their rights before redistribution or reuse. Other external assets and dependencies remain under their respective owners' terms.
+
+8. Names and marks
+
+GeoDolly is the public product name; GeoMCP is a project and technical name. This license grants no right to use these names as the main name of an unrelated product, fork, service, domain, or account, or to use the logo, cover, or other reserved brand artwork in another project. Do not present a fork or hosted service as official or imply sponsorship or approval. You may accurately identify the original project in plain text, such as "Based on GeoDolly" or "Based on GeoMCP," if your own name is clearly different. No statement here claims that a mark is registered in any jurisdiction or limits references independently allowed by applicable law.
+
+9. Conditions and other rights
+
+Keep this license and existing attribution notices with every copy you distribute. Comply with applicable law and with the separate terms of any data source, service, or third-party component you use. POLICY.md explains the use categories and states the intended policy of any future official hosted service; it does not enlarge the rights granted here. Rights not expressly granted are reserved. Nothing in this license limits rights you have independently under applicable law.
+
+10. Breach and termination
+
+If you breach a condition of this license, your rights under it end. If this is your first breach and you fully remedy it and its practical effects within 30 days after written notice from the relevant copyright holder, your rights are reinstated. Rights already granted to a compliant recipient of a copy do not end solely because you breach your own license.
+
+11. Disclaimer
+
+To the extent permitted by applicable law, the Software and permitted use of project artwork are provided "as is", without warranties of any kind. Copyright holders are not liable for damages arising from the Software, artwork, or their use to the extent permitted by applicable law.

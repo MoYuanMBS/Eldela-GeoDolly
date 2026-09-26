@@ -34,6 +34,9 @@ prompts:
       "none", "screenshot", or "interactive". Set "include_overlay_geojson"
       only when complete enriched overlay geometry is needed.
 
+      This tool may take several minutes. Allow enough time for the result;
+      a 60-second MCP client timeout may end the call early.
+
       Large areas may fall back to a basemap-only preview. Do not issue
       concurrent duplicate calls for the same session and candidate. This tool
       does not provide routing, live traffic, or real-time operational data.
@@ -54,6 +57,9 @@ prompts:
       candidate index. Explicitly choose a basemap and "visual_output":
       "none", "screenshot", or "interactive". Set "include_overlay_geojson"
       only when complete enriched overlay geometry is needed.
+
+      This tool may take several minutes. Allow enough time for the result;
+      a 60-second MCP client timeout may end the call early.
 
       Oversized areas may downgrade to bounding-box mode or a basemap-only
       preview. Do not issue concurrent duplicate calls for the same session
