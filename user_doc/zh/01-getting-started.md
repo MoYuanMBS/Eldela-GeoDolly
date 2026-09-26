@@ -43,6 +43,27 @@ Windows 用户可以运行 `py -3.12 -m venv .venv` 创建虚拟环境，再用 
 
 客户端启动 GeoDolly 时，地图服务也会启动。请确保端口 `23336` 可用；如果修改地图地址，返回的链接必须能被浏览器访问。相关字段见[配置总览](02-configuration.md)。
 
+### 手动启动单一服务，供多个客户端连接
+
+如果客户端会为每个会话启动独立进程，可以改用 HTTP MCP，避免多个进程争用地图端口。先完成上述构建，然后在仓库根目录手动运行：
+
+```powershell
+$env:PYTHONUTF8 = "1"
+npm run start:http
+```
+
+保持该终端运行。MCP 地址为 `http://127.0.0.1:23337/mcp`，地图服务仍使用配置中的端口（默认 `23336`）。HTTP MCP 仅监听本机，不需要为每个客户端再启动进程。关闭客户端连接不会停止服务；在启动终端按 Ctrl+C 停止服务。
+
+Codex 的 `~/.codex/config.toml` 配置为：
+
+```toml
+[mcp_servers.geodolly]
+url = "http://127.0.0.1:23337/mcp"
+enabled = true
+```
+
+将原来的 GeoDolly 命令配置替换为这一段，不要同时保留 stdio 启动配置。服务重启会清空搜索会话，需要重新搜索地点。
+
 ## 生成第一张地图
 
 1. 调用 `location_search`，只提交一个查询：

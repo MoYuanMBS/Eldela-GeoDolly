@@ -13,6 +13,7 @@
 import {registerAppTool} from "@modelcontextprotocol/ext-apps/server";
 import {McpServer} from "@modelcontextprotocol/sdk/server/mcp.js";
 import {StdioServerTransport} from "@modelcontextprotocol/sdk/server/stdio.js";
+import {createMcpHttpService, listenMcpHttpService} from "./server/http/mcp-http-service.js";
 
 import {closeMapHttpService, createMapHttpService, getInternalMapOrigin, listenMapHttpService} from "./server/http/map-http-service.js";
 import {SessionManager} from "./server/map-session/session-manager.js";
@@ -130,15 +131,17 @@ async function main() {
   const snapshotService = new SnapshotService(getInternalMapOrigin(webConfig.http), webConfig.snapshot);
   const toolScheduler = new ToolExecutionScheduler(webConfig.tool_execution);
   const mapHttpService = createMapHttpService(webConfig, sessionManager);
-  // GeoMCP 当前先使用 stdio transport，供本地 MCP client / AI 进程拉起。
+  const httpMode = process.argv.includes("--http");
   const server = buildServer(toolScheduler, {sessionManager, snapshotService}, webConfig.http.map.public_origin);
-  const transport = new StdioServerTransport();
+  const mcpHttpService = httpMode ? createMcpHttpService(() =>
+    buildServer(toolScheduler, {sessionManager, snapshotService}, webConfig.http.map.public_origin)) : null;
   let shutdownPromise: Promise<void> | null = null;
 
   const shutdown = (): Promise<void> => {
     if (shutdownPromise !== null) return shutdownPromise;
     shutdownPromise = (async () => {
       await toolScheduler.close();
+      if (mcpHttpService !== null) await closeMapHttpService(mcpHttpService);
       await snapshotService.close();
       await closeMapHttpService(mapHttpService);
       await sessionManager.close();
@@ -156,13 +159,14 @@ async function main() {
   process.once("SIGINT", handleShutdownSignal);
   process.once("SIGTERM", handleShutdownSignal);
   // stdio 客户端正常断开时也必须关闭 HTTP listener，否则端口会让进程继续常驻。
-  server.server.onclose = handleShutdownSignal;
+  if (!httpMode) server.server.onclose = handleShutdownSignal;
 
   try {
     await sessionManager.start();
     await listenMapHttpService(mapHttpService, webConfig.http);
     await snapshotService.start();
-    await server.connect(transport);
+    if (mcpHttpService !== null) await listenMcpHttpService(mcpHttpService);
+    else await server.connect(new StdioServerTransport());
   } catch (error) {
     process.off("SIGINT", handleShutdownSignal);
     process.off("SIGTERM", handleShutdownSignal);

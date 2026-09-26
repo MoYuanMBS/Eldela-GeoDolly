@@ -12,6 +12,7 @@
     "build": "tsc -p tsconfig.json",
     "build:web": "vite build && vite build --config vite.launcher.config.ts",
     "start": "node dist/index.js",
+    "start:http": "node dist/index.js --http",
     "start:warning-http": "node dist/server/http/browser-warning-service-main.js",
     "test:local": "bash local_test/run_local_tests.sh",
     "test:py-local": ".venv/bin/python -m unittest discover -s local_test/py -p \"test_*.py\"",
