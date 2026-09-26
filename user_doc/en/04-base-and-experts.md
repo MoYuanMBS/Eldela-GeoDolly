@@ -73,4 +73,4 @@ Alternatively, place one Expert in `config/expert/<id>.yaml`. That file begins d
 
 Restart the service and confirm the new ID is available. Use the same place with and without `attention_experts` to compare the analysis and map, and check configuration warnings in the logs. For rules that should apply to every request, edit [Base](#edit-the-default-base) instead of requiring every caller to select an Expert.
 
-[← User Guide](index.md) · [Configuration](02-configuration.md) · [Basemaps and Filters](03-tiles-and-filters.md)
+[← User Guide](00-index.md) · [Configuration](02-configuration.md) · [Basemaps and Filters](03-tiles-and-filters.md)

@@ -129,4 +129,4 @@ Windows 用户可以运行 `py -3.12 -m venv .venv` 创建虚拟环境，再用 
 | 地图链接打不开 | 确认服务仍在运行，且浏览器能访问配置的地图地址。默认 `127.0.0.1` 仅指向服务所在机器。 |
 | 分析工具提示搜索 Session 不存在 | 重新调用 `location_search`。搜索候选不会在服务重启后保留，也可能过期。 |
 
-[← 用户指南](index.md) · [配置总览](02-configuration.md) · [Base 与 Expert](04-base-and-experts.md)
+[← 用户指南](00-index.md) · [配置总览](02-configuration.md) · [Base 与 Expert](04-base-and-experts.md)

@@ -47,4 +47,4 @@ GeoDolly 从仓库的 `config/` 目录读取配置。先找到负责该功能的
 
 公开部署时，让 `http.map.public_origin` 指向外部可访问的地图地址，并将请求转发到配置的监听服务。当前 `127.0.0.1` 地址只适用于浏览器能在本地访问服务的情况。
 
-[← 用户指南](index.md) · [快速开始](01-getting-started.md) · [底图与 Filter](03-tiles-and-filters.md)
+[← 用户指南](00-index.md) · [快速开始](01-getting-started.md) · [底图与 Filter](03-tiles-and-filters.md)

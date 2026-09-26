@@ -1,6 +1,6 @@
 # GeoDolly 用户指南
 
-[English](../en/index.md) · **简体中文**
+[English](../en/00-index.md) · **简体中文**
 
 本指南按使用和定制 GeoDolly 的顺序排列。第一次使用从 01 开始；需要修改配置时，直接进入对应主题。
 

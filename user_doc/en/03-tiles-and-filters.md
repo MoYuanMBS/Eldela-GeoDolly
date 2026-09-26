@@ -45,4 +45,4 @@ drop_if_only_tags:
 
 After editing either file, restart GeoDolly and make a new map. Check configuration warnings if the result differs from what you expected.
 
-[← User Guide](index.md) · [Configuration](02-configuration.md) · [Base and Experts](04-base-and-experts.md)
+[← User Guide](00-index.md) · [Configuration](02-configuration.md) · [Base and Experts](04-base-and-experts.md)

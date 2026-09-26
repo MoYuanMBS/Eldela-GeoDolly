@@ -45,4 +45,4 @@ drop_if_only_tags:
 
 修改任一文件后请重启 GeoDolly，生成一张新地图；效果与预期不符时检查配置 warning。
 
-[← 用户指南](index.md) · [配置总览](02-configuration.md) · [Base 与 Expert](04-base-and-experts.md)
+[← 用户指南](00-index.md) · [配置总览](02-configuration.md) · [Base 与 Expert](04-base-and-experts.md)

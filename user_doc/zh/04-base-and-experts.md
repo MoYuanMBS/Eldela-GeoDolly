@@ -73,4 +73,4 @@ libraries:
 
 重启服务，确认新 ID 可被选择；使用同一个地点分别调用不带和带 `attention_experts` 的工具，比较分析结果和地图。检查启动或运行日志中的配置 warning。如果要调整所有请求都适用的默认规则，请改 [Base](#修改默认-base)，不要让所有调用方都显式传入一个 Expert。
 
-[← 用户指南](index.md) · [配置总览](02-configuration.md) · [底图与 Filter](03-tiles-and-filters.md)
+[← 用户指南](00-index.md) · [配置总览](02-configuration.md) · [底图与 Filter](03-tiles-and-filters.md)

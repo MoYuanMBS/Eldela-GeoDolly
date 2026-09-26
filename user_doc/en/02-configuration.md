@@ -47,4 +47,4 @@ For a deployed service, replace the test User-Agent values in `nominatim.user_ag
 
 For a public deployment, make `http.map.public_origin` match the externally reachable map address and route traffic to the configured listener. The current `127.0.0.1` address is only suitable when the browser can reach the server machine locally.
 
-[← User Guide](index.md) · [Getting Started](01-getting-started.md) · [Basemaps and Filters](03-tiles-and-filters.md)
+[← User Guide](00-index.md) · [Getting Started](01-getting-started.md) · [Basemaps and Filters](03-tiles-and-filters.md)

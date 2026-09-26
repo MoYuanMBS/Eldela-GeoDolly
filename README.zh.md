@@ -31,7 +31,7 @@
 ## 快速开始与文档
 
 - [快速开始](user_doc/zh/01-getting-started.md)：安装、构建、连接 MCP 客户端并制作第一张地图。
-- [用户指南](user_doc/zh/index.md)：按序阅读完整指南。
+- [用户指南](user_doc/zh/00-index.md)：按序阅读完整指南。
 - [配置总览](user_doc/zh/02-configuration.md)：查找主要设置与定制主题。
 - [工具说明](user_doc/zh/01-getting-started.md#地图工具请求字段)：选择工具并填写请求参数。
 

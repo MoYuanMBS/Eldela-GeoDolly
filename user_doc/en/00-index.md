@@ -1,6 +1,6 @@
 # GeoDolly User Guide
 
-**English** · [简体中文](../zh/index.md)
+**English** · [简体中文](../zh/00-index.md)
 
 The guide follows the order in which most people set up and customize GeoDolly. Start at 01 for a first map, then open the configuration topic you need.
 

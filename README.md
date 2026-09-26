@@ -31,7 +31,7 @@ The map tools can return structured YAML, a WebP snapshot URL, or a simplified m
 ## Get started
 
 - [Quick Start](user_doc/en/01-getting-started.md) — install, build, connect an MCP client, and make a first map.
-- [User Guide](user_doc/en/index.md) — browse the numbered guide.
+- [User Guide](user_doc/en/00-index.md) — browse the numbered guide.
 - [Configuration](user_doc/en/02-configuration.md) — find the main settings and linked customization topics.
 - [Tools](user_doc/en/01-getting-started.md#map-tool-inputs) — choose an analysis and fill in its request fields.
 

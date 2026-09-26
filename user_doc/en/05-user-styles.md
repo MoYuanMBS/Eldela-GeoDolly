@@ -51,4 +51,4 @@ User CSS selectors must stay within `.geomcp-user-overlay`. They cannot refer to
 
 User styles affect CSS-capable map Overlays. They do not rewrite built-in Canvas features, Core drawing, or fixed page UI. Invalid CSS can prevent startup. An invalid individual YAML rule, a missing class, or an ID collision may instead skip that rule with a warning. Check the logs and compare your changes with the supplied airport, station, road, and area examples.
 
-[← User Guide](index.md) · [Configuration](02-configuration.md) · [Getting Started](01-getting-started.md)
+[← User Guide](00-index.md) · [Configuration](02-configuration.md) · [Getting Started](01-getting-started.md)

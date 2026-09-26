@@ -129,4 +129,4 @@ For an oversized area, a tool may produce a basemap-only preview without analysi
 | A map link does not open | Confirm the server is still running and the browser can reach the configured map address. The default `127.0.0.1` address is local to the server machine. |
 | The analysis tool reports a missing search session | Run `location_search` again. Search selections do not survive a server restart and can expire. |
 
-[← User Guide](index.md) · [Configuration](02-configuration.md) · [Base and Experts](04-base-and-experts.md)
+[← User Guide](00-index.md) · [Configuration](02-configuration.md) · [Base and Experts](04-base-and-experts.md)
