@@ -2,7 +2,7 @@
 
 **English** · [简体中文](../zh/07-user-styles.md)
 
-A GeoDolly user style has two parts: a YAML rule maps an OSM tag to a CSS class, and CSS controls the appearance of the matching map Overlay. The entry points are [`config/style/style-rules.yaml`](../../config/style/style-rules.yaml) and [`config/style/style.css`](../../config/style/style.css). The main CSS file already imports examples from `config/style/layers/`.
+A GeoDolly user style matches OSM tags with a YAML rule. CSS styles supported map Overlays; a Node Base rule can also render a local SVG or PNG image through `nodeIcon`. The entry points are [`config/style/style-rules.yaml`](../../config/style/style-rules.yaml), [`config/style/style.css`](../../config/style/style.css), and local image files under `assets/leaflet/`. The main CSS file already imports examples from `config/style/layers/`.
 
 ## Add a road style
 
@@ -43,11 +43,39 @@ The existing `style.css` already imports `layers/roads.css`. If you create `laye
 | `key` / `value` | An exact OSM tag key; the value is an exact string or a regex object such as `value: {regex: "^(tertiary|secondary)$"}`. |
 | `className` | Must begin with `geomcp-user-` and exist in the loaded CSS. |
 
-For a Node icon, add `nodeIcon` to a rule with **`featureType: node` and `renderLayer: base`**, for example `nodeIcon: {asset: "icon/custom.svg", sizePx: 12}`. Local asset paths are relative to `assets/leaflet/`; a valid URL is also supported. The matching CSS class still controls the icon's presentation.
+## Add a local SVG or PNG Node icon
+
+Place your image under `assets/leaflet/`, for example `assets/leaflet/icon/my-place.svg` or `assets/leaflet/icon/my-place.png`. In `style-rules.yaml`, append a Node Base rule to the existing `rules` list:
+
+```yaml
+  - id: user-my-place-node
+    kind: css
+    renderLayer: base
+    featureType: node
+    priority: 100
+    key: amenity
+    value: library
+    className: geomcp-user-my-place-node
+    nodeIcon:
+      asset: icon/my-place.svg
+      sizePx: 8
+```
+
+`nodeIcon.asset` is relative to `assets/leaflet/`, so the example points to `assets/leaflet/icon/my-place.svg`. For a PNG, put `my-place.png` in the same directory and change the `asset` value to `icon/my-place.png`. Other supported local image formats are JPG/JPEG, WebP, GIF, AVIF, BMP, and ICO. `sizePx` is a positive base size in logical pixels. `nodeIcon` works only on a rule with `featureType: node` and `renderLayer: base`; a valid `nodeIcon.url` can also reference an external image instead of a local `asset`.
+
+Add the required class to [`config/style/layers/nodes.css`](../../config/style/layers/nodes.css):
+
+```css
+.geomcp-user-overlay.geomcp-user-my-place-node {
+  opacity: 1;
+}
+```
+
+The class styles the SVG `<image>` element, for example its opacity; it does not recolor pixels inside an SVG or PNG file. Edit the image itself to change its artwork or colors. Local images are included in the browser build, so run `npm run build:web`, restart GeoDolly, and generate a new map after adding or changing one. A missing or unloadable image is skipped with a browser warning.
 
 ## CSS limits and troubleshooting
 
-User CSS selectors must stay within `.geomcp-user-overlay`. They cannot refer to built-in classes or use ID selectors. CSS accepts stable SVG presentation properties such as `fill`, `stroke`, `stroke-width`, opacity, and dash patterns. Geometry, `transform`, animations, `filter`, `mask`, custom properties, and `url()` are unsupported. `@import` can load only local CSS files under `config/style/layers/`.
+User CSS selectors must stay within `.geomcp-user-overlay`. They cannot refer to built-in classes or use ID selectors. For vector map paths, CSS accepts stable SVG presentation properties such as `fill`, `stroke`, `stroke-width`, opacity, and dash patterns. A `nodeIcon` image also accepts applicable outer-element properties such as opacity; CSS does not edit the image content. Geometry, `transform`, animations, `filter`, `mask`, custom properties, and CSS `url()` are unsupported. `@import` can load only local CSS files under `config/style/layers/`.
 
 User styles affect CSS-capable map Overlays. They do not rewrite built-in Canvas features, Core drawing, or fixed page UI. Invalid CSS can prevent startup. An invalid individual YAML rule, a missing class, or an ID collision may instead skip that rule with a warning. Check the logs and compare your changes with the supplied airport, station, road, and area examples.
 
