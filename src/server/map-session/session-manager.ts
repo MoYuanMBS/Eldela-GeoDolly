@@ -35,7 +35,8 @@ export class SessionManager {
   private closing = false;
   private closed = false;
 
-  constructor(private readonly config: SessionConfigType) {}
+  // 临时复用现有 expiry timer 清理入口持有的搜索候选缓存。
+  constructor(private readonly config: SessionConfigType, private readonly onExpiryCheck?: (nowSeconds: number) => void) {}
 
   private requireRunning(): void {
     if (!this.started || this.closing || this.closed) {
@@ -143,6 +144,11 @@ export class SessionManager {
     const nowSeconds = Date.now() / 1000;
     for (const [rawSessionId, record] of Object.entries(this.sessions)) {
       if (nowSeconds >= record.close_time) this.activeSessionIds.delete(rawSessionId as IndexSessionIdType);
+    }
+    try {
+      this.onExpiryCheck?.(nowSeconds);
+    } catch (error) {
+      logger.warning("session_expiry_callback_failed", {reason: errorReason(error)});
     }
   }
 

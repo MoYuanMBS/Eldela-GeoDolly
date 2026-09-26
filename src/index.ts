@@ -39,16 +39,23 @@ import {initializeUserStyle} from "./server/utils/user-style/user-style-rule.js"
 import {logger} from "./server/utils/logger.js";
 
 //#################################################################################
-const searchResultCache = new Map<string, LocSearchReplyRawType>();
+const searchResultCache = new Map<string, {response: LocSearchReplyRawType; expiresAt: number}>();
+
+// 临时搜索候选缓存清理；接入正式 Session 管理后移除。
+function deleteExpiredSearchResponse(sessionId: string, nowSeconds: number): void {
+  const cachedResponse = searchResultCache.get(sessionId);
+  if (cachedResponse && nowSeconds >= cachedResponse.expiresAt) searchResultCache.delete(sessionId);
+}
 
 function getCachedSearchResponse(sessionId: string): LocSearchReplyRawType {
+  deleteExpiredSearchResponse(sessionId, Date.now() / 1000);
   const cachedResponse = searchResultCache.get(sessionId);
 
   if (!cachedResponse) {
     throw new AppError("missing_search_session", `search session not found for session_id: ${sessionId}`);
   }
 
-  return cachedResponse;
+  return cachedResponse.response;
 }
 
 function buildServer(scheduler: ToolExecutionScheduler, services: ToolFlowServicesType, publicOrigin: string) {
@@ -72,7 +79,10 @@ function buildServer(scheduler: ToolExecutionScheduler, services: ToolFlowServic
         const rawResponse = await scheduler.run(async (context) => locSearchReplyRawSchema.parse(
           await callBridge("search_location", args, context.signal),
         ));
-        searchResultCache.set(rawResponse.session_id, rawResponse);
+        searchResultCache.set(rawResponse.session_id, {
+          response: rawResponse,
+          expiresAt: Date.now() / 1000 + config.getWebConfig().session.ttl_seconds,
+        });
         const responseForAI = sanitizeSearchResponseForAI(rawResponse);
 
         return createTextToolResult(JSON.stringify(responseForAI, null, 2));
@@ -114,7 +124,9 @@ async function main() {
   config.initialize();
   initializeUserStyle();
   const webConfig = config.getWebConfig();
-  const sessionManager = new SessionManager(webConfig.session);
+  const sessionManager = new SessionManager(webConfig.session, (nowSeconds) => {
+    for (const sessionId of searchResultCache.keys()) deleteExpiredSearchResponse(sessionId, nowSeconds);
+  });
   const snapshotService = new SnapshotService(getInternalMapOrigin(webConfig.http), webConfig.snapshot);
   const toolScheduler = new ToolExecutionScheduler(webConfig.tool_execution);
   const mapHttpService = createMapHttpService(webConfig, sessionManager);
@@ -130,6 +142,7 @@ async function main() {
       await snapshotService.close();
       await closeMapHttpService(mapHttpService);
       await sessionManager.close();
+      searchResultCache.clear();
       await server.close();
     })();
     return shutdownPromise;
