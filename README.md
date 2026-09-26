@@ -1,29 +1,38 @@
-# GeoMCP
+# GeoDolly
 
-Current authority source: `doc/GeoMCP 技术规范文档.md`.
+**English** · [简体中文](README.zh.md)
 
-## Dependency Note
+**GeoDolly** is an MCP toolkit for exploring places with OpenStreetMap data. It helps you confirm a location, analyze what is mapped there and nearby, and view the result on a map. Use it to ask what features surround a place or how its roads and railways are arranged.
 
-TypeScript side currently declares the initial npm packages required by the specification:
+![GeoDolly cover](assets/logo/cover.webp)
 
-- `@modelcontextprotocol/sdk`
-- `leaflet`
-- `canvas`
-- `jsdom`
+## What GeoDolly provides
 
-Rendering is planned around standard `leaflet` running in a Node environment with `jsdom` and `canvas`, instead of the outdated `leaflet-headless` package.
+| Capability | What it does |
+| --- | --- |
+| Place confirmation | Searches for a place and lets you verify the right candidate before analysis. |
+| Area and network analysis | Examines wider road and rail networks or a bounded place and its nearby facilities. |
+| Map output | Provides structured analysis, a WebP snapshot, and a browser map; supported MCP app clients can also show the full interactive map. |
 
-`child_process` is a built-in Node.js module, so it is part of the runtime and does not belong in `package.json` dependencies.
+## How it works
 
-Python side currently declares the initial required packages in `requirements.txt`:
+1. Call `location_search` and confirm one returned candidate.
+2. Call `tool_a` or `tool_b` with the search session ID and that candidate's index.
+3. Choose a basemap and `visual_output`, then read the analysis and open the map.
 
-- `httpx`
-- `shapely`
-- `pillow`
-- `pyyaml`
+| Tool | Use it for |
+| --- | --- |
+| `location_search` | Finding and confirming a place. |
+| `tool_a` | Roads, railways, transport connections, and broader regional context. |
+| `tool_b` | A bounded place, such as a park, campus, or district, and its surroundings. |
 
-This is the initial scaffold, not the final dependency list. More packages may be added as implementation proceeds.
+The map tools can return structured YAML, a WebP snapshot URL, or a simplified map page URL, depending on the analysis and `visual_output`. A supported MCP app client can display the full interactive map separately. See [Map Output](user_doc/en/01-getting-started.md#reading-the-result) for the distinctions.
 
-## Basemap Tile Endpoint
+## Get started
 
-Browser maps load registered providers through the same-origin `/basemap/{source}/{z}/{x}/{y}` endpoint. GeoMCP does not cache these tiles; deployments are responsible for reviewing provider policies and configuring any required reverse-proxy or CDN cache.
+- [Quick Start](user_doc/en/01-getting-started.md) — install, build, connect an MCP client, and make a first map.
+- [User Guide](user_doc/en/index.md) — browse the numbered guide.
+- [Configuration](user_doc/en/02-configuration.md) — find the main settings and linked customization topics.
+- [Tools](user_doc/en/01-getting-started.md#map-tool-inputs) — choose an analysis and fill in its request fields.
+
+GeoDolly relies on online place, feature, and basemap services, and results depend on OpenStreetMap coverage. It does not provide routing or live traffic. The public tool names are `location_search`, `tool_a`, and `tool_b`.
