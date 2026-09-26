@@ -1,4 +1,4 @@
-/** Polygon 内侧色带共用 Canvas renderer。 */
+/** Leaflet Canvas 重绘生命周期保护与 Polygon 内侧色带 renderer。 */
 
 import {Canvas, Path} from "leaflet";
 import {LEAFLET_INTERNAL_RENDER_CONFIG} from "../../built-in-config/leaflet.js";
@@ -16,13 +16,8 @@ interface CanvasRedrawInternals {
 
 const LEAFLET_CANVAS_REDRAW = (Canvas.prototype as unknown as {_redraw(this: Canvas): void})._redraw;
 
-/**
- * Leaflet 先生成包含 exterior 与 holes 的完整 Canvas path。注册为 inner band 的 Polygon 使用
- * even-odd clip 裁掉双倍描边的外半侧，使 options.weight 等于最终位于 Area 内部的可见宽度。
- */
-export class InnerBandCanvas extends Canvas {
-  private readonly innerBandLayers = new WeakSet<Path>();
-
+/** 挂载时沿用 Leaflet Canvas 绘制，只忽略容器销毁后晚到的重绘。 */
+export class GuardedCanvas extends Canvas {
   /**
    * Leaflet 的同步 `_updatePaths()` 可能把 `_redrawRequest` 置空，却留下更早排队的 RAF。
    * 如果地图随后在同一帧销毁，基类会删除 `_ctx`，旧 RAF 再调用 `_clear()` 就会访问
@@ -36,6 +31,14 @@ export class InnerBandCanvas extends Canvas {
     }
     LEAFLET_CANVAS_REDRAW.call(this);
   }
+}
+
+/**
+ * Leaflet 先生成包含 exterior 与 holes 的完整 Canvas path。注册为 inner band 的 Polygon 使用
+ * even-odd clip 裁掉双倍描边的外半侧，使 options.weight 等于最终位于 Area 内部的可见宽度。
+ */
+export class InnerBandCanvas extends GuardedCanvas {
+  private readonly innerBandLayers = new WeakSet<Path>();
 
   registerInnerBand(layer: Path): void {
     // WeakSet 只标记需要特殊裁切的 Path，不延长 Feature layer 的生命周期。

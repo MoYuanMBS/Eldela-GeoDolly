@@ -12,7 +12,6 @@ import {
   CircleMarker,
   Layer,
   Path,
-  canvas,
   circleMarker,
   layerGroup,
   polygon,
@@ -45,7 +44,7 @@ import type {ResolvedBaseStyle, RuntimeStylePlan, RuntimeStyleRule} from "../../
 import {AppError} from "../../../shared/app-error.js";
 import {LEAFLET_INTERNAL_RENDER_CONFIG} from "../../built-in-config/leaflet.js";
 import {resolveFeatureStyle} from "./feature-style-resolver.js";
-import {InnerBandCanvas} from "./inner-band-canvas.js";
+import {GuardedCanvas, InnerBandCanvas} from "./inner-band-canvas.js";
 import {prepareLeafletGeometry} from "./leaflet-geometry.js";
 import {NodeZoomController} from "./node-zoom-controller.js";
 import {OverlayLabelLayer} from "./overlay-label-layer.js";
@@ -70,9 +69,9 @@ function ensureVisualPanes(map: LeafletMap): void {
 /** 一个 Feature 类型同时准备 Canvas/SVG 两条路径，但未命中的 renderer 不会挂载 DOM。 */
 function createFeatureRenderers(basePane: OverlayBasePaneName, specialPane: OverlaySpecialPaneName): OverlayFeatureRenderers {
   return {
-    baseCanvas: canvas({pane: basePane}),
+    baseCanvas: new GuardedCanvas({pane: basePane}),
     baseSvg: svg({pane: basePane}),
-    specialCanvas: canvas({pane: specialPane}),
+    specialCanvas: new GuardedCanvas({pane: specialPane}),
     specialSvg: svg({pane: specialPane}),
   };
 }

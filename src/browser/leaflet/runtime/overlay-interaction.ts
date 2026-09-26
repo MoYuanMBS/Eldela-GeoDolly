@@ -5,7 +5,7 @@
  * 展开的 geometry 与 measurement controller 的可靠测量。Snapshot 不导入或调用本模块。
  */
 
-import {CircleMarker, canvas, circleMarker, layerGroup, polygon, polyline, svg, type Map as LeafletMap, type Path, type Renderer} from "leaflet";
+import {CircleMarker, circleMarker, layerGroup, polygon, polyline, svg, type Map as LeafletMap, type Path, type Renderer} from "leaflet";
 import type {LeafletConfigType} from "../../../models/mapsurface/map-config-models.js";
 import type {
   AttachOverlayInteractionOptions,
@@ -21,6 +21,7 @@ import type {
 import type {CanvasSpatialFeatureType} from "../../../models/mapsurface/style/base-canvas-style.js";
 import {AppError} from "../../../shared/app-error.js";
 import {LEAFLET_INTERNAL_RENDER_CONFIG} from "../../built-in-config/leaflet.js";
+import {GuardedCanvas} from "./inner-band-canvas.js";
 
 interface MutableOverlayInteractionLayerIndex {
   node: Record<string, OverlayInteractionLayerEntry>;
@@ -167,7 +168,7 @@ export function attachOverlayInteraction(options: AttachOverlayInteractionOption
   const interactionPane = ensureInteractionPane(map);
   const interactionPaneElement = map.getPane(interactionPane);
   if (interactionPaneElement === undefined) throw new AppError("overlay_interaction", "Overlay interaction pane was not created");
-  const renderer = canvas({pane: interactionPane, tolerance: 0});
+  const renderer = new GuardedCanvas({pane: interactionPane, tolerance: 0});
   const rootLayer = layerGroup().addTo(map);
   rootLayer.addLayer(renderer);
   const highlightPaneConfig = LEAFLET_INTERNAL_RENDER_CONFIG.panes.highlight;
