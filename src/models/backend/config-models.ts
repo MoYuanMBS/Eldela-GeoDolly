@@ -305,6 +305,22 @@ export const mapHttpConfigSchema = z.object({
   public_origin: publicOriginSchema,
 }).strict();
 
+const mcpAllowedOriginSchema = z.string().trim().pipe(z.url({protocol: /^https?$/, normalize: true}))
+  .transform((origin) => new URL(origin))
+  .refine(
+    (origin) => !origin.username && !origin.password && origin.pathname === "/" && !origin.search && !origin.hash,
+    "MCP allowed origin must not contain credentials, path, query, or fragment",
+  )
+  .transform((origin) => origin.origin);
+
+export const mcpHttpConfigSchema = z.object({
+  port: positiveIntegerSchema.max(65535),
+  max_body_bytes: positiveIntegerSchema,
+  request_receive_timeout_seconds: positiveFiniteNumberSchema.max(2_147_483),
+  session_idle_timeout_seconds: positiveFiniteNumberSchema.max(2_147_483),
+  allowed_origins: z.array(mcpAllowedOriginSchema),
+}).strict();
+
 export const toolExecutionConfigSchema = z.object({
   max_workers: positiveIntegerSchema,
   // 0 明确表示没有等待队列；worker 全忙时立即返回 busy。
@@ -338,6 +354,7 @@ export const webConfigSchema = z.object({
       max_requests_per_window: positiveIntegerSchema,
     }).strict(),
     map: mapHttpConfigSchema,
+    mcp: mcpHttpConfigSchema,
   }).strict(),
   tool_execution: toolExecutionConfigSchema,
   session: sessionConfigSchema,
@@ -355,6 +372,7 @@ export type BrowserMapConfigType = z.infer<typeof browserMapConfigSchema>;
 export type UiConfigType = z.infer<typeof uiConfigSchema>;
 export type BasemapConfigType = z.infer<typeof basemapConfigSchema>;
 export type MapHttpConfigType = z.infer<typeof mapHttpConfigSchema>;
+export type McpHttpConfigType = z.infer<typeof mcpHttpConfigSchema>;
 export type ToolExecutionConfigType = z.infer<typeof toolExecutionConfigSchema>;
 export type SessionConfigType = z.infer<typeof sessionConfigSchema>;
 export type SnapshotConfigType = z.infer<typeof snapshotConfigSchema>;

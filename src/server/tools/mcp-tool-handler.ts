@@ -3,6 +3,7 @@
 import type {AiToolInputReqType, LocSearchReplyRawType} from "../../models/backend/bridge-models.js";
 import type {PublishedMapToolExecutorType, PublishedToolFlowResultType} from "../../models/backend/tool-flow-models.js";
 import {AppError} from "../../shared/app-error.js";
+import {createLegacyInteractiveMapResource} from "../interactive-map-launcher-resource.js";
 import type {ToolExecutionScheduler} from "./tool-execution-scheduler.js";
 import type {ToolFlowServicesType} from "./tool-flow.js";
 
@@ -19,10 +20,12 @@ export function createTextToolResult(text: string, isError = false) {
   };
 }
 
-/** 客户端 URL 只进入 `_meta`，AI-facing JSON 只序列化已经分离的 `ai_output`。 */
+/** AI 文本只含 ai_output；完整 URL 进入标准 App _meta 与 Legacy 嵌入资源。 */
 function createPublishedToolResult(publication: PublishedToolFlowResultType) {
+  const textResult = createTextToolResult(JSON.stringify(publication.ai_output, null, 2));
   return {
-    ...createTextToolResult(JSON.stringify(publication.ai_output, null, 2)),
+    ...textResult,
+    content: [...textResult.content, createLegacyInteractiveMapResource(publication.client_output.url)],
     _meta: {"io.geomcp/interactiveMap": publication.client_output},
   };
 }
@@ -38,10 +41,10 @@ export function createPublishedMapToolHandler(
   executeTool: PublishedMapToolExecutorType<ToolFlowServicesType>,
   options: PublishedMapToolHandlerOptions,
 ) {
-  return async (args: AiToolInputReqType) => {
+  return async (args: AiToolInputReqType, extra?: {signal: AbortSignal}) => {
     try {
       const cachedSelection = options.getCachedSelection(args.session_id);
-      const publication = await options.scheduler.run((context) => executeTool(cachedSelection, args, context, options.services));
+      const publication = await options.scheduler.run((context) => executeTool(cachedSelection, args, context, options.services), extra?.signal);
       return createPublishedToolResult(publication);
     } catch (error) {
       return createErrorToolResult(error);

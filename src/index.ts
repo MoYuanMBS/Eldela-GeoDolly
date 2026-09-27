@@ -2,7 +2,7 @@
  * `src/index.ts` is the MCP server bootstrap entry:
  * - create the MCP server
  * - register tools
- * - connect stdio transport
+ * - accept MCP clients over Streamable HTTP
  *
  * Tool business logic should stay thin here. Heavy work belongs in:
  * - `src/server/utils/python-bridge.ts`
@@ -12,9 +12,9 @@
 
 import {registerAppTool} from "@modelcontextprotocol/ext-apps/server";
 import {McpServer} from "@modelcontextprotocol/sdk/server/mcp.js";
-import {StdioServerTransport} from "@modelcontextprotocol/sdk/server/stdio.js";
 
 import {closeMapHttpService, createMapHttpService, getInternalMapOrigin, listenMapHttpService} from "./server/http/map-http-service.js";
+import {createMcpHttpService, listenMcpHttpService} from "./server/http/mcp-http-service.js";
 import {SessionManager} from "./server/map-session/session-manager.js";
 import {SnapshotService} from "./server/map-session/snapshot-service.js";
 import {INTERACTIVE_MAP_LAUNCHER_URI, registerInteractiveMapLauncherResource} from "./server/interactive-map-launcher-resource.js";
@@ -74,11 +74,11 @@ function buildServer(scheduler: ToolExecutionScheduler, services: ToolFlowServic
       description: toolPromptsConfig.location_search.description,
       inputSchema: locSearchQueryReqSchema,
     },
-    async (args) => {
+    async (args, extra) => {
       try {
         const rawResponse = await scheduler.run(async (context) => locSearchReplyRawSchema.parse(
           await callBridge("search_location", args, context.signal),
-        ));
+        ), extra.signal);
         searchResultCache.set(rawResponse.session_id, {
           response: rawResponse,
           expiresAt: Date.now() / 1000 + config.getWebConfig().session.ttl_seconds,
@@ -130,20 +130,21 @@ async function main() {
   const snapshotService = new SnapshotService(getInternalMapOrigin(webConfig.http), webConfig.snapshot);
   const toolScheduler = new ToolExecutionScheduler(webConfig.tool_execution);
   const mapHttpService = createMapHttpService(webConfig, sessionManager);
-  // GeoMCP 当前先使用 stdio transport，供本地 MCP client / AI 进程拉起。
-  const server = buildServer(toolScheduler, {sessionManager, snapshotService}, webConfig.http.map.public_origin);
-  const transport = new StdioServerTransport();
+  const mcpHttpService = createMcpHttpService(
+    webConfig.http,
+    () => buildServer(toolScheduler, {sessionManager, snapshotService}, webConfig.http.map.public_origin),
+  );
   let shutdownPromise: Promise<void> | null = null;
 
   const shutdown = (): Promise<void> => {
     if (shutdownPromise !== null) return shutdownPromise;
     shutdownPromise = (async () => {
       await toolScheduler.close();
+      await mcpHttpService.close();
       await snapshotService.close();
       await closeMapHttpService(mapHttpService);
       await sessionManager.close();
       searchResultCache.clear();
-      await server.close();
     })();
     return shutdownPromise;
   };
@@ -155,14 +156,11 @@ async function main() {
   };
   process.once("SIGINT", handleShutdownSignal);
   process.once("SIGTERM", handleShutdownSignal);
-  // stdio 客户端正常断开时也必须关闭 HTTP listener，否则端口会让进程继续常驻。
-  server.server.onclose = handleShutdownSignal;
-
   try {
     await sessionManager.start();
     await listenMapHttpService(mapHttpService, webConfig.http);
     await snapshotService.start();
-    await server.connect(transport);
+    await listenMcpHttpService(mcpHttpService, webConfig.http);
   } catch (error) {
     process.off("SIGINT", handleShutdownSignal);
     process.off("SIGTERM", handleShutdownSignal);

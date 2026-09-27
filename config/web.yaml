@@ -15,6 +15,17 @@ http:
     port: 23336
     # 对外返回的固定 HTTP(S) origin；正式部署时替换为反向代理公开地址。
     public_origin: "http://127.0.0.1:23336"
+  mcp:
+    # 内部 MCP listener；公网 HTTPS 与 Bearer token 由前置反向代理提供。
+    port: 23337
+    # 解析 JSON 前限制单个 MCP POST 请求体的字节数。
+    max_body_bytes: 4194304
+    # 只限制 HTTP 请求头和请求体的接收时间；工具执行使用 tool_execution.timeout_seconds。
+    request_receive_timeout_seconds: 10
+    # 只清理空闲的 MCP transport session，不改变地图 Session TTL 或归档。
+    session_idle_timeout_seconds: 3600
+    # 带 Origin 的请求只允许这里列出的宿主 origin；服务端客户端通常不带 Origin。
+    allowed_origins: []
 
 # location_search、tool_a 与 tool_b 共用有界 worker；排队时间不计入执行超时。
 tool_execution:

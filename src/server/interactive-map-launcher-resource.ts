@@ -32,6 +32,61 @@ function escapeHtmlAttribute(value: string): string {
   return value.replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 }
 
+/** Legacy MCP-UI 从工具 content 直接读取 URL，不能依赖标准 App 的 _meta 消息。 */
+export function createLegacyInteractiveMapResource(url: string) {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new AppError("invalid_interactive_map_url", "Interactive map URL is invalid");
+  }
+  const sessionMatch = /^\/session\/(\d{2}[0-9ab][0-9a-f]{8}-[1-9]\d*)\/interactive$/u.exec(parsed.pathname);
+  if ((parsed.protocol !== "http:" && parsed.protocol !== "https:") ||
+      parsed.origin !== config.getWebConfig().http.map.public_origin || parsed.username !== "" || parsed.password !== "" ||
+      parsed.search !== "" || parsed.hash !== "" || sessionMatch === null) {
+    throw new AppError("invalid_interactive_map_url", "Interactive map URL is invalid");
+  }
+  const safeUrl = escapeHtmlAttribute(parsed.href);
+  const html = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${GEOMCP_NAME} Interactive map</title>
+    <style>
+      body { margin: 0; font: 13px/1.4 system-ui, sans-serif; }
+      iframe { display: block; width: 100%; height: 600px; border: 0; }
+      nav { display: flex; gap: 8px; align-items: center; padding: 8px; }
+      input { flex: 1; min-width: 0; }
+    </style>
+  </head>
+  <body>
+    <iframe src="${safeUrl}" title="${GEOMCP_NAME} Interactive map" referrerpolicy="no-referrer"></iframe>
+    <nav aria-label="Interactive map fallback">
+      <a href="${safeUrl}" target="_blank" rel="noopener noreferrer">Open map</a>
+      <input id="map-url" value="${safeUrl}" readonly aria-label="Interactive map URL" />
+      <button id="copy-map-url" type="button">Copy</button>
+    </nav>
+    <script>
+      document.getElementById("copy-map-url").addEventListener("click", async () => {
+        const field = document.getElementById("map-url");
+        field.focus();
+        field.select();
+        try { await navigator.clipboard.writeText(field.value); } catch { /* selected for manual copy */ }
+      });
+    </script>
+  </body>
+</html>`;
+  return {
+    type: "resource" as const,
+    resource: {
+      uri: `ui://geomcp/interactive-map-legacy/${sessionMatch[1]}.html`,
+      mimeType: "text/html",
+      text: html,
+    },
+  };
+}
+
 function buildLauncherHtml(publicOrigin: string, script: string, logoDataUrl: string): string {
   const launcherConfig = config.getAppSection("mcp_apps", mcpAppsConfigSchema).interactive_map_launcher;
   const inlineScript = script.replace(/<\/script/giu, "<\\/script");

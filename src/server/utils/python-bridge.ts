@@ -232,10 +232,11 @@ function callPython<
       stdout += chunk.toString();
     });
 
-    // stderr 不参与协议解析，只作为诊断信息保留。
-    // 当 Python 异常、traceback、或桥接格式不对时，最终错误信息会把它带上。
+    // stderr 不参与 Bridge 协议；warning 实时写到后端终端，同时保留原文供失败诊断。
     child.stderr.on("data", (chunk: Buffer | string) => {
-      stderr += chunk.toString();
+      const message = chunk.toString();
+      stderr += message;
+      process.stderr.write(message);
     });
 
     // 这里处理的是“进程级错误”
@@ -249,10 +250,6 @@ function callPython<
         rejectOnce(abortFailure);
         return;
       }
-      if (stderr.trim()) {
-        process.stderr.write(stderr);
-      }
-
       // Python 正常结束后，理论上 stdout 必须至少有一份 JSON 响应。
       // 如果完全没有 stdout，说明 Python 没按 bridge 协议返回结果，
       // 这时把 exit code 和 stderr 一起带出去，方便定位问题。
