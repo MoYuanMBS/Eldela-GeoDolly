@@ -1,5 +1,9 @@
 # ---------- user_setting ----------
 cache/
+local_test/
+test/
+doc/
+config/local/
 test.py
 test2.py
 test3.py

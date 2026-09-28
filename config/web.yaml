@@ -14,7 +14,7 @@ http:
     # 正式 Session、公开 Snapshot 与内部一次性 Snapshot route 共用此端口。
     port: 23336
     # 对外返回的固定 HTTP(S) origin；正式部署时替换为反向代理公开地址。
-    public_origin: "http://127.0.0.1:23336"
+    public_origin: "https://skirt-daisy-supporting-travesti.trycloudflare.com"
   mcp:
     # 内部 MCP listener；公网 HTTPS 与 Bearer token 由前置反向代理提供。
     port: 23337
