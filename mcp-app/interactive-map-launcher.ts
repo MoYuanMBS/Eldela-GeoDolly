@@ -18,7 +18,9 @@ function readNumberMeta(name: string): number {
 
 const publicOriginMeta = document.querySelector<HTMLMetaElement>('meta[name="geomcp-public-origin"]');
 if (publicOriginMeta === null) throw new Error(`${GEOMCP_NAME} public origin metadata is missing`);
-const publicOrigin = new URL(publicOriginMeta.content).origin;
+const publicBaseUrl = new URL(publicOriginMeta.content);
+const publicOrigin = publicBaseUrl.origin;
+const publicBasePath = publicBaseUrl.pathname.replace(/\/+$/u, "");
 const preferredInlineHeightPx = readNumberMeta("geomcp-launcher-preferred-height-px");
 const loadNoticeDelayMs = readNumberMeta("geomcp-launcher-load-notice-delay-ms");
 const root = requireElement<HTMLElement>("app-root");
@@ -62,7 +64,8 @@ function validateInteractiveMapUrl(value: unknown): string | null {
     const parsed = new URL(value);
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
     if (parsed.origin !== publicOrigin || parsed.username !== "" || parsed.password !== "") return null;
-    if (parsed.search !== "" || parsed.hash !== "" || !FINAL_SESSION_PATH_PATTERN.test(parsed.pathname)) return null;
+    if (!parsed.pathname.startsWith(`${publicBasePath}/`)) return null;
+    if (parsed.search !== "" || parsed.hash !== "" || !FINAL_SESSION_PATH_PATTERN.test(parsed.pathname.slice(publicBasePath.length))) return null;
     return parsed.href;
   } catch {
     return null;

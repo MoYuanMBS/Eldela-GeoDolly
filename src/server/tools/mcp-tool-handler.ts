@@ -1,5 +1,6 @@
 /** MCP Tool handler 的公共执行、错误与发布结果适配。 */
 
+import type {ServerContext} from "@modelcontextprotocol/server";
 import type {AiToolInputReqType, LocSearchReplyRawType} from "../../models/backend/bridge-models.js";
 import type {PublishedMapToolExecutorType, PublishedToolFlowResultType} from "../../models/backend/tool-flow-models.js";
 import {AppError} from "../../shared/app-error.js";
@@ -38,10 +39,10 @@ export function createPublishedMapToolHandler(
   executeTool: PublishedMapToolExecutorType<ToolFlowServicesType>,
   options: PublishedMapToolHandlerOptions,
 ) {
-  return async (args: AiToolInputReqType) => {
+  return async (args: AiToolInputReqType, requestContext?: ServerContext) => {
     try {
       const cachedSelection = options.getCachedSelection(args.session_id);
-      const publication = await options.scheduler.run((context) => executeTool(cachedSelection, args, context, options.services));
+      const publication = await options.scheduler.run((context) => executeTool(cachedSelection, args, context, options.services), requestContext?.mcpReq.signal);
       return createPublishedToolResult(publication);
     } catch (error) {
       return createErrorToolResult(error);

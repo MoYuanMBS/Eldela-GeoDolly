@@ -250,7 +250,7 @@ function callPython<
         return;
       }
       if (stderr.trim()) {
-        process.stderr.write(stderr);
+        process.stdout.write(stderr);
       }
 
       // Python 正常结束后，理论上 stdout 必须至少有一份 JSON 响应。

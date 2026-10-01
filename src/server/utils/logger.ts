@@ -1,6 +1,6 @@
 /**
  * TS 侧结构化日志，与 Python GeomcpJsonFormatter 共用字段和日志级别约定。
- * 日志只写 stderr，避免污染 MCP / Bridge 使用的 stdout。
+ * MCP 使用 HTTP 后，Node 日志写 stdout；Python Bridge stdout 仍只用于 JSON 响应。
  */
 
 import {browserWarningReportSchema} from "../../models/common/browser-warning-models.js";
@@ -19,11 +19,11 @@ function serializeLogValue(_key: string, value: unknown): unknown {
 function writeLog(level: "INFO" | "WARNING", loggerName: "geomcp.event" | "geomcp.warning", event: string, details: Readonly<Record<string, unknown>>): void {
   const basePayload = {ts: formatTimestamp(new Date()), level, logger: loggerName, event};
   try {
-    process.stderr.write(`${JSON.stringify({...basePayload, ...details}, serializeLogValue)}\n`);
+    process.stdout.write(`${JSON.stringify({...basePayload, ...details}, serializeLogValue)}\n`);
   } catch (error) {
     // 日志附加数据不可序列化时仍保留原事件，且日志失败不能中断业务流程。
     const reason = error instanceof Error ? error.message : String(error);
-    process.stderr.write(`${JSON.stringify({...basePayload, level: "WARNING", logger: "geomcp.warning", event: "log_serialization_failed", source_event: event, reason})}\n`);
+    process.stdout.write(`${JSON.stringify({...basePayload, level: "WARNING", logger: "geomcp.warning", event: "log_serialization_failed", source_event: event, reason})}\n`);
   }
 }
 

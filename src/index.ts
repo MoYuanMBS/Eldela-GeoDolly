@@ -2,7 +2,7 @@
  * `src/index.ts` is the MCP server bootstrap entry:
  * - create the MCP server
  * - register tools
- * - connect stdio transport
+ * - serve persistent HTTP / HTTPS connections
  *
  * Tool business logic should stay thin here. Heavy work belongs in:
  * - `src/server/utils/python-bridge.ts`
@@ -11,10 +11,11 @@
  */
 
 import {registerAppTool} from "@modelcontextprotocol/ext-apps/server";
-import {McpServer} from "@modelcontextprotocol/sdk/server/mcp.js";
-import {StdioServerTransport} from "@modelcontextprotocol/sdk/server/stdio.js";
+import {McpServer} from "@modelcontextprotocol/server";
+import type {AddressInfo} from "node:net";
 
-import {closeMapHttpService, createMapHttpService, getInternalMapOrigin, listenMapHttpService} from "./server/http/map-http-service.js";
+import {closeMapHttpService, createMapHttpService, listenMapHttpService} from "./server/http/map-http-service.js";
+import {createMcpHttpService} from "./server/http/mcp-http-service.js";
 import {SessionManager} from "./server/map-session/session-manager.js";
 import {SnapshotService} from "./server/map-session/snapshot-service.js";
 import {INTERACTIVE_MAP_LAUNCHER_URI, registerInteractiveMapLauncherResource} from "./server/interactive-map-launcher-resource.js";
@@ -74,11 +75,11 @@ function buildServer(scheduler: ToolExecutionScheduler, services: ToolFlowServic
       description: toolPromptsConfig.location_search.description,
       inputSchema: locSearchQueryReqSchema,
     },
-    async (args) => {
+    async (args, requestContext) => {
       try {
         const rawResponse = await scheduler.run(async (context) => locSearchReplyRawSchema.parse(
           await callBridge("search_location", args, context.signal),
-        ));
+        ), requestContext.mcpReq.signal);
         searchResultCache.set(rawResponse.session_id, {
           response: rawResponse,
           expiresAt: Date.now() / 1000 + config.getWebConfig().session.ttl_seconds,
@@ -127,23 +128,32 @@ async function main() {
   const sessionManager = new SessionManager(webConfig.session, (nowSeconds) => {
     for (const sessionId of searchResultCache.keys()) deleteExpiredSearchResponse(sessionId, nowSeconds);
   });
-  const snapshotService = new SnapshotService(getInternalMapOrigin(webConfig.http), webConfig.snapshot);
   const toolScheduler = new ToolExecutionScheduler(webConfig.tool_execution);
   const mapHttpService = createMapHttpService(webConfig, sessionManager);
-  // GeoMCP 当前先使用 stdio transport，供本地 MCP client / AI 进程拉起。
-  const server = buildServer(toolScheduler, {sessionManager, snapshotService}, webConfig.http.map.public_origin);
-  const transport = new StdioServerTransport();
+  let snapshotService: SnapshotService | null = null;
+  let mcpHttpService: ReturnType<typeof createMcpHttpService> | null = null;
   let shutdownPromise: Promise<void> | null = null;
 
   const shutdown = (): Promise<void> => {
     if (shutdownPromise !== null) return shutdownPromise;
     shutdownPromise = (async () => {
-      await toolScheduler.close();
-      await snapshotService.close();
-      await closeMapHttpService(mapHttpService);
-      await sessionManager.close();
+      // 后端信号才触发全局关闭；单个 MCP 会话关闭没有入口调用这里。
+      const failures: unknown[] = [];
+      for (const close of [
+        () => mcpHttpService?.close(),
+        () => toolScheduler.close(),
+        () => snapshotService?.close(),
+        () => closeMapHttpService(mapHttpService),
+        () => sessionManager.close(),
+      ]) {
+        try {
+          await close();
+        } catch (error) {
+          failures.push(error);
+        }
+      }
       searchResultCache.clear();
-      await server.close();
+      if (failures.length !== 0) throw AppError.fromUnknown(failures[0], "service_shutdown", "Backend services could not close");
     })();
     return shutdownPromise;
   };
@@ -155,14 +165,21 @@ async function main() {
   };
   process.once("SIGINT", handleShutdownSignal);
   process.once("SIGTERM", handleShutdownSignal);
-  // stdio 客户端正常断开时也必须关闭 HTTP listener，否则端口会让进程继续常驻。
-  server.server.onclose = handleShutdownSignal;
 
   try {
     await sessionManager.start();
-    await listenMapHttpService(mapHttpService, webConfig.http);
-    await snapshotService.start();
-    await server.connect(transport);
+    // 内部截图固定走 loopback HTTP，由系统分配端口，避免 HTTPS 证书与 localhost 不匹配。
+    await listenMapHttpService(mapHttpService, {...webConfig.http, listen_host: "127.0.0.1", map: {...webConfig.http.map, port: 0}});
+    const internalPort = (mapHttpService.address() as AddressInfo).port;
+    const snapshots = new SnapshotService(`http://127.0.0.1:${internalPort}`, webConfig.snapshot);
+    snapshotService = snapshots;
+    await snapshots.start();
+    const createServer = () => buildServer(toolScheduler, {sessionManager, snapshotService: snapshots}, webConfig.http.map.public_origin);
+    // 预先校验 Launcher 构建和 Tool 注册，启动失败时不开放 MCP 入口。
+    await createServer().close();
+    mcpHttpService = createMcpHttpService(webConfig, sessionManager, createServer);
+    await listenMapHttpService(mcpHttpService.server, webConfig.http);
+    logger.info("mcp_http_listening", {url: mcpHttpService.endpoint});
   } catch (error) {
     process.off("SIGINT", handleShutdownSignal);
     process.off("SIGTERM", handleShutdownSignal);

@@ -37,11 +37,14 @@ export function buildMapBrowserHtml(
   flow: "interactive" | "snapshot",
   dataUrl: string,
   session?: PublicSessionHtmlOptions,
+  publicBasePath = "",
 ): string {
   if (!htmlTemplate.includes(INTERACTIVE_FLOW_ATTRIBUTE) || !MAP_DATA_META_PATTERN.test(htmlTemplate)) {
     throw new AppError("invalid_browser_build", "Browser index does not expose the required Map injection points");
   }
   let html = htmlTemplate
+    .replace("<head>", `<head>\n    <meta name="geomcp-base-path" content="${publicBasePath}" />`)
+    .replaceAll('="./assets/', `="${publicBasePath}/assets/`)
     .replace(INTERACTIVE_FLOW_ATTRIBUTE, `data-geomcp-browser-flow="${flow}"`)
     .replace(MAP_DATA_META_PATTERN, `<meta name="geomcp-map-data-url" content="${dataUrl}" />`);
   if (session !== undefined) {
@@ -92,6 +95,7 @@ export async function resolveSessionHttpRoute(
   htmlTemplate: string,
   sessionConfig: SessionConfigType,
   sessionManager: SessionManager,
+  publicBasePath = "",
 ): Promise<MapHttpRouteResponseType | null> {
   const routeMatch = SESSION_ROUTE_PATTERN.exec(pathname);
   if (routeMatch === null) return null;
@@ -143,7 +147,7 @@ export async function resolveSessionHttpRoute(
   }
 
   const encodedSessionId = encodeURIComponent(sessionId);
-  const basePath = `/session/${encodedSessionId}`;
+  const basePath = `${publicBasePath}/session/${encodedSessionId}`;
   const flow = route === "snapshot-interactive" ? "snapshot" : "interactive";
   const dataUrl = flow === "snapshot"
     ? `${basePath}/snapshot-interactive/data`
@@ -152,7 +156,7 @@ export async function resolveSessionHttpRoute(
     status: lookup.status,
     statusUrl: `${basePath}/status`,
     snapshotUrl: `${basePath}/snapshot.webp`,
-  });
+  }, publicBasePath);
   return {
     statusCode: 200,
     body: html,

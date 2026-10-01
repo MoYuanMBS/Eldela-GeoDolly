@@ -3,7 +3,9 @@ cache/
 /doc
 /docs
 config/local/
+config/key/
 /local_test
+/test
 test.py
 test2.py
 test3.py

@@ -1,6 +1,6 @@
 # GeoMCP HTTP、Tool 调度、Session 与 Snapshot 部署配置。
 http:
-  # warning 与 map HTTP services 共用的内部 listener host。
+  # MCP/地图公开入口与独立 warning service 的监听地址；远程访问时按部署调整。
   listen_host: "127.0.0.1"
   warning:
     # Browser 固定同源 POST /browser-warnings，由部署层转发到此内部端口。
@@ -11,10 +11,16 @@ http:
     rate_limit_window_seconds: 60
     max_requests_per_window: 600
   map:
-    # 正式 Session、公开 Snapshot 与内部一次性 Snapshot route 共用此端口。
+    # MCP、正式 Session、Snapshot、assets 与 basemap 共用此公开端口。
     port: 23336
-    # 对外返回的固定 HTTP(S) origin；正式部署时替换为反向代理公开地址。
+    # IP/localhost 使用 HTTP，域名使用 HTTPS；可写 example.moe/mcp 并保留 /mcp 前缀。
+    # 无路径时 MCP 入口为 /mcp；有路径时该路径本身就是 MCP 入口。
+    # 直连部署时这里的公开端口应与上方 port 一致；截图使用独立本机 HTTP 入口。
     public_origin: "http://127.0.0.1:23336"
+  tls:
+    # 域名 HTTPS 必须提供服务器证书链和对应私钥；IP/localhost 模式不读取。
+    cert_file: "config/key/fullchain.pem"
+    key_file: "config/key/privkey.pem"
 
 # location_search、tool_a 与 tool_b 共用有界 worker；排队时间不计入执行超时。
 tool_execution:

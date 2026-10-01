@@ -2,7 +2,7 @@
 
 import {readFileSync} from "node:fs";
 import {readFile, stat} from "node:fs/promises";
-import {createServer, type Server, type ServerResponse} from "node:http";
+import {createServer, type RequestListener, type Server, type ServerResponse} from "node:http";
 import path from "node:path";
 import type {WebConfigType} from "../../models/backend/config-models.js";
 import type {SessionManager} from "../map-session/session-manager.js";
@@ -65,11 +65,10 @@ export function getInternalMapOrigin(httpConfig: WebConfigType["http"]): string 
 }
 
 /**
- * 创建公开 Session route 与 Browser 构建资源共用的 map listener。
+ * 创建 Session route 与 Browser 构建资源共用的 handler，供公开入口和本机截图复用。
  * 构建资源只允许访问 dist/web/assets 的单层 hash 文件，不能借路径穿越读取 cache 或源码。
  */
-export function createMapHttpService(webConfig: WebConfigType, sessionManager: SessionManager): Server {
-  const httpConfig = webConfig.http;
+export function createMapHttpRequestHandler(webConfig: WebConfigType, sessionManager: SessionManager, publicBasePath = ""): RequestListener {
   const webRootPath = path.resolve(process.cwd(), "dist", "web");
   const assetsRootPath = path.join(webRootPath, "assets");
   let htmlTemplate: string;
@@ -79,9 +78,14 @@ export function createMapHttpService(webConfig: WebConfigType, sessionManager: S
     throw AppError.fromUnknown(error, "browser_build_not_found", "Browser build index could not be loaded");
   }
 
-  const server = createServer((request, response) => {
+  return (request, response) => {
     void (async () => {
       const requestUrl = new URL(request.url ?? "/", "http://geomcp.internal");
+      if (!requestUrl.pathname.startsWith(`${publicBasePath}/`)) {
+        writeResponse(response, 404);
+        return;
+      }
+      const pathname = requestUrl.pathname.slice(publicBasePath.length);
       if (request.method !== "GET") {
         writeResponse(response, 405, "", {allow: "GET"});
         return;
@@ -95,7 +99,7 @@ export function createMapHttpService(webConfig: WebConfigType, sessionManager: S
       const abortUpstreamRequest = (): void => requestController.abort();
       request.once("aborted", abortUpstreamRequest);
       response.once("close", abortUpstreamRequest);
-      const basemapResponse = await resolveBasemapTileHttpRoute(requestUrl.pathname, request.headers, requestController.signal)
+      const basemapResponse = await resolveBasemapTileHttpRoute(pathname, request.headers, requestController.signal)
         .finally(() => {
           request.off("aborted", abortUpstreamRequest);
           response.off("close", abortUpstreamRequest);
@@ -107,18 +111,19 @@ export function createMapHttpService(webConfig: WebConfigType, sessionManager: S
       }
 
       const sessionResponse = await resolveSessionHttpRoute(
-        requestUrl.pathname,
+        pathname,
         request.headers,
         htmlTemplate,
         webConfig.session,
         sessionManager,
+        publicBasePath,
       );
       if (sessionResponse !== null) {
         writeResponse(response, sessionResponse.statusCode, sessionResponse.body, sessionResponse.headers);
         return;
       }
 
-      const assetPath = resolveAssetPath(assetsRootPath, requestUrl.pathname);
+      const assetPath = resolveAssetPath(assetsRootPath, pathname);
       if (assetPath === null) {
         writeResponse(response, 404);
         return;
@@ -143,7 +148,12 @@ export function createMapHttpService(webConfig: WebConfigType, sessionManager: S
       if (!response.headersSent) writeResponse(response, 500);
       else if (!response.writableEnded) response.end();
     });
-  });
+  };
+}
+
+/** 独立本机 HTTP listener 仅供截图；公开入口由 MCP HTTP service 创建。 */
+export function createMapHttpService(webConfig: WebConfigType, sessionManager: SessionManager): Server {
+  const server = createServer(createMapHttpRequestHandler(webConfig, sessionManager));
 
   server.requestTimeout = INTERNAL_REQUEST_TIMEOUT_MS;
   server.headersTimeout = INTERNAL_REQUEST_TIMEOUT_MS;

@@ -4,6 +4,7 @@
  * TypeScript 侧实际会用到的配置模型。
  */
 
+import {isIP} from "node:net";
 import { z } from "zod";
 import {logger} from "../../server/utils/logger.js";
 import {UI_BUILT_IN_CONFIG} from "../../shared/ui.js";
@@ -291,14 +292,27 @@ export const outputConfigSchema = z.object({
 
 //#########################shared HTTP services###############################
 
-/** Map Session 对外地址必须是真正的 HTTP(S) origin，不接受 path、认证信息或 query。 */
-const publicOriginSchema = z.string().trim().pipe(z.url({protocol: /^https?$/, normalize: true}))
-  .transform((publicOrigin) => new URL(publicOrigin))
-  .refine(
-    (publicOrigin) => !publicOrigin.username && !publicOrigin.password && publicOrigin.pathname === "/" && !publicOrigin.search && !publicOrigin.hash,
-    "map public_origin must not contain credentials, path, query, or fragment",
-  )
-  .transform((publicOrigin) => publicOrigin.origin);
+/** MCP 与地图共用公开基础地址；协议由 Host 类型决定，部署路径前缀保留。 */
+const publicOriginSchema = z.string().trim().min(1)
+  .transform((value) => value.includes("://") ? value : `http://${value}`)
+  .pipe(z.url({protocol: /^https?$/, normalize: true}))
+  .transform((value) => new URL(value))
+  .refine((url) => !url.username && !url.password && !url.search && !url.hash, "public_origin must not contain credentials, query, or fragment")
+  .refine((url) => url.hostname !== "0.0.0.0" && url.hostname !== "[::]", "public_origin must not use a wildcard bind address")
+  .refine((url) => {
+    // 路由和 HTML 会使用这个前缀，拒绝转义后改变路径分段或 HTML 属性的字符。
+    try {
+      const pathname = decodeURIComponent(url.pathname);
+      return !/[\\\s<>"'&?#\u0000-\u001f]/u.test(pathname) && !/%2f/iu.test(url.pathname);
+    } catch {
+      return false;
+    }
+  }, "public_origin path must contain safe URL path segments")
+  .transform((url) => {
+    const hostname = url.hostname.replace(/^\[|\]$/gu, "");
+    url.protocol = hostname === "localhost" || isIP(hostname) !== 0 ? "http:" : "https:";
+    return `${url.origin}${url.pathname.replace(/\/+$/u, "")}`;
+  });
 
 export const mapHttpConfigSchema = z.object({
   port: positiveIntegerSchema.max(65535),
@@ -327,7 +341,7 @@ export const snapshotConfigSchema = z.object({
 /** 独立 web.yaml；所有 HTTP、调度、Session 与 Headless Snapshot 部署值都在启动时严格校验。 */
 export const webConfigSchema = z.object({
   http: z.object({
-    /** warning 与 map HTTP services 共用的内部 listener host。 */
+    /** MCP/地图公开入口与独立 warning service 的监听地址。 */
     listen_host: z.string().trim().min(1),
     warning: z.object({
       port: positiveIntegerSchema.max(65535),
@@ -338,6 +352,10 @@ export const webConfigSchema = z.object({
       max_requests_per_window: positiveIntegerSchema,
     }).strict(),
     map: mapHttpConfigSchema,
+    tls: z.object({
+      cert_file: z.string().trim().min(1).default("config/key/fullchain.pem"),
+      key_file: z.string().trim().min(1).default("config/key/privkey.pem"),
+    }).strict().default({cert_file: "config/key/fullchain.pem", key_file: "config/key/privkey.pem"}),
   }).strict(),
   tool_execution: toolExecutionConfigSchema,
   session: sessionConfigSchema,

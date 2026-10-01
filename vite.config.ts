@@ -19,6 +19,7 @@ const brandHtmlPlugin = {
 
 export default defineConfig({
   root: webRoot,
+  base: "./",
   plugins: [brandHtmlPlugin, react()],
   css: {
     transformer: "lightningcss",

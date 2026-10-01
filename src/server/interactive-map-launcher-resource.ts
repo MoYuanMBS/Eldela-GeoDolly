@@ -1,8 +1,9 @@
 import {readFileSync} from "node:fs";
 import path from "node:path";
 
+import type {McpUiResourceMeta} from "@modelcontextprotocol/ext-apps";
 import {registerAppResource, RESOURCE_MIME_TYPE} from "@modelcontextprotocol/ext-apps/server";
-import type {McpServer} from "@modelcontextprotocol/sdk/server/mcp.js";
+import type {McpServer} from "@modelcontextprotocol/server";
 
 import {GEOMCP_NAME} from "../shared/brand.js";
 import {mcpAppsConfigSchema} from "../models/backend/config-models.js";
@@ -86,9 +87,9 @@ export function registerInteractiveMapLauncherResource(server: McpServer, public
   const html = buildLauncherHtml(publicOrigin, readLauncherScript(), readLogoDataUrl());
   const uiMeta = {
     prefersBorder: false,
-    csp: {frameDomains: [publicOrigin]},
+    csp: {frameDomains: [new URL(publicOrigin).origin]},
     permissions: {clipboardWrite: {}},
-  } as const;
+  } satisfies McpUiResourceMeta;
   registerAppResource(server, `${GEOMCP_NAME} Interactive Map Launcher`, INTERACTIVE_MAP_LAUNCHER_URI, {
     description: `Launches the existing ${GEOMCP_NAME} Interactive map with a safe URL fallback.`,
     _meta: {ui: uiMeta},

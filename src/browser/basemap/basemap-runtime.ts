@@ -6,7 +6,8 @@ import {mountTileLayerAndWaitForInitialReady, mountTileLayerAndWaitForSnapshotRe
 
 /** Browser 只使用同源固定路由；upstream 模板、headers 与 provider 行为均留在服务端。 */
 function createRasterTileLayer(profileId: string, map: LeafletMap, maxNativeZoom: number): TileLayer {
-  return tileLayer(`/basemap/${profileId}/{z}/{x}/{y}`, {
+  const basePath = document.querySelector<HTMLMetaElement>('meta[name="geomcp-base-path"]')?.content ?? "";
+  return tileLayer(`${basePath}/basemap/${profileId}/{z}/{x}/{y}`, {
     maxZoom: map.getMaxZoom(),
     maxNativeZoom,
     detectRetina: false,
