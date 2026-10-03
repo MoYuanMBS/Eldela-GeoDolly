@@ -32,6 +32,8 @@ export function createBrowserWarningReporter(): BrowserWarningReporterType {
     publishedWarningKeys.add(warningKey);
 
     printBasemapWarning(warning);
+    // App 只请求底图，不依赖后端诊断服务；普通网页保留原回传路径。
+    if (typeof __GEOMCP_MCP_APP__ !== "undefined" && __GEOMCP_MCP_APP__) return;
     try {
       // keepalive 允许页面在 warning 后很快卸载时继续发送这条小型诊断消息。
       void fetch(BROWSER_WARNING_ROUTE, {

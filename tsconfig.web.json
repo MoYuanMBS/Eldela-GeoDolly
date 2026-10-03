@@ -22,6 +22,7 @@
     ]
   },
   "include": [
+    "mcp-app/**/*.ts",
     "src/browser/**/*.ts",
     "src/browser/**/*.tsx",
     "src/browser/**/*.d.ts",

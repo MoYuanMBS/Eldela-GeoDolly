@@ -24,7 +24,8 @@ type MapLoadState =
   | {status: "error"; message: string};
 
 interface MapPageProps {
-  mapDataUrl: string | null;
+  mapDataUrl?: string | null;
+  mapData?: InteractiveMapDataType;
   onArchived?: () => void;
   /** 由 composition root 注入的地图实现；页面本身不导入 Leaflet adapter。 */
   MapSurfaceComponent: MapSurfacePortComponentType;
@@ -66,7 +67,7 @@ type StandardUiState =
   | {status: "ready"; measuredHeight: number}
   | {status: "failed"; message: string};
 
-export function MapPage({mapDataUrl, onArchived, MapSurfaceComponent}: MapPageProps) {
+export function MapPage({mapDataUrl, mapData, onArchived, MapSurfaceComponent}: MapPageProps) {
   const [loadState, setLoadState] = useState<MapLoadState>({status: "loading"});
   const [metricScale, setMetricScale] = useState<MetricScaleViewType | null>(null);
   const [mapRuntimeState, setMapRuntimeState] = useState<MapRuntimeState>({status: "pending"});
@@ -89,7 +90,11 @@ export function MapPage({mapDataUrl, onArchived, MapSurfaceComponent}: MapPagePr
     setActiveMeasurementTarget(null);
     zoomCommandsRef.current = null;
     interactionCommandsRef.current = null;
-    if (mapDataUrl === null) {
+    if (mapData !== undefined) {
+      setLoadState({status: "ready", data: mapData});
+      return;
+    }
+    if (mapDataUrl === null || mapDataUrl === undefined) {
       setLoadState({status: "error", message: "Map data URL is missing"});
       return;
     }
@@ -116,7 +121,7 @@ export function MapPage({mapDataUrl, onArchived, MapSurfaceComponent}: MapPagePr
     }
     void loadMapData();
     return () => abortController.abort();
-  }, [mapDataUrl, onArchived]);
+  }, [mapDataUrl, mapData, onArchived]);
 
   const handleMetricScaleChange = useCallback((nextMetricScale: MetricScaleViewType): void => {
     setMetricScale(nextMetricScale);

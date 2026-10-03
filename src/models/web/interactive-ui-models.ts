@@ -5,7 +5,7 @@ import {
   type IdentifiedOverlayFeatureKindType,
   relationMembershipByFeatureIdSchema,
 } from "../common/map-data-models.js";
-import {commonVisualMapPayloadSchema} from "../mapsurface/map-payload-models.js";
+import {basemapOnlyMapPayloadSchema, commonVisualMapPayloadSchema, coreMapPayloadSchema, nonCoreMapPayloadSchema} from "../mapsurface/map-payload-models.js";
 import {renderStylePayloadSchema} from "../mapsurface/style/user-css-style-models.js";
 
 /** 公开 Interactive route 返回并由同一 Browser App 严格校验的动态数据。 */
@@ -27,6 +27,29 @@ export const interactiveMapDataSchema = z.object({
 });
 
 export type InteractiveMapDataType = z.infer<typeof interactiveMapDataSchema>;
+
+/** MCP 只交付地图业务数据；Leaflet 配置与用户样式由 App 构建提供。 */
+export const mcpInteractiveMapDataSchema = z.object({
+  map_payload: z.discriminatedUnion("render_mode", [
+    coreMapPayloadSchema.omit({leaflet: true}),
+    nonCoreMapPayloadSchema.omit({leaflet: true}),
+    basemapOnlyMapPayloadSchema.omit({leaflet: true}),
+  ]),
+  ai_output: interactiveMapDataSchema.shape.ai_output,
+  display_id_by_feature_id: interactiveMapDataSchema.shape.display_id_by_feature_id,
+  relation_membership_by_feature_id: interactiveMapDataSchema.shape.relation_membership_by_feature_id,
+  selected_location_name: interactiveMapDataSchema.shape.selected_location_name,
+}).strict().superRefine((payload, context) => {
+  const expectsInteractiveDetails = payload.map_payload.render_mode !== "basemap_only";
+  if (expectsInteractiveDetails && (payload.ai_output === null || payload.display_id_by_feature_id === null || payload.relation_membership_by_feature_id === null)) {
+    context.addIssue({code: "custom", message: "Interactive Overlay maps require AI Output, display IDs and relation membership data"});
+  }
+  if (!expectsInteractiveDetails && (payload.ai_output !== null || payload.display_id_by_feature_id !== null || payload.relation_membership_by_feature_id !== null)) {
+    context.addIssue({code: "custom", message: "Basemap-only maps cannot contain Interactive Overlay details"});
+  }
+});
+
+export type McpInteractiveMapDataType = z.infer<typeof mcpInteractiveMapDataSchema>;
 
 /** UI 只认识业务 Feature 类型；不得借用 Leaflet Canvas renderer 的类型作为页面契约。 */
 export type InteractiveSpatialFeatureType = Exclude<IdentifiedOverlayFeatureKindType, "relation">;

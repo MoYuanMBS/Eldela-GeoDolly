@@ -124,7 +124,7 @@ export async function resolveSessionHttpRoute(
   }
 
   if (route === "interactive/data" || route === "snapshot-interactive/data") {
-    if (lookup.status === "archived") return emptyResponse(410);
+    if (route === "snapshot-interactive/data" && lookup.status === "archived") return emptyResponse(410);
     const archive = await readInteractiveMapArchiveFile(sessionId);
     if (archive === null) {
       sessionManager.unregisterSession(sessionId);
@@ -152,11 +152,11 @@ export async function resolveSessionHttpRoute(
   const dataUrl = flow === "snapshot"
     ? `${basePath}/snapshot-interactive/data`
     : `${basePath}/interactive/data`;
-  const html = buildMapBrowserHtml(htmlTemplate, flow, dataUrl, {
+  const html = buildMapBrowserHtml(htmlTemplate, flow, dataUrl, flow === "snapshot" ? {
     status: lookup.status,
     statusUrl: `${basePath}/status`,
     snapshotUrl: `${basePath}/snapshot.webp`,
-  }, publicBasePath);
+  } : undefined, publicBasePath).replace("</head>", `    <meta name="geomcp-basemap-base-url" content="${publicBasePath}/basemap/${encodedSessionId}" />\n  </head>`);
   return {
     statusCode: 200,
     body: html,

@@ -268,6 +268,8 @@ export const mcpAppsConfigSchema = z.object({
 
 /** Browser UI 的部署配置；平铺保存彼此独立的公开尺寸参数。 */
 export const uiConfigSchema = z.object({
+  iframe_max_width_px: positiveIntegerSchema,
+  iframe_max_height_px: positiveIntegerSchema,
   decorations_enabled: z.boolean(),
   max_scale_width_px: positiveIntegerSchema,
   feature_ui_max_height_px: positiveIntegerSchema,

@@ -3,11 +3,13 @@
 import {tileLayer, Util, type Map as LeafletMap, type TileLayer} from "leaflet";
 import type {BasemapRuntimeOptions, BasemapRuntimeStatus, SnapshotBasemapRuntimeOptions, SnapshotBasemapRuntimeResult} from "../../models/mapsurface/basemap-runtime-models.js";
 import {mountTileLayerAndWaitForInitialReady, mountTileLayerAndWaitForSnapshotReady} from "./tile-ready-controller.js";
+import {AppError} from "../../shared/app-error.js";
 
-/** Browser 只使用同源固定路由；upstream 模板、headers 与 provider 行为均留在服务端。 */
+/** Backend 页面与 MCP App 共用带 session ID 的路由；provider 行为仍留在服务端。 */
 function createRasterTileLayer(profileId: string, map: LeafletMap, maxNativeZoom: number): TileLayer {
-  const basePath = document.querySelector<HTMLMetaElement>('meta[name="geomcp-base-path"]')?.content ?? "";
-  return tileLayer(`${basePath}/basemap/${profileId}/{z}/{x}/{y}`, {
+  const baseUrl = document.querySelector<HTMLMetaElement>('meta[name="geomcp-basemap-base-url"]')?.content;
+  if (baseUrl === undefined) throw new AppError("missing_basemap_session_url", "Basemap session URL is missing");
+  return tileLayer(`${baseUrl}/${profileId}/{z}/{x}/{y}`, {
     maxZoom: map.getMaxZoom(),
     maxNativeZoom,
     detectRetina: false,
@@ -31,6 +33,8 @@ export async function createBasemapRuntime(options: BasemapRuntimeOptions): Prom
   let layer: TileLayer;
   try {
     layer = createRasterTileLayer(options.basemap.id, map, options.basemap.max_native_zoom);
+    // Leaflet 把 Util.emptyImageUrl 当作已移除瓦片并吞掉 tileerror；使用独立透明图才能结束首屏失败等待。
+    layer.options.errorTileUrl = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAABmJLR0QA/wD/AP+gvaeTAAAAC0lEQVQImWNgAAIAAAUAAWJVMogAAAAASUVORK5CYII=";
   } catch {
     return {
       status: "failed",

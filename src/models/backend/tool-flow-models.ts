@@ -31,7 +31,7 @@ import type {
 } from "../mapsurface/map-payload-models.js";
 import type {InteractiveMapArchiveType} from "./map-session-models.js";
 import type {ToolExecutionContextType} from "./tool-execution-models.js";
-import type {InteractiveMapDataType} from "../web/interactive-ui-models.js";
+import type {InteractiveMapDataType, McpInteractiveMapDataType} from "../web/interactive-ui-models.js";
 import type {SnapshotMapDataType} from "../web/snapshot-ui-models.js";
 
 /** processToolReply() 生成的公共数据结果；样式与具体 render_mode 不进入该阶段。 */
@@ -118,9 +118,11 @@ export type AiPublishedToolFlowResultType = Readonly<{
   visual_url?: string;
 }>;
 
-/** 只允许进入 MCP Tool Result `_meta` 的客户端完整 Interactive 地址。 */
+/** 只允许进入 MCP Tool Result `_meta` 的客户端 Interactive 数据和浏览器备用地址。 */
 export type ClientPublishedToolFlowResultType = Readonly<{
   url: string;
+  session_id: string;
+  map_data: McpInteractiveMapDataType;
 }>;
 
 /** Tool Flow 在构造阶段就分离 AI 与客户端发布路径，禁止先混合再删除敏感字段。 */

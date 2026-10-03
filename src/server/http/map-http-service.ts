@@ -99,7 +99,7 @@ export function createMapHttpRequestHandler(webConfig: WebConfigType, sessionMan
       const abortUpstreamRequest = (): void => requestController.abort();
       request.once("aborted", abortUpstreamRequest);
       response.once("close", abortUpstreamRequest);
-      const basemapResponse = await resolveBasemapTileHttpRoute(pathname, request.headers, requestController.signal)
+      const basemapResponse = await resolveBasemapTileHttpRoute(pathname, request.headers, sessionManager, requestController.signal)
         .finally(() => {
           request.off("aborted", abortUpstreamRequest);
           response.off("close", abortUpstreamRequest);

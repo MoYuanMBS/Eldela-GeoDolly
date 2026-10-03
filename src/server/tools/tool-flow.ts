@@ -38,6 +38,7 @@ import {
   mapSurfacePayloadSchema,
 } from "../../models/mapsurface/map-payload-models.js";
 import {AppError} from "../../shared/app-error.js";
+import {mcpInteractiveMapDataSchema} from "../../models/web/interactive-ui-models.js";
 import {config} from "../utils/config-loader.js";
 import {
   cleanupSessionFiles,
@@ -349,6 +350,25 @@ export async function publishToolFlow(
       ...(overlayOutputJson === undefined ? {} : {overlay_output_json: overlayOutputJson}),
       ...(visualUrl === undefined ? {} : {visual_url: visualUrl}),
     }),
-    client_output: Object.freeze({url: clientInteractiveUrl}),
+    client_output: Object.freeze({
+      url: clientInteractiveUrl,
+      session_id: result.session_id,
+      map_data: mcpInteractiveMapDataSchema.parse({
+        map_payload: {
+          basemap: input.resolvedBasemap,
+          screenshot_size: result.interactive_archive.screenshot_size,
+          center: result.interactive_archive.center,
+          leaflet_bbox: result.interactive_archive.leaflet_bbox,
+          render_mode: result.interactive_archive.render_mode,
+          overlay_output: result.interactive_archive.overlay_output,
+          relation_member_features_by_relation: result.interactive_archive.relation_member_features_by_relation,
+          core_visual: result.interactive_archive.core_visual,
+        },
+        ai_output: result.ai_output,
+        display_id_by_feature_id: result.display_id_by_feature_id,
+        relation_membership_by_feature_id: result.relation_membership_by_feature_id,
+        selected_location_name: result.selected_location_name,
+      }),
+    }),
   });
 }

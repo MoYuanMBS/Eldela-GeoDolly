@@ -230,6 +230,9 @@ output:
 
 # Browser UI 可公开调节参数。
 ui:
+  # MCP App 外层展示区域的总尺寸上限，不改变地图画布的逻辑尺寸。
+  iframe_max_width_px: 1600
+  iframe_max_height_px: 1000
   # 是否挂载 Interactive UI 的 8 个可选装饰 SVG；关闭不影响 divider、图标和其他必要 UI 素材。
   decorations_enabled: true
   # 公制 Scale 在当前视口中心纬度处用于换算距离的最大逻辑像素宽度。
