@@ -38,7 +38,7 @@ import {
   mapSurfacePayloadSchema,
 } from "../../models/mapsurface/map-payload-models.js";
 import {AppError} from "../../shared/app-error.js";
-import {mcpInteractiveMapDataSchema} from "../../models/web/interactive-ui-models.js";
+import {mapAppSharedDataSchema} from "../../models/web/map-app-models.js";
 import {config} from "../utils/config-loader.js";
 import {
   cleanupSessionFiles,
@@ -342,6 +342,8 @@ export async function publishToolFlow(
   }, result.snapshot_runtime, sessionRecord, context, services);
   context.throwIfAborted();
   const visualUrl = resolveAiVisualUrl(result.session_id, input.toolInput.visual_output);
+  const archive = result.interactive_archive;
+  const layout = {map_size: archive.screenshot_size, center: archive.center, leaflet_bbox: archive.leaflet_bbox};
 
   return Object.freeze({
     ai_output: Object.freeze({
@@ -351,24 +353,21 @@ export async function publishToolFlow(
       ...(visualUrl === undefined ? {} : {visual_url: visualUrl}),
     }),
     client_output: Object.freeze({
-      url: clientInteractiveUrl,
-      session_id: result.session_id,
-      map_data: mcpInteractiveMapDataSchema.parse({
-        map_payload: {
-          basemap: input.resolvedBasemap,
-          screenshot_size: result.interactive_archive.screenshot_size,
-          center: result.interactive_archive.center,
-          leaflet_bbox: result.interactive_archive.leaflet_bbox,
-          render_mode: result.interactive_archive.render_mode,
-          overlay_output: result.interactive_archive.overlay_output,
-          relation_member_features_by_relation: result.interactive_archive.relation_member_features_by_relation,
-          core_visual: result.interactive_archive.core_visual,
-        },
+      data: mapAppSharedDataSchema.parse({
+        session_id: result.session_id,
+        visual_output: input.toolInput.visual_output,
+        basemap: input.resolvedBasemap,
+        render_mode: archive.render_mode,
+        overlay_output: archive.overlay_output,
+        relation_member_features_by_relation: archive.relation_member_features_by_relation,
+        core_visual: archive.core_visual,
         ai_output: result.ai_output,
         display_id_by_feature_id: result.display_id_by_feature_id,
         relation_membership_by_feature_id: result.relation_membership_by_feature_id,
         selected_location_name: result.selected_location_name,
       }),
+      user_payload: Object.freeze({...layout, url: clientInteractiveUrl}),
+      ai_payload: input.toolInput.visual_output === "none" ? null : Object.freeze({...layout, ...(visualUrl === undefined ? {} : {url: visualUrl})}),
     }),
   });
 }

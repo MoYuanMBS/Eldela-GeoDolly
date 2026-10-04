@@ -28,7 +28,7 @@ export function registerInteractiveMapLauncherResource(server: McpServer, public
     permissions: {clipboardWrite: {}},
   } satisfies McpUiResourceMeta;
   registerAppResource(server, `${GEOMCP_NAME} Interactive Map`, INTERACTIVE_MAP_LAUNCHER_URI, {
-    description: `Renders the full ${GEOMCP_NAME} Interactive map and measurement tools in the host.`,
+    description: `Renders the ${GEOMCP_NAME} User map and measurement tools alongside an independent AI map with viewport tools in the host.`,
     _meta: {ui: uiMeta},
   }, async () => ({
     contents: [{

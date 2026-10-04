@@ -18,7 +18,7 @@ interface MetricScaleStyle extends CSSProperties {
   "--geomcp-metric-scale-width": string;
 }
 
-type ReferenceUiStatus = "pending" | "waiting-scale" | "measuring" | "locked" | "ready" | "failed";
+type ReferenceUiStatus = "pending" | "waiting-scale" | "measuring" | "ready" | "failed";
 
 function waitForAnimationFrame(signal: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -121,26 +121,25 @@ export function ReferenceBar({logicalWidth, attributionText, metricScale, scaleS
     if (element === null || content === null) return;
     element.style.removeProperty("height");
     element.style.removeProperty("font-family");
-    delete element.dataset.lockedHeight;
     setLayoutStatus(scaleSettled ? "measuring" : "waiting-scale");
     if (!scaleSettled) return;
 
     const abortController = new AbortController();
     const {signal} = abortController;
     let resizeRevision = 0;
-    let lockedHeight: number | null = null;
-    let readyPublished = false;
-    let anomalyReported = false;
-    let anomalyFrameId: number | null = null;
+    let publishedHeight: number | null = null;
+    let layoutFrameId: number | null = null;
     const resizeObserver = new ResizeObserver(() => {
       resizeRevision += 1;
-      if (!readyPublished || lockedHeight === null || anomalyReported || anomalyFrameId !== null) return;
-      anomalyFrameId = requestAnimationFrame(() => {
-        anomalyFrameId = null;
-        if (signal.aborted || lockedHeight === null) return;
-        if (Math.ceil(element.getBoundingClientRect().height) !== lockedHeight || hasLayoutOverflow(element, content)) {
-          anomalyReported = true;
-          console.warn("[GeoMCP] Reference UI layout changed after its height was locked.", {locked_height: lockedHeight});
+      if (publishedHeight === null || layoutFrameId !== null) return;
+      layoutFrameId = requestAnimationFrame(() => {
+        layoutFrameId = null;
+        if (signal.aborted) return;
+        // 比例尺省略/恢复可以改变自然高度；外层展示缩放不改变这里的逻辑尺寸。
+        const height = Math.ceil(Number.parseFloat(getComputedStyle(element).height));
+        if (height > 0 && height !== publishedHeight) {
+          publishedHeight = height;
+          onReady(height);
         }
       });
     });
@@ -154,34 +153,33 @@ export function ReferenceBar({logicalWidth, attributionText, metricScale, scaleS
           waitForReferenceUiAssets(element, signal),
         ]);
         if (!fontLoaded) {
-          // 在开始高度测量前固定 fallback，确保后续锁高不会再因字体切换而漂移。
+          // 布局前固定 fallback，避免 ready 后迟到字体改变首屏测量。
           element.style.fontFamily = "sans-serif";
           onRecoverableWarning("reference_ui_font_fallback");
         }
         if (!assetsLoaded) onRecoverableWarning("reference_ui_decoration_hidden");
         let previousHeight: number | null = null;
         let previousRevision: number | null = null;
-        while (lockedHeight === null) {
+        let measuredHeight: number | null = null;
+        while (measuredHeight === null) {
           await waitForAnimationFrame(signal);
-          const measuredHeight = Math.ceil(element.getBoundingClientRect().height);
+          // computed height 不受外层 transform 影响；向上取整与 Playwright 的 wrapper 像素核验一致。
+          const height = Math.ceil(Number.parseFloat(getComputedStyle(element).height));
+          if (!Number.isFinite(height)) throw new AppError("reference_ui_layout_failed", "Reference UI produced an invalid measured height");
           const currentRevision = resizeRevision;
-          if (measuredHeight === previousHeight && currentRevision === previousRevision) lockedHeight = measuredHeight;
-          previousHeight = measuredHeight;
+          if (height === previousHeight && currentRevision === previousRevision) measuredHeight = height;
+          previousHeight = height;
           previousRevision = currentRevision;
         }
-        if (!Number.isSafeInteger(lockedHeight) || lockedHeight <= 0) {
+        if (!Number.isSafeInteger(measuredHeight) || measuredHeight <= 0) {
           throw new AppError("reference_ui_layout_failed", "Reference UI produced an invalid measured height");
         }
-        element.style.height = `${lockedHeight}px`;
-        element.dataset.lockedHeight = String(lockedHeight);
-        setLayoutStatus("locked");
-        await waitForAnimationFrame(signal);
-        if (Math.ceil(element.getBoundingClientRect().height) !== lockedHeight || hasLayoutOverflow(element, content)) {
-          throw new AppError("reference_ui_overflow", "Reference UI content overflowed after its height was locked");
+        if (hasLayoutOverflow(element, content)) {
+          throw new AppError("reference_ui_overflow", "Reference UI content overflowed its natural layout");
         }
-        readyPublished = true;
+        publishedHeight = measuredHeight;
         setLayoutStatus("ready");
-        onReady(lockedHeight);
+        onReady(measuredHeight);
       } catch (error) {
         if (signal.aborted) return;
         setLayoutStatus("failed");
@@ -192,7 +190,7 @@ export function ReferenceBar({logicalWidth, attributionText, metricScale, scaleS
     return () => {
       abortController.abort();
       resizeObserver.disconnect();
-      if (anomalyFrameId !== null) cancelAnimationFrame(anomalyFrameId);
+      if (layoutFrameId !== null) cancelAnimationFrame(layoutFrameId);
     };
   }, [logicalWidth, attributionText, scaleSettled, onRecoverableWarning, onReady, onError]);
 

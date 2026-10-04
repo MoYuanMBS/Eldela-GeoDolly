@@ -6,6 +6,7 @@ import type {ActiveMeasurementTargetType, MeasureToolModeType, MeasureToolUiStat
 import type {RenderStylePayload} from "../../models/mapsurface/style/user-css-style-models.js";
 import type {InteractiveSpatialFeatureType} from "../../models/web/interactive-ui-models.js";
 import type {SnapshotRecoverableWarningType} from "../../models/web/snapshot-ui-models.js";
+import type {AiMapBoundsType, AiMapCenterZoomType, AiMapViewType} from "../../models/web/map-app-models.js";
 
 /** UI 事件只携带后端 canonical identity；display_id 必须临时从后端字典查询。 */
 export interface InteractiveFeatureTargetType {
@@ -70,6 +71,12 @@ export interface MapSurfacePortProps {
 /** MapPage 依赖 port component，而不是某个 Leaflet React 组件。 */
 export type MapSurfacePortComponentType = ComponentType<MapSurfacePortProps>;
 
+/** Session 绑定由 App 管理；这里的命令只操作所属地图实例。 */
+export interface AiMapViewCommands {
+  fitBounds(bbox: AiMapBoundsType): AiMapViewType;
+  setCenterZoom(input: AiMapCenterZoomType): AiMapViewType;
+}
+
 /** Snapshot Page 与无交互 MapSurface adapter 之间的唯一接线契约。 */
 export interface SnapshotMapSurfacePortProps {
   mapPayload: CommonVisualMapPayloadType;
@@ -79,6 +86,7 @@ export interface SnapshotMapSurfacePortProps {
   onRecoverableWarning(warning: SnapshotRecoverableWarningType): void;
   onSnapshotDiagnostic(diagnostic: BrowserWarningReportType): void;
   onMapRuntimeError(message: string): void;
+  onAiViewCommandsChange?(commands: AiMapViewCommands | null): void;
 }
 
 export type SnapshotMapSurfacePortComponentType = ComponentType<SnapshotMapSurfacePortProps>;

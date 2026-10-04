@@ -4,13 +4,14 @@ import {fileURLToPath} from "node:url";
 import react from "@vitejs/plugin-react";
 import {defineConfig, type Plugin} from "vite";
 import {GEOMCP_NAME} from "./src/shared/brand.js";
-import {browserMapConfigSchema, iframeAdaptiveConfigSchema, leafletConfigSchema, uiConfigSchema} from "./src/models/backend/config-models.js";
+import {basemapConfigSchema, browserMapConfigSchema, iframeAdaptiveConfigSchema, leafletConfigSchema, uiConfigSchema} from "./src/models/backend/config-models.js";
 import {config} from "./src/server/utils/config-loader.js";
 import {initializeUserStyle} from "./src/server/utils/user-style/user-style-rule.js";
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 const iframeConfig = config.getAppSection("iframe_adaptive", iframeAdaptiveConfigSchema);
 const browserConfig = config.getAppSection("browser_map", browserMapConfigSchema);
+const basemapConfig = config.getAppSection("basemap", basemapConfigSchema);
 const uiConfig = config.getAppSection("ui", uiConfigSchema);
 const publicBaseUrl = config.getWebConfig().http.map.public_origin;
 const userStyle = initializeUserStyle();
@@ -45,6 +46,8 @@ const inlineAppPlugin: Plugin = {
       '    #launcher-message { margin: auto; padding: 16px; text-align: center; }',
       '    #map-viewport { position: relative; flex: 1 1 auto; min-width: 0; min-height: 0; overflow: hidden; }',
       '    #map-content { position: absolute; left: 50%; top: 50%; width: max-content; padding: 24px; transform-origin: center; }',
+      '    .geomcp-app-maps { display: flex; align-items: flex-start; gap: 24px; }',
+      '    .geomcp-app-map-title { margin: 0 0 8px; font: 600 16px/1.4 system-ui, sans-serif; }',
       '    #map-fallback { display: grid; flex: 0 0 auto; grid-template-columns: auto minmax(0, 1fr) auto; gap: 6px; padding: 6px; align-items: center; font: 12px/1.4 system-ui, sans-serif; }',
       '    #map-url { min-width: 0; width: 100%; }',
       '    #fallback-status { grid-column: 1 / -1; color: GrayText; }',
@@ -83,6 +86,7 @@ export default defineConfig({
     __GEOMCP_IFRAME_MAX_HEIGHT_PX__: JSON.stringify(uiConfig.iframe_max_height_px),
     __GEOMCP_MAP_PADDING__: JSON.stringify(iframeConfig.padding),
     __GEOMCP_MAP_READY_TIMEOUT_MS__: JSON.stringify(browserConfig.ready_timeout_seconds * 1000),
+    __GEOMCP_SNAPSHOT_MIN_TILE_SUCCESS_RATIO__: JSON.stringify(basemapConfig.snapshot_min_tile_success_ratio),
     __GEOMCP_DECORATIONS_ENABLED__: JSON.stringify(uiConfig.decorations_enabled),
     __GEOMCP_MAX_SCALE_WIDTH_PX__: JSON.stringify(uiConfig.max_scale_width_px),
     __GEOMCP_FEATURE_UI_MAX_HEIGHT_PX__: JSON.stringify(uiConfig.feature_ui_max_height_px),

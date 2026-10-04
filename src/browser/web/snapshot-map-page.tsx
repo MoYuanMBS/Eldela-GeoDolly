@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useState, type CSSProperties} from "react";
+import {useCallback, useEffect, useRef, useState, type CSSProperties} from "react";
 import {UI_BUILT_IN_CONFIG} from "../../shared/ui.js";
 import type {BrowserWarningReportType} from "../../models/common/browser-warning-models.js";
 import {
@@ -57,8 +57,12 @@ export function SnapshotMapPage({mapDataUrl, onArchived, SnapshotMapSurfaceCompo
   const [referenceUiState, setReferenceUiState] = useState<ReferenceUiState>({status: "pending"});
   const [warnings, setWarnings] = useState<SnapshotRecoverableWarningType[]>([]);
   const [diagnostics, setDiagnostics] = useState<BrowserWarningReportType[]>([]);
+  const initialMetricScaleRef = useRef<MetricScaleState | null>(null);
+  const readySummaryRef = useRef<SnapshotBrowserReadySummaryType | null>(null);
 
   useEffect(() => {
+    initialMetricScaleRef.current = null;
+    readySummaryRef.current = null;
     setMetricScaleState({status: "pending", value: null});
     setMapRuntimeState({status: "pending"});
     setReferenceUiState({status: "pending"});
@@ -97,12 +101,12 @@ export function SnapshotMapPage({mapDataUrl, onArchived, SnapshotMapSurfaceCompo
     setDiagnostics((current) => current.some((existing) => JSON.stringify(existing) === diagnosticKey) ? current : [...current, diagnostic]);
   }, []);
   const handleMetricScaleSettled = useCallback((nextMetricScale: SnapshotMetricScaleViewType | null): void => {
-    if (nextMetricScale === null) {
-      recordWarning("scale_omitted");
-      setMetricScaleState({status: "omitted", value: null});
-    } else {
-      setMetricScaleState({status: "ready", value: nextMetricScale});
+    const nextState: MetricScaleState = nextMetricScale === null ? {status: "omitted", value: null} : {status: "ready", value: nextMetricScale};
+    if (initialMetricScaleRef.current === null) {
+      initialMetricScaleRef.current = nextState;
+      if (nextMetricScale === null) recordWarning("scale_omitted");
     }
+    setMetricScaleState(nextState);
   }, [recordWarning]);
   const handleMapRuntimeReady = useCallback((result: SnapshotMapRuntimeReadyType): void => {
     if (result.initialTiles.success_count < result.initialTiles.total_count && result.summary.status === "ready") {
@@ -136,9 +140,12 @@ export function SnapshotMapPage({mapDataUrl, onArchived, SnapshotMapSurfaceCompo
   const browserReadyStatus = failureMessage !== null
     ? "failed"
     : mapSummary?.status === "ready" && referenceUiState.status === "ready" && metricScaleState.status !== "pending" ? "ready" : "pending";
-  let readySummary: SnapshotBrowserReadySummaryType | null = null;
+  const initialScale = initialMetricScaleRef.current;
   if (
-    browserReadyStatus === "ready"
+    readySummaryRef.current === null
+    && initialScale !== null
+    && initialScale.status !== "pending"
+    && browserReadyStatus === "ready"
     && referenceUiState.status === "ready"
     && metricScaleState.status !== "pending"
     && mapSummary !== null
@@ -146,7 +153,8 @@ export function SnapshotMapPage({mapDataUrl, onArchived, SnapshotMapSurfaceCompo
     && mapSummary.basemap.status === "ready"
     && mapRuntimeResult !== null
   ) {
-    readySummary = {
+    // 首屏发布记录只生成一次；实时 Scale 和自然高度更新不改写初始截图事实。
+    readySummaryRef.current = {
       status: mapSummary.status,
       error: null,
       initial_view: mapSummary.initial_view,
@@ -154,13 +162,13 @@ export function SnapshotMapPage({mapDataUrl, onArchived, SnapshotMapSurfaceCompo
       overlay: {status: mapSummary.overlay, rendered: mapRuntimeResult.renderedFeatureCounts.overlay},
       core_overlay: {status: mapSummary.core_overlay, rendered: mapRuntimeResult.renderedFeatureCounts.core},
       reference_ui: {status: "ready", measured_height: referenceUiState.measuredHeight},
-      scale: metricScaleState.status === "omitted"
+      scale: initialScale.status === "omitted"
         ? {status: "omitted"}
         : {
             status: "ready",
-            label: metricScaleState.value.label,
-            distance_meters: metricScaleState.value.distanceMeters,
-            width_px: metricScaleState.value.widthPx,
+            label: initialScale.value.label,
+            distance_meters: initialScale.value.distanceMeters,
+            width_px: initialScale.value.widthPx,
           },
       final_logical_height: payload.screenshot_size[1] + referenceUiState.measuredHeight,
       initial_tiles: mapRuntimeResult.initialTiles,
@@ -176,7 +184,7 @@ export function SnapshotMapPage({mapDataUrl, onArchived, SnapshotMapSurfaceCompo
       aria-busy={browserReadyStatus === "pending"}
       data-geomcp-ready-status={browserReadyStatus}
       data-geomcp-ready-error={failureMessage ?? undefined}
-      data-geomcp-ready-summary={readySummary === null ? undefined : JSON.stringify(readySummary)}
+      data-geomcp-ready-summary={readySummaryRef.current === null ? undefined : JSON.stringify(readySummaryRef.current)}
       data-geomcp-snapshot-diagnostics={JSON.stringify(diagnostics)}
       data-geomcp-reference-ui-status={referenceUiState.status}
       data-geomcp-reference-ui-height={referenceUiState.status === "ready" ? referenceUiState.measuredHeight : undefined}
