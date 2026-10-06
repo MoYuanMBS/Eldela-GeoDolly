@@ -28,6 +28,7 @@
     "@modelcontextprotocol/ext-apps": "^2.0.3",
     "@modelcontextprotocol/node": "^2.1.0",
     "@modelcontextprotocol/server": "^2.2.0",
+    "@zumer/snapdom": "3.3.0",
     "canvas": "^3.1.2",
     "geographiclib-geodesic": "^2.2.0",
     "jsdom": "^26.1.0",
