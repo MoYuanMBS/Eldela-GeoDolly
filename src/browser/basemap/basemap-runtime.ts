@@ -1,8 +1,8 @@
 /** Browser 侧在线 raster TileLayer runtime。 */
 
 import {tileLayer, Util, type Map as LeafletMap, type TileLayer} from "leaflet";
-import type {BasemapRuntimeOptions, BasemapRuntimeStatus, SnapshotBasemapRuntimeOptions, SnapshotBasemapRuntimeResult} from "../../models/mapsurface/basemap-runtime-models.js";
-import {mountTileLayerAndWaitForInitialReady, mountTileLayerAndWaitForSnapshotReady} from "./tile-ready-controller.js";
+import type {BasemapRuntimeOptions, BasemapRuntimeStatus, SnapshotBasemapRuntimeOptions, SnapshotBasemapRuntimeResult, SnapshotTileViewController} from "../../models/mapsurface/basemap-runtime-models.js";
+import {mountTileLayerAndWaitForInitialReady, mountTileLayerAndWaitForSnapshotReady, observeSnapshotTileViews} from "./tile-ready-controller.js";
 import {AppError} from "../../shared/app-error.js";
 
 /** Backend 页面与 MCP App 共用带 session ID 的路由；provider 行为仍留在服务端。 */
@@ -48,19 +48,29 @@ export async function createBasemapRuntime(options: BasemapRuntimeOptions): Prom
 }
 
 /** Snapshot 使用同一同源 TileLayer，但保留固定首屏成功率统计。 */
-export async function createSnapshotBasemapRuntime(options: SnapshotBasemapRuntimeOptions): Promise<SnapshotBasemapRuntimeResult> {
+export async function createSnapshotBasemapRuntime(options: SnapshotBasemapRuntimeOptions): Promise<SnapshotBasemapRuntimeResult & SnapshotTileViewController> {
   const map = options.mapSurface.map;
   let layer: TileLayer;
   try {
     layer = createRasterTileLayer(options.basemap.id, map, options.basemap.max_native_zoom);
+    // 与 User 地图一样避开 Leaflet 对 emptyImageUrl 的终态吞掉；透明 fallback 仍按失败位置计数。
+    layer.options.errorTileUrl = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAABmJLR0QA/wD/AP+gvaeTAAAAC0lEQVQImWNgAAIAAAUAAWJVMogAAAAASUVORK5CYII=";
   } catch {
     return {
       status: {status: "failed", error: {code: "tile_layer_init", message: "Basemap tile layer failed to initialize", details: null}},
       initialTiles: {success_count: 0, total_count: 0, success_ratio: 0, required_ratio: options.minimumInitialTileSuccessRatio},
+      waitForCurrentView: async () => { throw new AppError("tile_layer_init", "Basemap tile layer failed to initialize"); },
+      dispose: () => {},
     };
   }
 
-  const result = await mountTileLayerAndWaitForSnapshotReady(layer, map, options.minimumInitialTileSuccessRatio, options.signal);
-  if (result.status.status === "ready") attachRuntimeWarning(layer, options);
-  return result;
+  const views = observeSnapshotTileViews(layer, map, options.minimumInitialTileSuccessRatio);
+  try {
+    const result = await mountTileLayerAndWaitForSnapshotReady(layer, map, options.minimumInitialTileSuccessRatio, options.signal);
+    if (result.status.status === "ready") attachRuntimeWarning(layer, options);
+    return {...result, ...views};
+  } catch (error) {
+    views.dispose();
+    throw error;
+  }
 }

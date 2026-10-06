@@ -1,7 +1,7 @@
 /** Leaflet TileLayer 初始视口 ready 控制器。 */
 
 import type {Map as LeafletMap, TileErrorEvent, TileEvent, TileLayer} from "leaflet";
-import type {BasemapRuntimeStatus, SnapshotBasemapRuntimeResult, SnapshotInitialTileSummary} from "../../models/mapsurface/basemap-runtime-models.js";
+import type {BasemapRuntimeStatus, SnapshotBasemapRuntimeResult, SnapshotInitialTileSummary, SnapshotTileViewController} from "../../models/mapsurface/basemap-runtime-models.js";
 import {AppError} from "../../shared/app-error.js";
 
 type InitialTileState = "pending" | "ready" | "failed";
@@ -145,4 +145,88 @@ export async function mountTileLayerAndWaitForSnapshotReady(
     return {status: {status: "failed", error: {code: "tile_success_ratio", message: "Basemap initial tile success ratio is below the required threshold", details: null}}, initialTiles};
   }
   return {status: {status: "ready", error: null}, initialTiles};
+}
+
+/** 从挂载前持续记录所属层的状态；卸载即删除，缓存命中和相同命令不依赖新的 load 事件。 */
+export function observeSnapshotTileViews(layer: TileLayer, map: LeafletMap, requiredRatio: number): SnapshotTileViewController {
+  const records = new Map<string, InitialTileRecord>();
+  const lifetime = new AbortController();
+  const start = (event: TileEvent): void => { records.set(tilePositionKey(event.coords), {state: "pending", tile: event.tile}); };
+  const loaded = (event: TileEvent): void => {
+    const record = records.get(tilePositionKey(event.coords));
+    // 透明 fallback 的 load 和已替换 element 的迟到事件都不能算真实成功。
+    if (record?.tile === event.tile && record.state === "pending") record.state = "ready";
+  };
+  const failed = (event: TileEvent): void => {
+    const record = records.get(tilePositionKey(event.coords));
+    if (record?.tile === event.tile) record.state = "failed";
+  };
+  const removed = (event: TileEvent): void => {
+    const key = tilePositionKey(event.coords);
+    if (records.get(key)?.tile === event.tile) records.delete(key);
+  };
+  layer.on("tileloadstart", start);
+  layer.on("tileload", loaded);
+  layer.on("tileerror", failed);
+  layer.on("tileunload", removed);
+  layer.on("tileabort", removed);
+
+  return {
+    async waitForCurrentView(signal) {
+      const waitingSignal = AbortSignal.any([signal, lifetime.signal]);
+      const zoom = map.getZoom();
+      const center = map.getCenter();
+      const tileZoom = Math.max(layer.options.minNativeZoom ?? 0, Math.min(layer.options.maxNativeZoom ?? zoom, Math.round(zoom)));
+      const size = layer.getTileSize();
+      const pixelCenter = map.project(center, tileZoom).floor();
+      const halfSize = map.getSize().divideBy(map.getZoomScale(zoom, tileZoom) * 2);
+      const min = pixelCenter.subtract(halfSize).unscaleBy(size).floor();
+      const max = pixelCenter.add(halfSize).unscaleBy(size).ceil().subtract([1, 1]);
+      const world = map.getPixelWorldBounds(tileZoom);
+      const worldMin = world?.min?.unscaleBy(size).floor();
+      const worldMax = world?.max?.unscaleBy(size).ceil().subtract([1, 1]);
+      const keys: string[] = [];
+      // 使用未 wrap 的屏幕位置计数；同 URL 的不同世界副本仍是两个位置。排除 Mercator 世界外的空白。
+      for (let y = min.y; y <= max.y; y += 1) {
+        if (worldMin !== undefined && worldMax !== undefined && (y < worldMin.y || y > worldMax.y)) continue;
+        for (let x = min.x; x <= max.x; x += 1) {
+          if (!map.options.crs?.wrapLng && worldMin !== undefined && worldMax !== undefined && (x < worldMin.x || x > worldMax.x)) continue;
+          keys.push(tilePositionKey({x, y, z: tileZoom}));
+        }
+      }
+      if (keys.length === 0) throw new AppError("tile_view_empty", "The current basemap view has no required tiles");
+      while (true) {
+        waitingSignal.throwIfAborted();
+        if (map.getZoom() !== zoom || !map.getCenter().equals(center)) throw new AppError("ai_map_view_changed", "The AI map view changed while waiting for its tiles");
+        const visible = new Map<string, InitialTileRecord>();
+        let pending = false;
+        for (const key of keys) {
+          const record = records.get(key);
+          if (record === undefined || record.state === "pending") { pending = true; continue; }
+          visible.set(key, record);
+          // Leaflet 的 tileload 先于淡入结束；读取公开 DOM 样式等待真实显示，不固定 sleep 或访问 _tiles。
+          if (record.state === "ready" && (!record.tile.isConnected || Number(getComputedStyle(record.tile).opacity) < 1)) pending = true;
+        }
+        if (!pending) {
+          const summary = summarizeInitialTiles(visible, requiredRatio);
+          if (summary.success_ratio < requiredRatio) throw new AppError("tile_success_ratio", "Current basemap tile success ratio is below the required threshold", {...summary});
+          return {...summary, tiles: [...visible.values()].filter((record) => record.state === "ready").map((record) => record.tile)};
+        }
+        await new Promise<void>((resolve, reject) => {
+          const abort = (): void => { cancelAnimationFrame(frame); reject(waitingSignal.reason); };
+          const frame = requestAnimationFrame(() => { waitingSignal.removeEventListener("abort", abort); resolve(); });
+          waitingSignal.addEventListener("abort", abort, {once: true});
+        });
+      }
+    },
+    dispose() {
+      lifetime.abort(new AppError("ai_map_unavailable", "Basemap runtime has been released"));
+      layer.off("tileloadstart", start);
+      layer.off("tileload", loaded);
+      layer.off("tileerror", failed);
+      layer.off("tileunload", removed);
+      layer.off("tileabort", removed);
+      records.clear();
+    }
+  };
 }

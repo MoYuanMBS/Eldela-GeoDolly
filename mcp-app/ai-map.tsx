@@ -1,16 +1,18 @@
 /// <reference path="../src/browser/web/vite-env.d.ts" />
 
 import {useCallback, useEffect, useMemo, useRef, useState, type CSSProperties} from "react";
+import {flushSync} from "react-dom";
 import {SnapshotMapSurfaceView} from "../src/browser/browser-map-flow/snapshot-map-surface-view.js";
 import {createBrowserWarningReporter} from "../src/browser/browser-map-flow/browser-warning-reporter.js";
 import {ReferenceBar} from "../src/browser/ui/reference-bar.js";
 import type {AiMapViewCommands, SnapshotMapRuntimeReadyType, SnapshotMetricScaleViewType} from "../src/browser/web/map-surface-port.js";
 import type {SnapshotMapDataType, SnapshotRecoverableWarningType} from "../src/models/web/snapshot-ui-models.js";
 import {UI_BUILT_IN_CONFIG} from "../src/shared/ui.js";
+import {captureAiMapWebp, type AiMapCapturePort} from "./ai-map-screenshot.js";
 
 interface AiMapProps {
   mapData: SnapshotMapDataType;
-  onAiViewCommandsChange(commands: AiMapViewCommands | null): void;
+  onAiViewCommandsChange(port: AiMapCapturePort | null): void;
 }
 
 /** AI 页面只组合独立视觉实例与 Reference UI，不接入 User 详情或测量状态。 */
@@ -22,6 +24,7 @@ export function AiMap({mapData, onAiViewCommandsChange}: AiMapProps) {
   const [referenceHeight, setReferenceHeight] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const commandsRef = useRef<AiMapViewCommands | null>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const warningsRef = useRef(new Set<SnapshotRecoverableWarningType>());
   const reportDiagnostic = useMemo(() => createBrowserWarningReporter(), []);
 
@@ -44,8 +47,8 @@ export function AiMap({mapData, onAiViewCommandsChange}: AiMapProps) {
   }, [onAiViewCommandsChange]);
   const handleMetricScale = useCallback((scale: SnapshotMetricScaleViewType | null): void => {
     if (scale === null) recordWarning("scale_omitted");
-    setMetricScale(scale);
-    setScaleSettled(true);
+    // 截图等待端口完成前提交当前 Scale；同高度的文字变化也必须进入真实 DOM。
+    flushSync(() => { setMetricScale(scale); setScaleSettled(true); });
   }, [recordWarning]);
   const handleRuntime = useCallback((result: SnapshotMapRuntimeReadyType): void => {
     if (result.summary.status !== "ready") {
@@ -61,7 +64,12 @@ export function AiMap({mapData, onAiViewCommandsChange}: AiMapProps) {
 
   useEffect(() => {
     // ready 失效或组件卸载均撤销绑定；入口再按结果代次过滤旧组件迟到的清理回调。
-    onAiViewCommandsChange(ready ? commandsRef.current : null);
+    const commands = commandsRef.current;
+    const wrapper = wrapperRef.current;
+    onAiViewCommandsChange(ready && commands !== null && wrapper !== null ? {
+      commands,
+      capture: (view, signal) => captureAiMapWebp(wrapper, commands, view, signal)
+    } : null);
     return () => onAiViewCommandsChange(null);
   }, [ready, onAiViewCommandsChange]);
 
@@ -78,7 +86,7 @@ export function AiMap({mapData, onAiViewCommandsChange}: AiMapProps) {
   };
   return (
     <main className="geomcp-map-page geomcp-snapshot-map-page" style={style} aria-busy={!ready} data-geomcp-ai-map-status={ready ? "ready" : "pending"}>
-      <div className="geomcp-map-capture-frame geomcp-snapshot-wrapper">
+      <div ref={wrapperRef} className="geomcp-map-capture-frame geomcp-snapshot-wrapper">
         <div className="geomcp-snapshot-map-clip">
           <SnapshotMapSurfaceView
             mapPayload={payload}

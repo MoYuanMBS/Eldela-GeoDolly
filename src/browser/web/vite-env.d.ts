@@ -8,6 +8,7 @@ declare const __GEOMCP_MAP_PADDING__: {
 };
 
 declare const __GEOMCP_MAP_READY_TIMEOUT_MS__: number;
+declare const __GEOMCP_SNAPSHOT_MAX_PIXELS__: number;
 declare const __GEOMCP_SNAPSHOT_MIN_TILE_SUCCESS_RATIO__: number;
 declare const __GEOMCP_DECORATIONS_ENABLED__: boolean;
 declare const __GEOMCP_MAX_SCALE_WIDTH_PX__: number;

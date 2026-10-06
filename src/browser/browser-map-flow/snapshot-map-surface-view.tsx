@@ -160,6 +160,26 @@ export function SnapshotMapSurfaceView({mapPayload, stylePayload, onMetricScaleS
         };
       };
       onAiViewCommandsChange?.(Object.freeze<AiMapViewCommands>({
+        getView: () => { requireAvailableMap(); return readView(); },
+        waitForScreenshot: async (signal) => {
+          requireAvailableMap();
+          const waitingSignal = AbortSignal.any([signal, abortController.signal]);
+          const view = JSON.stringify(readView());
+          const tiles = await result.waitForCurrentTiles(waitingSignal);
+          if (tiles.success_count < tiles.total_count) onRecoverableWarning("basemap_tiles_missing");
+          // Node 测量和 Label/Canvas 重绘分两帧完成；Scale 的 RAF 同步发布，页面随后确认 React 布局。
+          for (let index = 0; index < 2; index += 1) {
+            waitingSignal.throwIfAborted();
+            await new Promise<void>((resolve, reject) => {
+              const abort = (): void => { cancelAnimationFrame(frame); reject(waitingSignal.reason); };
+              const frame = requestAnimationFrame(() => { waitingSignal.removeEventListener("abort", abort); resolve(); });
+              waitingSignal.addEventListener("abort", abort, {once: true});
+            });
+          }
+          requireAvailableMap();
+          if (view !== JSON.stringify(readView())) throw new AppError("ai_map_view_changed", "The AI map view changed before screenshot rendering completed");
+          return tiles;
+        },
         fitBounds: (bbox) => {
           requireAvailableMap();
           requireProjectableLatitude(bbox.south);

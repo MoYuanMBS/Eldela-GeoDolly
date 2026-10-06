@@ -130,7 +130,7 @@ export function createMcpHttpService(webConfig: WebConfigType, sessionManager: S
       return;
     }
     const origin = request.headers.origin;
-    if (!validateHostHeader(request.headers.host, allowedHosts).ok || (origin !== undefined && !allowedOrigins.has(origin))) {
+    if (!validateHostHeader(request.headers.host, allowedHosts).ok) {
       writeProtocolError(response, 403, "Host or Origin is not allowed");
       return;
     }
@@ -139,6 +139,12 @@ export function createMcpHttpService(webConfig: WebConfigType, sessionManager: S
       requestUrl = new URL(request.url ?? "/", publicUrl.origin);
     } catch {
       writeProtocolError(response, 400, "Invalid request URL");
+      return;
+    }
+    // App 的 opaque iframe 会以 Origin: null 读取底图；仅 GET 底图路径允许跨源，MCP 的 Origin 校验保持原样。
+    const appTileRequest = request.method === "GET" && requestUrl.search === "" && requestUrl.pathname.startsWith(`${publicBasePath}/basemap/`);
+    if (origin !== undefined && !allowedOrigins.has(origin) && !appTileRequest) {
+      writeProtocolError(response, 403, "Host or Origin is not allowed");
       return;
     }
     if (requestUrl.pathname !== mcpPath || requestUrl.search !== "") {

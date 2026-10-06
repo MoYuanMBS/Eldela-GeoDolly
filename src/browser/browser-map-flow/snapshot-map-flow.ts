@@ -51,6 +51,7 @@ export async function createSnapshotMapFlow(options: SnapshotMapFlowOptions): Pr
   let initialTiles: SnapshotMapFlowResult["initialTiles"];
   let visualRuntime: LeafletVisualRuntimeResult;
   const completedVisualRuntime: {value: LeafletVisualRuntimeResult | null} = {value: null};
+  const tileRuntime: {value: Awaited<ReturnType<typeof createSnapshotBasemapRuntime>> | null} = {value: null};
   try {
     const [basemapResult, completedVisual] = await waitForMapFlowReady(Promise.all([
       createSnapshotBasemapRuntime({
@@ -59,6 +60,10 @@ export async function createSnapshotMapFlow(options: SnapshotMapFlowOptions): Pr
         minimumInitialTileSuccessRatio: options.minimumInitialTileSuccessRatio,
         signal: flowSignal,
         warningReporter: options.warningReporter,
+      }).then((result) => {
+        tileRuntime.value = result;
+        if (flowSignal.aborted) result.dispose();
+        return result;
       }),
       createLeafletVisualRuntime({
         mapSurface,
@@ -79,6 +84,7 @@ export async function createSnapshotMapFlow(options: SnapshotMapFlowOptions): Pr
     initialTiles = basemapResult.initialTiles;
     visualRuntime = completedVisual;
   } catch (error) {
+    tileRuntime.value?.dispose();
     completedVisualRuntime.value?.dispose();
     mapSurface.dispose();
     throw AppError.fromUnknown(error, "map_render", "Map visual rendering failed");
@@ -87,6 +93,7 @@ export async function createSnapshotMapFlow(options: SnapshotMapFlowOptions): Pr
   const dispose = (): void => {
     if (disposed) return;
     disposed = true;
+    tileRuntime.value?.dispose();
     visualRuntime.dispose();
     mapSurface.dispose();
   };
@@ -97,6 +104,10 @@ export async function createSnapshotMapFlow(options: SnapshotMapFlowOptions): Pr
   });
   return Object.freeze({
     mapSurface,
+    waitForCurrentTiles: (signal: AbortSignal) => {
+      if (disposed || tileRuntime.value === null) return Promise.reject(new AppError("ai_map_unavailable", "Snapshot map runtime has been released"));
+      return tileRuntime.value.waitForCurrentView(signal);
+    },
     basemapStatus,
     readySummary,
     metricScale,

@@ -1,7 +1,7 @@
 import type {ComponentType} from "react";
 import type {BrowserWarningReportType} from "../../models/common/browser-warning-models.js";
 import type {CommonVisualMapPayloadType} from "../../models/mapsurface/map-payload-models.js";
-import type {MapFlowReadySummary, SnapshotMapFlowResult} from "../../models/mapsurface/basemap-runtime-models.js";
+import type {MapFlowReadySummary, SnapshotMapFlowResult, SnapshotTileView} from "../../models/mapsurface/basemap-runtime-models.js";
 import type {ActiveMeasurementTargetType, MeasureToolModeType, MeasureToolUiStateType} from "../../models/measure-tools/measure-tool-models.js";
 import type {RenderStylePayload} from "../../models/mapsurface/style/user-css-style-models.js";
 import type {InteractiveSpatialFeatureType} from "../../models/web/interactive-ui-models.js";
@@ -73,6 +73,8 @@ export type MapSurfacePortComponentType = ComponentType<MapSurfacePortProps>;
 
 /** Session 绑定由 App 管理；这里的命令只操作所属地图实例。 */
 export interface AiMapViewCommands {
+  getView(): AiMapViewType;
+  waitForScreenshot(signal: AbortSignal): Promise<SnapshotTileView>;
   fitBounds(bbox: AiMapBoundsType): AiMapViewType;
   setCenterZoom(input: AiMapCenterZoomType): AiMapViewType;
 }

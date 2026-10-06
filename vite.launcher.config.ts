@@ -86,6 +86,7 @@ export default defineConfig({
     __GEOMCP_IFRAME_MAX_HEIGHT_PX__: JSON.stringify(uiConfig.iframe_max_height_px),
     __GEOMCP_MAP_PADDING__: JSON.stringify(iframeConfig.padding),
     __GEOMCP_MAP_READY_TIMEOUT_MS__: JSON.stringify(browserConfig.ready_timeout_seconds * 1000),
+    __GEOMCP_SNAPSHOT_MAX_PIXELS__: JSON.stringify(config.getWebConfig().snapshot.max_wrapper_physical_pixels),
     __GEOMCP_SNAPSHOT_MIN_TILE_SUCCESS_RATIO__: JSON.stringify(basemapConfig.snapshot_min_tile_success_ratio),
     __GEOMCP_DECORATIONS_ENABLED__: JSON.stringify(uiConfig.decorations_enabled),
     __GEOMCP_MAX_SCALE_WIDTH_PX__: JSON.stringify(uiConfig.max_scale_width_px),

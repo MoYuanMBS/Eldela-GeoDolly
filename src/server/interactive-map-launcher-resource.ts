@@ -24,7 +24,7 @@ export function registerInteractiveMapLauncherResource(server: McpServer, public
   }
   const uiMeta = {
     prefersBorder: false,
-    csp: {resourceDomains: [new URL(publicOrigin).origin]},
+    csp: {resourceDomains: [new URL(publicOrigin).origin], connectDomains: [new URL(publicOrigin).origin]},
     permissions: {clipboardWrite: {}},
   } satisfies McpUiResourceMeta;
   registerAppResource(server, `${GEOMCP_NAME} Interactive Map`, INTERACTIVE_MAP_LAUNCHER_URI, {

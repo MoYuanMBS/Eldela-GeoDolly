@@ -76,6 +76,17 @@ export interface SnapshotBasemapRuntimeResult {
   initialTiles: SnapshotInitialTileSummary;
 }
 
+/** 所属瓦片层的当前视口等待；统计不覆盖首屏摘要，不向上暴露 TileLayer。 */
+export interface SnapshotTileView extends SnapshotInitialTileSummary {
+  /** 本次可见位置中已成功的图片，用于导出时排除缓冲区/旧 zoom 瓦片。 */
+  tiles: readonly HTMLImageElement[];
+}
+
+export interface SnapshotTileViewController {
+  waitForCurrentView(signal: AbortSignal): Promise<SnapshotTileView>;
+  dispose(): void;
+}
+
 export interface SnapshotSpatialRenderCounts {
   node: number;
   way: number;
@@ -164,6 +175,7 @@ export interface SnapshotMapFlowOptions extends Omit<LeafletVisualRuntimeOptions
 /** Snapshot 返回自己持有的 MapSurface 与借助共享 runtime 创建的 Visual。 */
 export interface SnapshotMapFlowResult extends LeafletVisualRuntimeResult {
   mapSurface: MapSurfaceHandle;
+  waitForCurrentTiles(signal: AbortSignal): Promise<SnapshotTileView>;
   /** 初始视口瓦片自己的 ready/failed 终态；失败不转换成 AppError。 */
   basemapStatus: BasemapRuntimeStatus;
   /** 不包含 Leaflet runtime 对象的当前 Flow 汇总。 */

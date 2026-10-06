@@ -20,7 +20,8 @@ import * as mapAppModels from "../src/models/web/map-app-models.js";
 import type {CommonVisualMapPayloadType} from "../src/models/mapsurface/map-payload-models.js";
 import type {AiMapViewCommands} from "../src/browser/web/map-surface-port.js";
 import {AiMap} from "./ai-map.js";
-import {registerAiMapTools} from "./register-tools.js";
+import {registerAiMapTools, type AiMapJobResult, type AiMapToolBinding} from "./register-tools.js";
+import type {AiMapCapturePort, AiMapScreenshot} from "./ai-map-screenshot.js";
 import {AppError} from "../src/shared/app-error.js";
 import {GEOMCP_NAME} from "../src/shared/brand.js";
 
@@ -59,7 +60,15 @@ let fullscreenRequested = false;
 let resultRevision = 0;
 let tornDown = false;
 // 只保存当前已 ready 的 AI 命令；User 地图状态由自己的页面和 runtime 持有。
-let aiBinding: {sessionId: string; commands: AiMapViewCommands} | null = null;
+interface AiMapBinding extends AiMapToolBinding {
+  port: AiMapCapturePort;
+  mode: "screenshot" | "interactive";
+  revision: number;
+  initialStarted: boolean;
+  initialFinished: boolean;
+}
+let aiBinding: AiMapBinding | null = null;
+let aiJob: {controller: AbortController} | null = null;
 
 // 仅缩放整个展示区域；Leaflet 始终在后端给出的逻辑画布上确定初始 zoom。
 function fitMapContent(): void {
@@ -128,8 +137,103 @@ const {fitAiMapTool, setAiMapTool} = registerAiMapTools(app, () => aiBinding);
 // 在取消异步初始化或释放地图前先撤销可调用入口，防止宿主继续使用上一轮命令。
 function revokeAiBinding(): void {
   aiBinding = null;
+  aiJob?.controller.abort(new AppError("ai_map_unavailable", "AI map result has been replaced or released"));
   fitAiMapTool.disable();
   setAiMapTool.disable();
+}
+
+function requireCurrentAiBinding(binding: AiMapBinding): void {
+  if (tornDown || binding !== aiBinding || binding.revision !== resultRevision) throw new AppError("ai_map_unavailable", "AI map result has been replaced or released");
+}
+
+function syncAiTools(): void {
+  if (aiBinding === null || !aiBinding.initialFinished) {
+    fitAiMapTool.disable();
+    setAiMapTool.disable();
+  } else {
+    fitAiMapTool.enable();
+    setAiMapTool.enable();
+  }
+}
+
+function waitForAiJob<T>(work: Promise<T>, signal: AbortSignal): Promise<T> {
+  signal.throwIfAborted();
+  return new Promise((resolve, reject) => {
+    const abort = (): void => { reject(signal.reason); };
+    signal.addEventListener("abort", abort, {once: true});
+    work.then(resolve, reject).finally(() => signal.removeEventListener("abort", abort));
+  });
+}
+
+async function runAiMapJob(binding: AiMapBinding, operation?: (commands: AiMapViewCommands) => mapAppModels.AiMapViewType, hostSignal?: AbortSignal): Promise<AiMapJobResult> {
+  requireCurrentAiBinding(binding);
+  if (aiJob !== null) throw new AppError("ai_map_busy", "An AI map operation is still running");
+  hostSignal?.throwIfAborted();
+  const job = {controller: new AbortController()};
+  aiJob = job;
+  const lifetimeSignal = hostSignal === undefined ? job.controller.signal : AbortSignal.any([hostSignal, job.controller.signal]);
+  const budget = new AbortController();
+  const signal = AbortSignal.any([lifetimeSignal, budget.signal]);
+  const deadline = performance.now() + __GEOMCP_MAP_READY_TIMEOUT_MS__;
+  const timer = setTimeout(() => budget.abort(new AppError("ai_map_job_timeout", "AI map screenshot job exceeded its time budget")), __GEOMCP_MAP_READY_TIMEOUT_MS__);
+  let captureWork: Promise<AiMapScreenshot> | null = null;
+  try {
+    const view = operation === undefined ? binding.port.commands.getView() : operation(binding.port.commands);
+    let screenshot: AiMapScreenshot | null = null;
+    if (binding.mode === "screenshot") {
+      try {
+        captureWork = binding.port.capture(view, signal);
+        screenshot = await waitForAiJob(captureWork, signal);
+      } catch (error) {
+        screenshot = {image: null, warning: AppError.fromUnknown(error, "ai_map_screenshot_failed", "AI map screenshot generation failed").toJSON()};
+      }
+      // 生命周期撤销和客户端取消不交付旧图；单纯截图超时仍返回视口与 warning。
+      requireCurrentAiBinding(binding);
+      hostSignal?.throwIfAborted();
+      if (screenshot.image !== null && JSON.stringify(binding.port.commands.getView()) !== JSON.stringify(view)) {
+        screenshot = {image: null, warning: new AppError("ai_map_view_changed", "The AI map changed before its screenshot could be delivered").toJSON()};
+      }
+      if (screenshot.warning !== null) console.warn("[GeoMCP] AI map screenshot failed.", screenshot.warning);
+      if (operation === undefined) {
+        const state = {session_id: binding.sessionId, ...binding.port.commands.getView()};
+        const content: Array<{type: "text"; text: string} | NonNullable<AiMapScreenshot["image"]>> = [{type: "text", text: JSON.stringify(state)}];
+        if (screenshot.image !== null) content.push(screenshot.image);
+        else content.push({type: "text", text: JSON.stringify({warning: screenshot.warning})});
+        try {
+          // 超时也只发送一次文字 warning；SDK 消费剩余预算，不为发送重置整份超时。
+          lifetimeSignal.throwIfAborted();
+          await waitForAiJob(app.updateModelContext({content}, {signal: lifetimeSignal, timeout: Math.max(1, deadline - performance.now())}), lifetimeSignal);
+        } catch (error) {
+          if (binding === aiBinding && !tornDown) console.warn("[GeoMCP] AI map initial image context could not be submitted.", AppError.fromUnknown(error, "ai_map_context_failed", "AI map initial context submission failed").toJSON());
+        }
+      }
+    }
+    requireCurrentAiBinding(binding);
+    return {view: binding.port.commands.getView(), screenshot};
+  } finally {
+    clearTimeout(timer);
+    const release = (): void => {
+      if (aiJob === job) aiJob = null;
+      // 只处理尚未开始的最新结果首图；已尝试的首图永不自动重拍或重发。
+      submitInitialAiImage();
+    };
+    // SnapDOM 不接收 AbortSignal；超时可以先回复，但底层结束前保留作业槽，避免无限堆积捕获。
+    if (captureWork === null) release();
+    else void captureWork.then(release, release);
+  }
+}
+
+function submitInitialAiImage(): void {
+  const binding = aiBinding;
+  if (!appConnected || aiJob !== null || binding === null || binding.mode !== "screenshot" || binding.initialStarted || tornDown) return;
+  binding.initialStarted = true;
+  void runAiMapJob(binding).catch((error: unknown) => {
+    if (binding === aiBinding && !tornDown) console.warn("[GeoMCP] AI map initial screenshot failed.", AppError.fromUnknown(error, "ai_map_screenshot_failed", "AI map initial screenshot failed").toJSON());
+  }).finally(() => {
+    if (binding !== aiBinding || tornDown) return;
+    binding.initialFinished = true;
+    syncAiTools();
+  });
 }
 
 // URL 只接受当前部署和当前 Session 的固定路由，避免备用链接或视觉 URL 混入别处的数据。
@@ -185,15 +289,21 @@ app.ontoolresult = (result): void => {
           const layout = mapAppModels.aiMapAppPayloadSchema.parse(output.ai_payload);
           if (layout.url !== undefined) validateMapUrl(layout.url, sessionId, ["snapshot-interactive", "snapshot.webp"]);
           const aiData = {map_payload: assembleMapPayload(data, layout), style_payload: appStylePayload};
-          const onAiViewCommandsChange = (commands: AiMapViewCommands | null): void => {
+          const mode = data.visual_output;
+          const onAiViewCommandsChange = (port: AiMapCapturePort | null): void => {
             // 旧实例的 ready 或 cleanup 可能迟到；仅当前代次能启用工具或撤销当前绑定。
             if (tornDown || revision !== resultRevision) return;
-            if (commands === null) {
+            if (port === null) {
               revokeAiBinding();
             } else {
-              aiBinding = {sessionId, commands};
-              fitAiMapTool.enable();
-              setAiMapTool.enable();
+              const binding: AiMapBinding = {
+                sessionId, port, mode, revision,
+                initialStarted: false, initialFinished: mode !== "screenshot",
+                run: (operation, signal) => runAiMapJob(binding, operation, signal)
+              };
+              aiBinding = binding;
+              syncAiTools();
+              submitInitialAiImage();
             }
           };
           maps.push(createElement("section", {key: "ai", "aria-label": "AI map"},
@@ -287,6 +397,7 @@ applyHostDimensions(undefined);
 void app.connect().then(() => {
   if (tornDown) return;
   appConnected = true;
+  submitInitialAiImage();
   applyHostDimensions(app.getHostContext());
   requestFullscreen();
 }).catch(() => { if (!tornDown) showError("This chat host could not initialize the map App."); });
