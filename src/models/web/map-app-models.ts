@@ -95,6 +95,8 @@ export const aiMapCenterZoomSchema = z.object({
 // schema 只检查 session_id 格式；是否匹配当前已就绪 AI 地图，由 Tool handler 在每次调用时检查。
 export const fitAiMapBboxInputSchema = z.object({session_id: finalSessionIdSchema, bbox: aiMapBoundsSchema}).strict();
 export const setAiMapCenterZoomInputSchema = aiMapCenterZoomSchema.extend({session_id: finalSessionIdSchema});
+/** 当前截图和 User → AI 对齐只需要会话身份，视口由当前 runtime 读取。 */
+export const aiMapSessionInputSchema = z.object({session_id: finalSessionIdSchema}).strict();
 
 /** 成功命令从 Leaflet 读取的实际视口；表示视口已应用，不保证新瓦片、信息栏或截图已经就绪。 */
 export const aiMapViewSchema = z.object({
@@ -108,6 +110,8 @@ export const aiMapViewSchema = z.object({
 }).strict();
 /** 成功 Tool Result 的 structuredContent 与 JSON 文本共用此结构；失败走 AppError / isError 路径。 */
 export const aiMapToolViewSchema = aiMapViewSchema.extend({session_id: finalSessionIdSchema});
+/** 新工具只交付 AI 实际可见范围，不同时重复返回 center / zoom。 */
+export const aiMapToolBoundsSchema = aiMapToolViewSchema.pick({session_id: true, visible_bounds: true});
 
 // 单块数据类型均从 schema 推导，避免运行时校验与 TypeScript 字段声明分叉。
 export type MapAppSharedDataType = z.infer<typeof mapAppSharedDataSchema>;

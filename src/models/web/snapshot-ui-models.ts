@@ -1,4 +1,5 @@
 import {z} from "zod";
+import type {AppErrorType} from "../common/error-models.js";
 import {commonVisualMapPayloadSchema} from "../mapsurface/map-payload-models.js";
 import {renderStylePayloadSchema} from "../mapsurface/style/user-css-style-models.js";
 
@@ -9,6 +10,11 @@ export const snapshotMapDataSchema = z.object({
 }).strict();
 
 export type SnapshotMapDataType = z.infer<typeof snapshotMapDataSchema>;
+
+/** MCP App 单次截图交付：WebP image 或可恢复 warning。 */
+export type AiMapScreenshot =
+  | {image: {type: "image"; mimeType: "image/webp"; data: string}; warning: null}
+  | {image: null; warning: AppErrorType};
 
 /** Snapshot 截图使用的固定恢复结果。 */
 export const snapshotWarningCodeSchema = z.enum([

@@ -305,6 +305,7 @@ export async function publishToolFlow(
   return Object.freeze({
     ai_output: Object.freeze({
       session_id: result.session_id,
+      bbox: input.toolReply.result.bbox,
       ...(aiOutputYaml === undefined ? {} : {ai_output_yaml: aiOutputYaml}),
       ...(overlayOutputJson === undefined ? {} : {overlay_output_json: overlayOutputJson}),
     }),

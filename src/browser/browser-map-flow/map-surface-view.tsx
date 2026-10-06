@@ -41,7 +41,7 @@ function createUnavailableMeasureToolPort(message: string): MeasureToolUiPortTyp
  * Leaflet adapter 只负责提供真实 DOM 容器并把纯数据 port 转换成 Interactive Flow 输入。
  * 异步 Flow 的完成时间可能晚于组件卸载，因此 abort 与晚到结果的 dispose 必须共同守住清理边界。
  */
-export function MapSurfaceView({mapPayload, stylePayload, onMetricScaleChange, onZoomCommandsChange, onInteractionCommandsChange, onMeasureToolPortChange, onActiveMeasurementChange, onHoveredFeatureChange, onSelectedFeatureChange, onMapRuntimeReady, onMapRuntimeError}: MapSurfacePortProps) {
+export function MapSurfaceView({mapPayload, stylePayload, onMetricScaleChange, onZoomCommandsChange, onInteractionCommandsChange, onMeasureToolPortChange, onActiveMeasurementChange, onHoveredFeatureChange, onSelectedFeatureChange, onMapRuntimeReady, onMapRuntimeError, onViewBoundsReaderChange}: MapSurfacePortProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -181,6 +181,12 @@ export function MapSurfaceView({mapPayload, stylePayload, onMetricScaleChange, o
       }
       onMetricScaleChange(toMetricScaleView(currentMetricScale));
       onMapRuntimeReady(result.readySummary.status);
+      onViewBoundsReaderChange?.(() => {
+        // 每次读取当前 User 视口；旧 effect 的 reader 不能访问已经取消或替换的地图。
+        if (abortController.signal.aborted || flowResult !== result) throw new AppError("user_map_unavailable", "User map instance has been released");
+        const bounds = result.mapSurface.map.getBounds();
+        return {south: bounds.getSouth(), west: bounds.getWest(), north: bounds.getNorth(), east: bounds.getEast()};
+      });
     }).catch((error: unknown) => {
       // 主动卸载产生的 AbortError 属于正常生命周期；其余初始化失败才进入浏览器诊断日志。
       if (!abortController.signal.aborted) {
@@ -198,10 +204,11 @@ export function MapSurfaceView({mapPayload, stylePayload, onMetricScaleChange, o
       onInteractionCommandsChange(null);
       onMeasureToolPortChange(null);
       onActiveMeasurementChange(null);
+      onViewBoundsReaderChange?.(null);
       abortController.abort();
       flowResult?.dispose();
     };
-  }, [mapPayload, stylePayload, onMetricScaleChange, onZoomCommandsChange, onInteractionCommandsChange, onMeasureToolPortChange, onActiveMeasurementChange, onHoveredFeatureChange, onSelectedFeatureChange, onMapRuntimeReady, onMapRuntimeError]);
+  }, [mapPayload, stylePayload, onMetricScaleChange, onZoomCommandsChange, onInteractionCommandsChange, onMeasureToolPortChange, onActiveMeasurementChange, onHoveredFeatureChange, onSelectedFeatureChange, onMapRuntimeReady, onMapRuntimeError, onViewBoundsReaderChange]);
 
   return <div ref={containerRef} className="geomcp-map-surface" aria-label="Interactive map" />;
 }

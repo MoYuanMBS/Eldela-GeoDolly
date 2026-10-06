@@ -18,10 +18,11 @@ import {finalSessionIdSchema} from "../src/models/backend/session-id-models.js";
 import {mcpInteractiveMapDataSchema, type InteractiveMapDataType} from "../src/models/web/interactive-ui-models.js";
 import * as mapAppModels from "../src/models/web/map-app-models.js";
 import type {CommonVisualMapPayloadType} from "../src/models/mapsurface/map-payload-models.js";
-import type {AiMapViewCommands} from "../src/browser/web/map-surface-port.js";
+import type {AiMapViewCommands, MapSurfaceBoundsReader} from "../src/browser/web/map-surface-port.js";
 import {AiMap} from "./ai-map.js";
-import {registerAiMapTools, type AiMapJobResult, type AiMapToolBinding} from "./register-tools.js";
-import type {AiMapCapturePort, AiMapScreenshot} from "./ai-map-screenshot.js";
+import {registerAiMapTools, type AiMapJobResult, type AiMapToolBinding, type UserMapToolBinding} from "./register-tools.js";
+import type {AiMapCapturePort} from "./ai-map-screenshot.js";
+import type {AiMapScreenshot} from "../src/models/web/snapshot-ui-models.js";
 import {AppError} from "../src/shared/app-error.js";
 import {GEOMCP_NAME} from "../src/shared/brand.js";
 
@@ -59,7 +60,7 @@ let fullscreenRequested = false;
 // 代次对应一次结果交付；同 Session 重发也必须区分，以撤销上一轮初始化和迟到回调。
 let resultRevision = 0;
 let tornDown = false;
-// 只保存当前已 ready 的 AI 命令；User 地图状态由自己的页面和 runtime 持有。
+// 只保存当前已 ready 的命令/读取端口；两张地图的 Leaflet 实例仍由各自 runtime 持有。
 interface AiMapBinding extends AiMapToolBinding {
   port: AiMapCapturePort;
   mode: "screenshot" | "interactive";
@@ -68,6 +69,7 @@ interface AiMapBinding extends AiMapToolBinding {
   initialFinished: boolean;
 }
 let aiBinding: AiMapBinding | null = null;
+let userBinding: UserMapToolBinding | null = null;
 let aiJob: {controller: AbortController} | null = null;
 
 // 仅缩放整个展示区域；Leaflet 始终在后端给出的逻辑画布上确定初始 zoom。
@@ -84,6 +86,7 @@ resizeObserver.observe(mapContent);
 // 共享交付或 App 初始化失败时清理两张地图；AI 的局部失败由下面的独立路径处理。
 function showError(errorMessage: string): void {
   resultRevision += 1;
+  userBinding = null;
   revokeAiBinding();
   interactiveMapUrl = null;
   flushSync(() => reactRoot.render(null));
@@ -132,7 +135,7 @@ function selectUrlForManualCopy(): void {
 
 const app = new App({name: `${GEOMCP_NAME} Map`, version: "2.0.0"}, {tools: {listChanged: true}}, {autoResize: false});
 // 同一个 App 承载两张地图；connect 前完成注册，每次工具调用通过 getter 读取当前绑定。
-const {fitAiMapTool, setAiMapTool} = registerAiMapTools(app, () => aiBinding);
+const {fitAiMapTool, setAiMapTool, captureAiMapTool, fitAiMapToUserViewTool} = registerAiMapTools(app, () => aiBinding, () => userBinding);
 
 // 在取消异步初始化或释放地图前先撤销可调用入口，防止宿主继续使用上一轮命令。
 function revokeAiBinding(): void {
@@ -140,6 +143,8 @@ function revokeAiBinding(): void {
   aiJob?.controller.abort(new AppError("ai_map_unavailable", "AI map result has been replaced or released"));
   fitAiMapTool.disable();
   setAiMapTool.disable();
+  captureAiMapTool.disable();
+  fitAiMapToUserViewTool.disable();
 }
 
 function requireCurrentAiBinding(binding: AiMapBinding): void {
@@ -150,9 +155,15 @@ function syncAiTools(): void {
   if (aiBinding === null || !aiBinding.initialFinished) {
     fitAiMapTool.disable();
     setAiMapTool.disable();
+    captureAiMapTool.disable();
+    fitAiMapToUserViewTool.disable();
   } else {
     fitAiMapTool.enable();
     setAiMapTool.enable();
+    if (aiBinding.mode === "screenshot") captureAiMapTool.enable();
+    else captureAiMapTool.disable();
+    if (userBinding !== null && userBinding.sessionId === aiBinding.sessionId) fitAiMapToUserViewTool.enable();
+    else fitAiMapToUserViewTool.disable();
   }
 }
 
@@ -255,6 +266,7 @@ function assembleMapPayload(data: mapAppModels.MapAppSharedDataType, layout: map
 app.ontoolresult = (result): void => {
   if (tornDown) return;
   const revision = ++resultRevision;
+  userBinding = null;
   revokeAiBinding();
   // 同 Session 重发也必须同步撤销旧 effect，阻止迟到初始化和旧命令继续使用旧实例。
   flushSync(() => reactRoot.render(null));
@@ -339,9 +351,15 @@ app.ontoolresult = (result): void => {
     fallback.hidden = false;
     fallbackStatus.textContent = "Open or copy the map URL to view it in a browser.";
     rootElement.dataset.state = "ready";
+    const onViewBoundsReaderChange = (reader: MapSurfaceBoundsReader | null): void => {
+      // 旧 User 实例的 ready/cleanup 不得启用新代次工具，也不得撤销新实例的绑定。
+      if (tornDown || revision !== resultRevision) return;
+      userBinding = reader === null ? null : {sessionId, getBounds: reader};
+      syncAiTools();
+    };
     maps.unshift(createElement("section", {key: "user", "aria-label": "User map"},
       createElement("h2", {className: "geomcp-app-map-title"}, "User map"),
-      createElement(MapPage, {mapData: userData, MapSurfaceComponent: MapSurfaceView})));
+      createElement(MapPage, {mapData: userData, MapSurfaceComponent: MapSurfaceView, onViewBoundsReaderChange})));
     reactRoot.render(createElement("div", {className: "geomcp-app-maps", key: revision}, ...maps));
     requestFullscreen();
   } catch {
@@ -359,6 +377,7 @@ app.onteardown = async () => {
   // 先拒绝后续通知/迟到 connect，再撤销工具；React unmount 会取消两张地图的异步任务并释放 runtime。
   tornDown = true;
   resultRevision += 1;
+  userBinding = null;
   revokeAiBinding();
   interactiveMapUrl = null;
   resizeObserver.disconnect();

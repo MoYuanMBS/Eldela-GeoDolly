@@ -17,6 +17,7 @@ import type {ResolvedBasemapType} from "../common/basemap-models.js";
 import type {LeafletConfigType} from "./config-models.js";
 import type {
   AiOutputGroupsWithIdsType,
+  BBoxType,
   DisplayIdByFeatureIdType,
   EffectiveQueryModeType,
   IdentifiedOverlayGroupsWithDisplayIdType,
@@ -142,6 +143,8 @@ export type RunToolFlowResultType = Readonly<{
 export type AiPublishedToolFlowResultType = Readonly<{
   /** 与客户端交付相同的最终会话 ID，供 AI 后续命令引用。 */
   session_id: string;
+  /** Python 的最终查询范围，原样保留 [west, south, east, north]。 */
+  bbox: BBoxType;
   /** 业务 AI Output 的 YAML 文本；Basemap-only 无业务记录时省略。 */
   ai_output_yaml?: string;
   /** 仅在部署允许、请求选择且存在业务 Overlay 时提供的 GeoJSON 文本。 */

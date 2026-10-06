@@ -42,6 +42,9 @@ export interface MapSurfaceInteractionCommands {
   clearSelection(): void;
 }
 
+/** 读取所属地图的实时范围，不把 Leaflet 实例交给 App 或 UI。 */
+export type MapSurfaceBoundsReader = () => AiMapBoundsType;
+
 /** UI 只订阅纯数据 state 并发送 mode command；不接触 Leaflet Layer。 */
 export interface MeasureToolUiPortType {
   getUiState(): MeasureToolUiStateType;
@@ -66,6 +69,7 @@ export interface MapSurfacePortProps {
   onSelectedFeatureChange(target: InteractiveFeatureTargetType | null): void;
   onMapRuntimeReady(status: MapRuntimeStatusType): void;
   onMapRuntimeError(message: string): void;
+  onViewBoundsReaderChange?(reader: MapSurfaceBoundsReader | null): void;
 }
 
 /** MapPage 依赖 port component，而不是某个 Leaflet React 组件。 */

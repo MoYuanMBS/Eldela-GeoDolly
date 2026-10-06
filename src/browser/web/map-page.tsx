@@ -15,6 +15,7 @@ import type {
   MapSurfaceInteractionCommands,
   MapSurfacePortComponentType,
   MapSurfaceZoomCommands,
+  MapSurfaceBoundsReader,
   MetricScaleViewType,
 } from "./map-surface-port.js";
 
@@ -28,6 +29,7 @@ interface MapPageProps {
   mapData?: InteractiveMapDataType;
   /** 由 composition root 注入的地图实现；页面本身不导入 Leaflet adapter。 */
   MapSurfaceComponent: MapSurfacePortComponentType;
+  onViewBoundsReaderChange?(reader: MapSurfaceBoundsReader | null): void;
 }
 
 interface MapPageStyle extends CSSProperties {
@@ -66,7 +68,7 @@ type StandardUiState =
   | {status: "ready"; measuredHeight: number}
   | {status: "failed"; message: string};
 
-export function MapPage({mapDataUrl, mapData, MapSurfaceComponent}: MapPageProps) {
+export function MapPage({mapDataUrl, mapData, MapSurfaceComponent, onViewBoundsReaderChange}: MapPageProps) {
   const [loadState, setLoadState] = useState<MapLoadState>({status: "loading"});
   const [metricScale, setMetricScale] = useState<MetricScaleViewType | null>(null);
   const [mapRuntimeState, setMapRuntimeState] = useState<MapRuntimeState>({status: "pending"});
@@ -257,6 +259,7 @@ export function MapPage({mapDataUrl, mapData, MapSurfaceComponent}: MapPageProps
               onSelectedFeatureChange={setSelectedFeature}
               onMapRuntimeReady={handleMapRuntimeReady}
               onMapRuntimeError={handleMapRuntimeError}
+              onViewBoundsReaderChange={onViewBoundsReaderChange}
             />
           </div>
           <div className="geomcp-interactive-ui-root">

@@ -3,13 +3,9 @@
 import {snapdom} from "@zumer/snapdom";
 import type {AiMapViewCommands} from "../src/browser/web/map-surface-port.js";
 import type {AiMapViewType} from "../src/models/web/map-app-models.js";
-import type {AppErrorType} from "../src/models/common/error-models.js";
+import type {AiMapScreenshot} from "../src/models/web/snapshot-ui-models.js";
 import {SNAPSHOT_BUILT_IN_CONFIG} from "../src/browser/built-in-config/snapshot.js";
 import {AppError} from "../src/shared/app-error.js";
-
-export type AiMapScreenshot =
-  | {image: {type: "image"; mimeType: "image/webp"; data: string}; warning: null}
-  | {image: null; warning: AppErrorType};
 
 export interface AiMapCapturePort {
   commands: AiMapViewCommands;
