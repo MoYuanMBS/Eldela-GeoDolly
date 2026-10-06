@@ -56,16 +56,8 @@ function resolveAssetPath(assetsRootPath: string, encodedPathname: string): stri
   return path.dirname(assetPath) === assetsRootPath ? assetPath : null;
 }
 
-/** Playwright 连接 wildcard listener 时使用 loopback；公开 origin 不参与预发布截图。 */
-export function getInternalMapOrigin(httpConfig: WebConfigType["http"]): string {
-  const configuredHost = httpConfig.listen_host;
-  const connectHost = configuredHost === "0.0.0.0" ? "127.0.0.1" : configuredHost === "::" ? "::1" : configuredHost;
-  const urlHost = connectHost.includes(":") && !connectHost.startsWith("[") ? `[${connectHost}]` : connectHost;
-  return `http://${urlHost}:${httpConfig.map.port}`;
-}
-
 /**
- * 创建 Session route 与 Browser 构建资源共用的 handler，供公开入口和本机截图复用。
+ * 创建 Session route 与 Browser 构建资源共用的 handler。
  * 构建资源只允许访问 dist/web/assets 的单层 hash 文件，不能借路径穿越读取 cache 或源码。
  */
 export function createMapHttpRequestHandler(webConfig: WebConfigType, sessionManager: SessionManager, publicBasePath = ""): RequestListener {
@@ -114,7 +106,6 @@ export function createMapHttpRequestHandler(webConfig: WebConfigType, sessionMan
 
       const sessionResponse = await resolveSessionHttpRoute(
         pathname,
-        request.headers,
         htmlTemplate,
         webConfig.session,
         sessionManager,
@@ -153,7 +144,7 @@ export function createMapHttpRequestHandler(webConfig: WebConfigType, sessionMan
   };
 }
 
-/** 独立本机 HTTP listener 仅供截图；公开入口由 MCP HTTP service 创建。 */
+/** 创建独立地图 HTTP listener；公开入口由 MCP HTTP service 创建。 */
 export function createMapHttpService(webConfig: WebConfigType, sessionManager: SessionManager): Server {
   const server = createServer(createMapHttpRequestHandler(webConfig, sessionManager));
 

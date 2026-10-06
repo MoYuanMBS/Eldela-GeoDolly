@@ -6,10 +6,8 @@ import path from "node:path";
 
 import {
   fileWriterSessionIdSchema,
-  imageFileDataSchema,
   sessionFilesInputSchema,
   type FileWriteOptionsType,
-  type ImageFileDataType,
   type PendingFile,
   type SessionFilesInputType,
 } from "../../models/backend/file-writer-models.js";
@@ -24,7 +22,6 @@ const requiredSessionFilePaths = [
   ["selected-query.json"],
   ["interactive-map", "interactive-map.json"],
   ["output", "interactive-map-url.json"],
-  ["output", "snapshot.webp"],
 ] as const;
 const interactiveMapArchivePath = ["interactive-map", "interactive-map.json"] as const;
 const aiOutputPath = ["output", "ai-output.yaml"] as const;
@@ -34,14 +31,6 @@ function parseSessionFiles(files: SessionFilesInputType): SessionFilesInputType 
     return sessionFilesInputSchema.parse(files);
   } catch (error) {
     throw AppError.fromUnknown(error, "file_write_input", "Invalid Session files input");
-  }
-}
-
-function parseImageData(image: ImageFileDataType): Uint8Array {
-  try {
-    return imageFileDataSchema.parse(image);
-  } catch (error) {
-    throw AppError.fromUnknown(error, "file_write_input", "Invalid snapshot image data");
   }
 }
 
@@ -197,21 +186,6 @@ export async function writeSessionFiles(sessionId: string, filesInput: SessionFi
   throw AppError.fromUnknown(failedResult.reason, "file_write", "Failed to write Session files");
 }
 
-/**
- * 单独把 Playwright WebP bytes 写入已经准备好的 Session。该入口不检查或创建目录；
- * 调用方必须先等待 writeSessionFiles 成功。成功返回 true，写入失败抛出 AppError。
- */
-export async function writeSnapshotFile(sessionId: string, imageInput: ImageFileDataType, options: FileWriteOptionsType = {}): Promise<boolean> {
-  const image = parseImageData(imageInput);
-  try {
-    await writeFile(path.join(sessionDirectoryPath(sessionId), "output", "snapshot.webp"), image, {signal: options.signal});
-    return true;
-  } catch (error) {
-    if (options.signal !== undefined && isAbortError(error)) throw abortError(options.signal);
-    throw AppError.fromUnknown(error, "file_write", "Failed to write Session snapshot");
-  }
-}
-
 function sessionsTemporaryPath(): string {
   return path.join(cacheRootPath, `.sessions.${randomUUID()}.tmp`);
 }
@@ -288,11 +262,6 @@ export async function readInteractiveMapArchiveFile(sessionId: string): Promise<
   } catch (error) {
     throw AppError.fromUnknown(error, "file_session_archive_invalid", "Invalid Interactive Map archive JSON");
   }
-}
-
-/** 返回原始 WebP bytes；HTTP cache validator 由响应层按内容生成。 */
-export function readSessionSnapshotFile(sessionId: string): Promise<Buffer | null> {
-  return readOptionalSessionFile(sessionId, ["output", "snapshot.webp"]);
 }
 
 /** 临时索引清理失败只记 warning，不能覆盖原始 checkpoint 写入异常。 */

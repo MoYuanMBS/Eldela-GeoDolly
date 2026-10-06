@@ -1,8 +1,5 @@
 /** 已登记 Map Session 的公开 HTTP route 解析与响应构筑。 */
 
-import {createHash} from "node:crypto";
-import type {IncomingHttpHeaders} from "node:http";
-
 import {buildMapRuntimePayloads} from "../map-session/map-runtime.js";
 import type {SessionManager} from "../map-session/session-manager.js";
 import type {SessionConfigType} from "../../models/backend/config-models.js";
@@ -10,12 +7,11 @@ import {finalSessionIdSchema, type IndexSessionIdType} from "../../models/backen
 import type {SessionHttpStatusType} from "../../models/common/session-http-models.js";
 import {
   readInteractiveMapArchiveFile,
-  readSessionSnapshotFile,
   sessionDirectoryExists,
 } from "../utils/file-writer.js";
 import {AppError} from "../../shared/app-error.js";
 
-const SESSION_ROUTE_PATTERN = /^\/session\/([^/]+)\/(status|interactive|interactive\/data|snapshot-interactive|snapshot-interactive\/data|snapshot\.webp)$/u;
+const SESSION_ROUTE_PATTERN = /^\/session\/([^/]+)\/(status|interactive|interactive\/data)$/u;
 const INTERACTIVE_FLOW_ATTRIBUTE = 'data-geomcp-browser-flow="interactive"';
 const MAP_DATA_META_PATTERN = /<meta\s+name="geomcp-map-data-url"\s+content="[^"]*"\s*\/>/u;
 
@@ -25,37 +21,19 @@ export interface MapHttpRouteResponseType {
   headers?: Readonly<Record<string, string>>;
 }
 
-interface PublicSessionHtmlOptions {
-  status: "active" | "archived";
-  statusUrl: string;
-  snapshotUrl: string;
-}
-
-/** 同一 Browser build 同时服务公开 Interactive 与 Snapshot Interactive 页面。 */
+/** Browser build 只服务完整 Interactive 页面，不注入前端到期管理。 */
 export function buildMapBrowserHtml(
   htmlTemplate: string,
-  flow: "interactive" | "snapshot",
   dataUrl: string,
-  session?: PublicSessionHtmlOptions,
   publicBasePath = "",
 ): string {
   if (!htmlTemplate.includes(INTERACTIVE_FLOW_ATTRIBUTE) || !MAP_DATA_META_PATTERN.test(htmlTemplate)) {
     throw new AppError("invalid_browser_build", "Browser index does not expose the required Map injection points");
   }
-  let html = htmlTemplate
+  return htmlTemplate
     .replace("<head>", `<head>\n    <meta name="geomcp-base-path" content="${publicBasePath}" />`)
     .replaceAll('="./assets/', `="${publicBasePath}/assets/`)
-    .replace(INTERACTIVE_FLOW_ATTRIBUTE, `data-geomcp-browser-flow="${flow}"`)
     .replace(MAP_DATA_META_PATTERN, `<meta name="geomcp-map-data-url" content="${dataUrl}" />`);
-  if (session !== undefined) {
-    const sessionMeta = [
-      `<meta name="geomcp-session-status-url" content="${session.statusUrl}" />`,
-      `<meta name="geomcp-session-snapshot-url" content="${session.snapshotUrl}" />`,
-      `<meta name="geomcp-session-initial-status" content="${session.status}" />`,
-    ].join("\n    ");
-    html = html.replace("</head>", `    ${sessionMeta}\n  </head>`);
-  }
-  return html;
 }
 
 function emptyResponse(statusCode: number, headers?: Readonly<Record<string, string>>): MapHttpRouteResponseType {
@@ -68,11 +46,6 @@ function jsonResponse(value: unknown): MapHttpRouteResponseType {
     body: JSON.stringify(value),
     headers: {"content-type": "application/json; charset=utf-8"},
   };
-}
-
-function headerValue(headers: IncomingHttpHeaders, name: string): string | undefined {
-  const value = headers[name];
-  return Array.isArray(value) ? value.join(", ") : value;
 }
 
 function recheckAfterMilliseconds(config: SessionConfigType): number {
@@ -91,7 +64,6 @@ async function removeMissingArchive(sessionManager: SessionManager, sessionId: I
  */
 export async function resolveSessionHttpRoute(
   pathname: string,
-  requestHeaders: IncomingHttpHeaders,
   htmlTemplate: string,
   sessionConfig: SessionConfigType,
   sessionManager: SessionManager,
@@ -123,40 +95,20 @@ export async function resolveSessionHttpRoute(
     return jsonResponse(status);
   }
 
-  if (route === "interactive/data" || route === "snapshot-interactive/data") {
-    if (route === "snapshot-interactive/data" && lookup.status === "archived") return emptyResponse(410);
+  if (route === "interactive/data") {
     const archive = await readInteractiveMapArchiveFile(sessionId);
     if (archive === null) {
       sessionManager.unregisterSession(sessionId);
       return emptyResponse(404);
     }
     const runtime = buildMapRuntimePayloads(archive);
-    return jsonResponse(route === "interactive/data" ? runtime.interactive : runtime.snapshot);
-  }
-
-  if (route === "snapshot.webp") {
-    const snapshot = await readSessionSnapshotFile(sessionId);
-    if (snapshot === null) {
-      sessionManager.unregisterSession(sessionId);
-      return emptyResponse(404);
-    }
-    const etag = `"${createHash("sha256").update(snapshot).digest("base64url")}"`;
-    const headers = {"cache-control": "no-cache", "content-type": "image/webp", etag};
-    if (headerValue(requestHeaders, "if-none-match") === etag) return emptyResponse(304, headers);
-    return {statusCode: 200, body: snapshot, headers};
+    return jsonResponse(runtime.interactive);
   }
 
   const encodedSessionId = encodeURIComponent(sessionId);
   const basePath = `${publicBasePath}/session/${encodedSessionId}`;
-  const flow = route === "snapshot-interactive" ? "snapshot" : "interactive";
-  const dataUrl = flow === "snapshot"
-    ? `${basePath}/snapshot-interactive/data`
-    : `${basePath}/interactive/data`;
-  const html = buildMapBrowserHtml(htmlTemplate, flow, dataUrl, flow === "snapshot" ? {
-    status: lookup.status,
-    statusUrl: `${basePath}/status`,
-    snapshotUrl: `${basePath}/snapshot.webp`,
-  } : undefined, publicBasePath).replace("</head>", `    <meta name="geomcp-basemap-base-url" content="${publicBasePath}/basemap/${encodedSessionId}" />\n  </head>`);
+  const html = buildMapBrowserHtml(htmlTemplate, `${basePath}/interactive/data`, publicBasePath)
+    .replace("</head>", `    <meta name="geomcp-basemap-base-url" content="${publicBasePath}/basemap/${encodedSessionId}" />\n  </head>`);
   return {
     statusCode: 200,
     body: html,

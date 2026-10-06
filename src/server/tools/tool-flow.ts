@@ -17,7 +17,6 @@ import {
 import {generateAiOutputYaml} from "../map-data/yaml-output.js";
 import {buildMapRuntimePayloads} from "../map-session/map-runtime.js";
 import type {SessionManager} from "../map-session/session-manager.js";
-import type {SnapshotService} from "../map-session/snapshot-service.js";
 import {leafletConfigSchema, outputConfigSchema} from "../../models/backend/config-models.js";
 import {
   interactiveMapArchiveSchema,
@@ -44,7 +43,6 @@ import {
   cleanupSessionFiles,
   sessionFilesAreComplete,
   writeSessionFiles,
-  writeSnapshotFile,
 } from "../utils/file-writer.js";
 import {logger} from "../utils/logger.js";
 import {buildBasemapOnlyMapPayload} from "./basemap-only-flow.js";
@@ -53,7 +51,6 @@ import {buildNonCoreMapPayload} from "./non-core-flow.js";
 
 export interface ToolFlowServicesType {
   sessionManager: SessionManager;
-  snapshotService: SnapshotService;
 }
 
 interface PreparedBackendFlowType {
@@ -138,7 +135,7 @@ function buildInteractiveMapArchive(
   });
 }
 
-/** 前端公共子流程：Archive 与当前版本配置组装成 Interactive / Snapshot runtime。 */
+/** 前端公共子流程：Archive 与当前版本配置组装成 Interactive runtime。 */
 function prepareFrontendFlow(
   input: ToolFlowInputType,
   processed: ProcessedToolReplyType,
@@ -156,7 +153,6 @@ function prepareFrontendFlow(
     selected_location_name: input.pythonQuery.selected_candidate.name ?? null,
     interactive_archive: interactiveArchive,
     interactive_runtime: browserRuntime.interactive,
-    snapshot_runtime: browserRuntime.snapshot,
     info: processed.info,
   });
 }
@@ -196,38 +192,10 @@ function serializeOverlayJson(overlayOutput: NonNullable<InteractiveMapArchiveTy
   }
 }
 
-function buildSessionUrl(sessionId: string, route: "interactive" | "snapshot-interactive" | "snapshot.webp"): string {
-  const publicOrigin = config.getWebConfig().http.map.public_origin;
-  return `${publicOrigin}/session/${encodeURIComponent(sessionId)}/${route}`;
-}
-
 /** `interactive-map-url.json` 只供客户端完整 Interactive 页面使用。 */
 function buildClientInteractiveUrl(sessionId: string): string {
-  return buildSessionUrl(sessionId, "interactive");
-}
-
-function runNoneVisualOutputFlow(): undefined {
-  return undefined;
-}
-
-function runScreenshotVisualOutputFlow(sessionId: string): string {
-  return buildSessionUrl(sessionId, "snapshot.webp");
-}
-
-function runInteractiveVisualOutputFlow(sessionId: string): string {
-  return buildSessionUrl(sessionId, "snapshot-interactive");
-}
-
-/** AI 视觉 URL 只由请求的单一分支生成，不附带客户端 Interactive URL。 */
-function resolveAiVisualUrl(sessionId: string, visualOutput: ToolFlowInputType["toolInput"]["visual_output"]): string | undefined {
-  switch (visualOutput) {
-    case "none":
-      return runNoneVisualOutputFlow();
-    case "screenshot":
-      return runScreenshotVisualOutputFlow(sessionId);
-    case "interactive":
-      return runInteractiveVisualOutputFlow(sessionId);
-  }
+  const publicOrigin = config.getWebConfig().http.map.public_origin;
+  return `${publicOrigin}/session/${encodeURIComponent(sessionId)}/interactive`;
 }
 
 /** 部署总开关、请求开关与实际数据必须同时成立才发布 Overlay JSON。 */
@@ -240,14 +208,10 @@ function resolveOverlayGeoJsonOutput(
   return result.interactive_archive.overlay_output ?? undefined;
 }
 
-/**
- * 先写入公开页面需要的快速产物并登记 Session，再访问真实
- * `/snapshot-interactive` 页面截图。AI URL 必须在本函数全部成功后才由上层组装。
- */
+/** 数据全部落盘并核验后才登记 Session；App 截图不参与后端发布。 */
 async function publishSessionArtifacts(
   sessionId: string,
   files: Parameters<typeof writeSessionFiles>[1],
-  snapshotRuntime: RunToolFlowResultType["snapshot_runtime"],
   sessionRecord: SessionIndexRecordType,
   context: ToolExecutionContextType,
   services: ToolFlowServicesType,
@@ -256,18 +220,12 @@ async function publishSessionArtifacts(
   try {
     await writeSessionFiles(sessionId, files, {signal: context.signal});
     context.throwIfAborted();
-    services.sessionManager.registerSession(sessionId, sessionRecord);
-    sessionRegistered = true;
-
-    const image = await services.snapshotService.capture(sessionId, snapshotRuntime, context.signal);
-    context.throwIfAborted();
-    await writeSnapshotFile(sessionId, image, {signal: context.signal});
-    context.throwIfAborted();
     if (!await sessionFilesAreComplete(sessionId)) {
       throw new AppError("file_session_incomplete", "Session files are incomplete after publication", sessionId);
     }
-    // 临时开放期间若缺失 snapshot 的提前请求撤销了 RAM 记录，最终核验后用同一 record 恢复正式登记。
+    context.throwIfAborted();
     services.sessionManager.registerSession(sessionId, sessionRecord);
+    sessionRegistered = true;
   } catch (error) {
     if (sessionRegistered) services.sessionManager.unregisterSession(sessionId);
     try {
@@ -339,9 +297,8 @@ export async function publishToolFlow(
     aiOutputYaml,
     interactiveMapUrl: {url: clientInteractiveUrl},
     overlayOutput,
-  }, result.snapshot_runtime, sessionRecord, context, services);
+  }, sessionRecord, context, services);
   context.throwIfAborted();
-  const visualUrl = resolveAiVisualUrl(result.session_id, input.toolInput.visual_output);
   const archive = result.interactive_archive;
   const layout = {map_size: archive.screenshot_size, center: archive.center, leaflet_bbox: archive.leaflet_bbox};
 
@@ -350,7 +307,6 @@ export async function publishToolFlow(
       session_id: result.session_id,
       ...(aiOutputYaml === undefined ? {} : {ai_output_yaml: aiOutputYaml}),
       ...(overlayOutputJson === undefined ? {} : {overlay_output_json: overlayOutputJson}),
-      ...(visualUrl === undefined ? {} : {visual_url: visualUrl}),
     }),
     client_output: Object.freeze({
       data: mapAppSharedDataSchema.parse({
@@ -367,7 +323,7 @@ export async function publishToolFlow(
         selected_location_name: result.selected_location_name,
       }),
       user_payload: Object.freeze({...layout, url: clientInteractiveUrl}),
-      ai_payload: input.toolInput.visual_output === "none" ? null : Object.freeze({...layout, ...(visualUrl === undefined ? {} : {url: visualUrl})}),
+      ai_payload: input.toolInput.visual_output === "none" ? null : Object.freeze({...layout}),
     }),
   });
 }

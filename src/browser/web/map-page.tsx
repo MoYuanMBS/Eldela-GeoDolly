@@ -26,7 +26,6 @@ type MapLoadState =
 interface MapPageProps {
   mapDataUrl?: string | null;
   mapData?: InteractiveMapDataType;
-  onArchived?: () => void;
   /** 由 composition root 注入的地图实现；页面本身不导入 Leaflet adapter。 */
   MapSurfaceComponent: MapSurfacePortComponentType;
 }
@@ -67,7 +66,7 @@ type StandardUiState =
   | {status: "ready"; measuredHeight: number}
   | {status: "failed"; message: string};
 
-export function MapPage({mapDataUrl, mapData, onArchived, MapSurfaceComponent}: MapPageProps) {
+export function MapPage({mapDataUrl, mapData, MapSurfaceComponent}: MapPageProps) {
   const [loadState, setLoadState] = useState<MapLoadState>({status: "loading"});
   const [metricScale, setMetricScale] = useState<MetricScaleViewType | null>(null);
   const [mapRuntimeState, setMapRuntimeState] = useState<MapRuntimeState>({status: "pending"});
@@ -104,10 +103,6 @@ export function MapPage({mapDataUrl, mapData, onArchived, MapSurfaceComponent}: 
     async function loadMapData() {
       try {
         const response = await fetch(dataUrl, {cache: "no-store", signal: abortController.signal});
-        if (response.status === 410) {
-          onArchived?.();
-          return;
-        }
         if (!response.ok) {
           throw new AppError("map_data_request", `Map data request failed with HTTP ${response.status}`);
         }
@@ -121,7 +116,7 @@ export function MapPage({mapDataUrl, mapData, onArchived, MapSurfaceComponent}: 
     }
     void loadMapData();
     return () => abortController.abort();
-  }, [mapDataUrl, mapData, onArchived]);
+  }, [mapDataUrl, mapData]);
 
   const handleMetricScaleChange = useCallback((nextMetricScale: MetricScaleViewType): void => {
     setMetricScale(nextMetricScale);

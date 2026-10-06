@@ -17,7 +17,7 @@ export interface FileWriteOptionsType {
 export interface PendingFile {
   /** 由 writer 按 cache 与 Session 规则推导的绝对路径。 */
   filePath: string;
-  /** JSON/YAML/WebP 最终写盘字节，不在并发阶段再次转换。 */
+  /** JSON/YAML 最终写盘字节，不在并发阶段再次转换。 */
   data: Uint8Array;
 }
 
@@ -38,8 +38,4 @@ export const sessionFilesInputSchema = z.object({
   overlayOutput: identifiedOverlayGroupsWithDisplayIdSchema.nullish(),
 }).strict();
 
-/** Buffer 是 Uint8Array 的子类，因此 Playwright 截图可以直接通过该边界。 */
-export const imageFileDataSchema = z.custom<Uint8Array>((value) => value instanceof Uint8Array);
-
 export type SessionFilesInputType = z.infer<typeof sessionFilesInputSchema>;
-export type ImageFileDataType = z.infer<typeof imageFileDataSchema>;

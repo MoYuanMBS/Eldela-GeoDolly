@@ -33,7 +33,6 @@ import type {InteractiveMapArchiveType} from "./map-session-models.js";
 import type {ToolExecutionContextType} from "./tool-execution-models.js";
 import type {InteractiveMapDataType} from "../web/interactive-ui-models.js";
 import type {MapAppDeliveryType} from "../web/map-app-models.js";
-import type {SnapshotMapDataType} from "../web/snapshot-ui-models.js";
 
 /** processToolReply() 生成的公共数据结果；样式与具体 render_mode 不进入该阶段。 */
 export interface ProcessedToolReplyType {
@@ -113,13 +112,13 @@ export type NonCoreFlowInput = Omit<
 export type BasemapOnlyFlowInput = CommonMapPayloadFields;
 
 /**
- * 地图模式与公共数据整理完成后，供发布阶段消费的 Node 数据和两种严格 HTTP Browser runtime。
- * 此处的 ai_output 仍是业务记录；发布阶段才生成 YAML、视觉 URL 与 MCP App 交付包装。
+ * 地图模式与公共数据整理完成后，供发布阶段消费的 Node 数据和严格 HTTP Interactive runtime。
+ * 此处的 ai_output 仍是业务记录；发布阶段才生成 YAML 与 MCP App 交付包装。
  */
 export type RunToolFlowResultType = Readonly<{
   /** 归档、运行时与最终发布共同使用的最终候选会话 ID。 */
   session_id: string;
-  /** 原样透传 Tool 输入，供发布层选择 AI-facing 视觉 URL 与是否交付 AI App 布局。 */
+  /** 原样透传 Tool 输入，供发布层选择是否交付 AI App 布局。 */
   visual_output: VisualOutputType;
   /** 记录实际查询 / 降级模式；渲染模式已单独保存在 archive 与 runtime 中。 */
   effective_query_mode: EffectiveQueryModeType;
@@ -135,8 +134,6 @@ export type RunToolFlowResultType = Readonly<{
   interactive_archive: InteractiveMapArchiveType;
   /** /interactive 页面使用的完整数据与当前 Leaflet / UI 配置，区别于 App 的共享 data。 */
   interactive_runtime: InteractiveMapDataType;
-  /** Snapshot 页面与后端图片渲染使用的完整数据和当前配置。 */
-  snapshot_runtime: SnapshotMapDataType;
   /** 保留 Python 的执行说明，供发布层生成 AI YAML 的独立 info 字段。 */
   info: string;
 }>;
@@ -149,8 +146,6 @@ export type AiPublishedToolFlowResultType = Readonly<{
   ai_output_yaml?: string;
   /** 仅在部署允许、请求选择且存在业务 Overlay 时提供的 GeoJSON 文本。 */
   overlay_output_json?: string;
-  /** 按 visual_output 选择的 Snapshot 页面或 WebP URL；none 时省略。 */
-  visual_url?: string;
 }>;
 
 /**

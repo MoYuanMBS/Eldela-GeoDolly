@@ -1,4 +1,4 @@
-/** 从长期 Interactive Archive 组装当前前端版本的 Interactive 与 Snapshot runtime。 */
+/** 从长期 Interactive Archive 组装当前前端版本的 Interactive runtime。 */
 
 import {resolveBasemap} from "../map-data/basemap.js";
 import {leafletConfigSchema} from "../../models/backend/config-models.js";
@@ -17,10 +17,6 @@ import {
   interactiveMapDataSchema,
   type InteractiveMapDataType,
 } from "../../models/web/interactive-ui-models.js";
-import {
-  snapshotMapDataSchema,
-  type SnapshotMapDataType,
-} from "../../models/web/snapshot-ui-models.js";
 import {config} from "../utils/config-loader.js";
 import {getUserStyle} from "../utils/user-style/user-style-rule.js";
 
@@ -66,7 +62,6 @@ function buildCurrentMapPayload(archive: InteractiveMapArchiveType): CommonVisua
  */
 export interface MapRuntimePayloadsType {
   interactive: InteractiveMapDataType;
-  snapshot: SnapshotMapDataType;
 }
 
 export function buildMapRuntimePayloads(archiveInput: unknown): MapRuntimePayloadsType {
@@ -85,6 +80,5 @@ export function buildMapRuntimePayloads(archiveInput: unknown): MapRuntimePayloa
   });
   return Object.freeze({
     interactive,
-    snapshot: snapshotMapDataSchema.parse(sharedRuntime),
   });
 }

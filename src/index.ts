@@ -12,12 +12,10 @@
 
 import {registerAppTool} from "@modelcontextprotocol/ext-apps/server";
 import {McpServer} from "@modelcontextprotocol/server";
-import type {AddressInfo} from "node:net";
 
-import {closeMapHttpService, createMapHttpService, listenMapHttpService} from "./server/http/map-http-service.js";
+import {listenMapHttpService} from "./server/http/map-http-service.js";
 import {createMcpHttpService} from "./server/http/mcp-http-service.js";
 import {SessionManager} from "./server/map-session/session-manager.js";
-import {SnapshotService} from "./server/map-session/snapshot-service.js";
 import {INTERACTIVE_MAP_LAUNCHER_URI, registerInteractiveMapLauncherResource} from "./server/interactive-map-launcher-resource.js";
 import {
   type LocSearchReplyRawType,
@@ -129,8 +127,6 @@ async function main() {
     for (const sessionId of searchResultCache.keys()) deleteExpiredSearchResponse(sessionId, nowSeconds);
   });
   const toolScheduler = new ToolExecutionScheduler(webConfig.tool_execution);
-  const mapHttpService = createMapHttpService(webConfig, sessionManager);
-  let snapshotService: SnapshotService | null = null;
   let mcpHttpService: ReturnType<typeof createMcpHttpService> | null = null;
   let shutdownPromise: Promise<void> | null = null;
 
@@ -142,8 +138,6 @@ async function main() {
       for (const close of [
         () => mcpHttpService?.close(),
         () => toolScheduler.close(),
-        () => snapshotService?.close(),
-        () => closeMapHttpService(mapHttpService),
         () => sessionManager.close(),
       ]) {
         try {
@@ -168,13 +162,7 @@ async function main() {
 
   try {
     await sessionManager.start();
-    // 内部截图固定走 loopback HTTP，由系统分配端口，避免 HTTPS 证书与 localhost 不匹配。
-    await listenMapHttpService(mapHttpService, {...webConfig.http, listen_host: "127.0.0.1", map: {...webConfig.http.map, port: 0}});
-    const internalPort = (mapHttpService.address() as AddressInfo).port;
-    const snapshots = new SnapshotService(`http://127.0.0.1:${internalPort}`, webConfig.snapshot);
-    snapshotService = snapshots;
-    await snapshots.start();
-    const createServer = () => buildServer(toolScheduler, {sessionManager, snapshotService: snapshots}, webConfig.http.map.public_origin);
+    const createServer = () => buildServer(toolScheduler, {sessionManager}, webConfig.http.map.public_origin);
     // 预先校验 Launcher 构建和 Tool 注册，启动失败时不开放 MCP 入口。
     await createServer().close();
     mcpHttpService = createMcpHttpService(webConfig, sessionManager, createServer);

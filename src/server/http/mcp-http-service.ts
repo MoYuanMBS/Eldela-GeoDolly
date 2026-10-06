@@ -1,6 +1,6 @@
 /**
  * 常驻 MCP HTTP(S) 入口：分发 MCP 与地图请求，管理每个客户端的 SDK 协议会话。
- * 搜索缓存、工具调度器、地图 SessionManager 与 SnapshotService 由 index 创建并共享；
+ * 搜索缓存、工具调度器与地图 SessionManager 由 index 创建并共享；
  * 客户端会话结束只释放本模块登记的 SDK 实例，全局业务服务的关闭由 index 负责。
  */
 
