@@ -54,6 +54,47 @@ const copyButton = requireElement<HTMLButtonElement>("copy-map-url");
 const fallbackStatus = requireElement<HTMLElement>("fallback-status");
 const reactRoot = createRoot(mapContent);
 
+// 诊断区独立于两张地图和截图 wrapper；保留最近事件，即使地图交付失败也能复制排查过程。
+const diagnostics = document.createElement("details");
+diagnostics.id = "app-diagnostics";
+diagnostics.style.cssText = "position:fixed;right:8px;bottom:8px;z-index:10000;max-width:calc(100% - 16px);padding:6px;background:Canvas;color:CanvasText;border:1px solid GrayText;border-radius:4px;font:12px/1.4 system-ui,sans-serif";
+const diagnosticSummary = document.createElement("summary");
+const diagnosticText = document.createElement("pre");
+diagnosticText.style.cssText = "max-width:520px;max-height:220px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;user-select:text";
+const copyDiagnostics = document.createElement("button");
+copyDiagnostics.type = "button";
+copyDiagnostics.textContent = "复制诊断";
+diagnostics.append(diagnosticSummary, diagnosticText, copyDiagnostics);
+rootElement.append(diagnostics);
+const diagnosticEntries: string[] = [];
+
+function recordDiagnostic(event: string, details: unknown = null, warning = false): void {
+  const entry = {time: new Date().toISOString(), level: warning ? "WARNING" : "INFO", event, details};
+  diagnosticEntries.push(JSON.stringify(entry));
+  if (diagnosticEntries.length > 100) diagnosticEntries.shift();
+  diagnosticText.textContent = diagnosticEntries.join("\n");
+  diagnosticSummary.textContent = `诊断：${event}`;
+  if (warning) diagnostics.open = true;
+  if (warning) console.warn("[GeoMCP]", entry);
+  else console.info("[GeoMCP]", entry);
+}
+
+function diagnosticError(error: unknown) {
+  // Zod 原始错误可能很大；只记录字段路径和校验原因，不复制地图数据或业务 records。
+  if (error instanceof z.ZodError) return new AppError("app_data_validation", "Map App data failed validation", {issues: error.issues.slice(0, 12).map((issue) => ({path: issue.path.map(String).join("."), message: issue.message})), issue_count: error.issues.length}).toJSON();
+  return AppError.fromUnknown(error, "app_diagnostic_error", "Map App operation failed").toJSON();
+}
+
+copyDiagnostics.addEventListener("click", () => {
+  void Promise.resolve().then(() => navigator.clipboard.writeText(diagnosticEntries.join("\n"))).then(() => {
+    copyDiagnostics.textContent = "已复制";
+  }).catch(() => {
+    window.getSelection()?.selectAllChildren(diagnosticText);
+    copyDiagnostics.textContent = "请手动复制选中的诊断";
+  });
+});
+recordDiagnostic("app_started", {public_base_url: publicBaseUrl.href});
+
 let interactiveMapUrl: string | null = null;
 let appConnected = false;
 let fullscreenRequested = false;
@@ -136,6 +177,15 @@ function selectUrlForManualCopy(): void {
 const app = new App({name: `${GEOMCP_NAME} Map`, version: "2.0.0"}, {tools: {listChanged: true}}, {autoResize: false});
 // 同一个 App 承载两张地图；connect 前完成注册，每次工具调用通过 getter 读取当前绑定。
 const {fitAiMapTool, setAiMapTool, captureAiMapTool, fitAiMapToUserViewTool} = registerAiMapTools(app, () => aiBinding, () => userBinding);
+const diagnosticTools = {geomcp_fit_ai_map_bbox: fitAiMapTool, geomcp_set_ai_map_center_zoom: setAiMapTool, geomcp_capture_ai_map: captureAiMapTool, geomcp_fit_ai_map_to_user_view: fitAiMapToUserViewTool};
+// 包装 SDK 的公开列表 handler，只观察真实返回值，不替换其工具注册、schema 或分发行为。
+const listAppTools = app.onlisttools;
+if (listAppTools !== undefined) app.onlisttools = async (params, extra) => {
+  recordDiagnostic("host_tools_list_requested");
+  const result = await listAppTools(params, extra);
+  recordDiagnostic("app_tools_list_returned", {tools: result.tools.map((tool) => tool.name)});
+  return result;
+};
 
 // 在取消异步初始化或释放地图前先撤销可调用入口，防止宿主继续使用上一轮命令。
 function revokeAiBinding(): void {
@@ -145,6 +195,7 @@ function revokeAiBinding(): void {
   setAiMapTool.disable();
   captureAiMapTool.disable();
   fitAiMapToUserViewTool.disable();
+  recordDiagnostic("ai_tools_disabled");
 }
 
 function requireCurrentAiBinding(binding: AiMapBinding): void {
@@ -165,6 +216,7 @@ function syncAiTools(): void {
     if (userBinding !== null && userBinding.sessionId === aiBinding.sessionId) fitAiMapToUserViewTool.enable();
     else fitAiMapToUserViewTool.disable();
   }
+  recordDiagnostic("ai_tools_state", {session_id: aiBinding?.sessionId ?? null, enabled_tools: Object.entries(diagnosticTools).filter(([, tool]) => tool.enabled).map(([name]) => name)});
 }
 
 function waitForAiJob<T>(work: Promise<T>, signal: AbortSignal): Promise<T> {
@@ -192,6 +244,7 @@ async function runAiMapJob(binding: AiMapBinding, operation?: (commands: AiMapVi
     const view = operation === undefined ? binding.port.commands.getView() : operation(binding.port.commands);
     let screenshot: AiMapScreenshot | null = null;
     if (binding.mode === "screenshot") {
+      recordDiagnostic("ai_screenshot_started", {session_id: binding.sessionId, revision: binding.revision, initial: operation === undefined});
       try {
         captureWork = binding.port.capture(view, signal);
         screenshot = await waitForAiJob(captureWork, signal);
@@ -204,7 +257,8 @@ async function runAiMapJob(binding: AiMapBinding, operation?: (commands: AiMapVi
       if (screenshot.image !== null && JSON.stringify(binding.port.commands.getView()) !== JSON.stringify(view)) {
         screenshot = {image: null, warning: new AppError("ai_map_view_changed", "The AI map changed before its screenshot could be delivered").toJSON()};
       }
-      if (screenshot.warning !== null) console.warn("[GeoMCP] AI map screenshot failed.", screenshot.warning);
+      if (screenshot.warning !== null) recordDiagnostic("ai_screenshot_failed", {session_id: binding.sessionId, warning: screenshot.warning}, true);
+      else recordDiagnostic("ai_screenshot_created", {session_id: binding.sessionId, mime_type: screenshot.image?.mimeType, base64_length: screenshot.image?.data.length});
       if (operation === undefined) {
         const state = {session_id: binding.sessionId, ...binding.port.commands.getView()};
         const content: Array<{type: "text"; text: string} | NonNullable<AiMapScreenshot["image"]>> = [{type: "text", text: JSON.stringify(state)}];
@@ -213,9 +267,11 @@ async function runAiMapJob(binding: AiMapBinding, operation?: (commands: AiMapVi
         try {
           // 超时也只发送一次文字 warning；SDK 消费剩余预算，不为发送重置整份超时。
           lifetimeSignal.throwIfAborted();
+          recordDiagnostic("model_context_submission_started", {session_id: binding.sessionId, content_types: content.map((block) => block.type), host_capability: app.getHostCapabilities()?.updateModelContext ?? null});
           await waitForAiJob(app.updateModelContext({content}, {signal: lifetimeSignal, timeout: Math.max(1, deadline - performance.now())}), lifetimeSignal);
+          if (binding === aiBinding && !tornDown) recordDiagnostic("model_context_acknowledged", {session_id: binding.sessionId, note: "宿主已确认接收；不代表当前模型已经收到图片"});
         } catch (error) {
-          if (binding === aiBinding && !tornDown) console.warn("[GeoMCP] AI map initial image context could not be submitted.", AppError.fromUnknown(error, "ai_map_context_failed", "AI map initial context submission failed").toJSON());
+          if (binding === aiBinding && !tornDown) recordDiagnostic("model_context_submission_failed", {session_id: binding.sessionId, error: diagnosticError(error)}, true);
         }
       }
     }
@@ -239,7 +295,7 @@ function submitInitialAiImage(): void {
   if (!appConnected || aiJob !== null || binding === null || binding.mode !== "screenshot" || binding.initialStarted || tornDown) return;
   binding.initialStarted = true;
   void runAiMapJob(binding).catch((error: unknown) => {
-    if (binding === aiBinding && !tornDown) console.warn("[GeoMCP] AI map initial screenshot failed.", AppError.fromUnknown(error, "ai_map_screenshot_failed", "AI map initial screenshot failed").toJSON());
+    if (binding === aiBinding && !tornDown) recordDiagnostic("ai_initial_screenshot_failed", {session_id: binding.sessionId, error: diagnosticError(error)}, true);
   }).finally(() => {
     if (binding !== aiBinding || tornDown) return;
     binding.initialFinished = true;
@@ -251,7 +307,7 @@ function submitInitialAiImage(): void {
 function validateMapUrl(value: string, sessionId: string, routes: readonly string[]): URL {
   const url = new URL(value);
   if (url.origin !== publicBaseUrl.origin || !routes.some((route) => url.pathname === `${publicBasePath}/session/${sessionId}/${route}`) || url.username !== "" || url.password !== "" || url.search !== "" || url.hash !== "") {
-    throw new AppError("invalid_app_map_url", "Map URL does not match its session and App deployment");
+    throw new AppError("invalid_app_map_url", "Map URL does not match its session and App deployment", {expected_origin: publicBaseUrl.origin, expected_paths: routes.map((route) => `${publicBasePath}/session/${sessionId}/${route}`), received_origin: url.origin, received_path: url.pathname, has_credentials: url.username !== "" || url.password !== "", has_query: url.search !== "", has_fragment: url.hash !== ""});
   }
   return url;
 }
@@ -266,26 +322,33 @@ function assembleMapPayload(data: mapAppModels.MapAppSharedDataType, layout: map
 app.ontoolresult = (result): void => {
   if (tornDown) return;
   const revision = ++resultRevision;
+  recordDiagnostic("host_tool_result_received", {revision, is_error: result.isError === true, metadata_keys: Object.keys(result._meta ?? {}), has_interactive_map_data: result._meta?.[INTERACTIVE_MAP_META_KEY] !== undefined, has_structured_content: result.structuredContent !== undefined, content_types: result.content?.map((block) => block.type) ?? []});
   userBinding = null;
   revokeAiBinding();
   // 同 Session 重发也必须同步撤销旧 effect，阻止迟到初始化和旧命令继续使用旧实例。
   flushSync(() => reactRoot.render(null));
   if (result.isError === true) {
     showError("The map tool returned an error. No Interactive map is available.");
+    recordDiagnostic("backend_tool_failed", {revision}, true);
     return;
   }
+  let deliveryStage = "metadata";
   try {
     const raw = result._meta?.[INTERACTIVE_MAP_META_KEY];
+    if (raw === undefined || raw === null) throw new AppError("app_map_metadata_missing", "Host tool result is missing io.geomcp/interactiveMap");
     let sessionId: string;
     let url: URL;
     let userData: InteractiveMapDataType;
     const maps: ReactNode[] = [];
     if (typeof raw === "object" && raw !== null && "data" in raw) {
       // 一次校验共享业务数据和 User 布局；AI 布局留给下方单独校验，使其失败只影响 AI 区域。
+      deliveryStage = "shared_data_and_user_layout";
       const output = mapAppModels.mapAppResultSchema.parse(raw);
       const data = output.data;
       sessionId = data.session_id;
+      deliveryStage = "user_map_url";
       url = validateMapUrl(output.user_payload.url, sessionId, ["interactive"]);
+      recordDiagnostic("user_delivery_validated", {revision, session_id: sessionId, visual_output: data.visual_output});
       userData = {
         map_payload: assembleMapPayload(data, output.user_payload),
         style_payload: appStylePayload,
@@ -297,11 +360,13 @@ app.ontoolresult = (result): void => {
       try {
         if (data.visual_output === "none") {
           if (output.ai_payload !== null) throw new AppError("invalid_app_ai_map_data", "AI map payload must be null when visual_output is none");
+          recordDiagnostic("ai_map_disabled_by_visual_output", {revision, session_id: sessionId});
         } else {
           const layout = mapAppModels.aiMapAppPayloadSchema.parse(output.ai_payload);
           if (layout.url !== undefined) validateMapUrl(layout.url, sessionId, ["snapshot-interactive", "snapshot.webp"]);
           const aiData = {map_payload: assembleMapPayload(data, layout), style_payload: appStylePayload};
           const mode = data.visual_output;
+          recordDiagnostic("ai_delivery_validated", {revision, session_id: sessionId, visual_output: mode});
           const onAiViewCommandsChange = (port: AiMapCapturePort | null): void => {
             // 旧实例的 ready 或 cleanup 可能迟到；仅当前代次能启用工具或撤销当前绑定。
             if (tornDown || revision !== resultRevision) return;
@@ -314,6 +379,7 @@ app.ontoolresult = (result): void => {
                 run: (operation, signal) => runAiMapJob(binding, operation, signal)
               };
               aiBinding = binding;
+              recordDiagnostic("ai_map_ready", {revision, session_id: sessionId});
               syncAiTools();
               submitInitialAiImage();
             }
@@ -323,20 +389,24 @@ app.ontoolresult = (result): void => {
             createElement(AiMap, {mapData: aiData, onAiViewCommandsChange})));
         }
       } catch (error) {
-        console.error("ai_map_delivery_invalid", error);
+        recordDiagnostic("ai_map_delivery_invalid", {revision, session_id: sessionId, error: diagnosticError(error)}, true);
         maps.push(createElement("section", {key: "ai-error", className: "geomcp-map-page-state geomcp-map-page-error", role: "alert"}, "The tool did not provide valid AI map data. The User map is available."));
       }
     } else {
       // 旧后端仍只创建 User 地图；同样只校验一次，不复制已校验的 Overlay。
+      deliveryStage = "legacy_user_data";
       const output = clientOutputSchema.parse(raw);
       sessionId = output.session_id;
+      deliveryStage = "legacy_user_map_url";
       url = validateMapUrl(output.url, sessionId, ["interactive"]);
+      recordDiagnostic("legacy_user_only_delivery", {revision, session_id: sessionId});
       userData = {
         ...output.map_data,
         map_payload: {...output.map_data.map_payload, leaflet: appLeafletConfig},
         style_payload: appStylePayload,
       };
     }
+    deliveryStage = "map_mount";
     let tileMeta = document.querySelector<HTMLMetaElement>('meta[name="geomcp-basemap-base-url"]');
     if (tileMeta === null) {
       tileMeta = document.createElement("meta");
@@ -355,15 +425,18 @@ app.ontoolresult = (result): void => {
       // 旧 User 实例的 ready/cleanup 不得启用新代次工具，也不得撤销新实例的绑定。
       if (tornDown || revision !== resultRevision) return;
       userBinding = reader === null ? null : {sessionId, getBounds: reader};
+      recordDiagnostic(reader === null ? "user_map_released" : "user_map_ready", {revision, session_id: sessionId});
       syncAiTools();
     };
     maps.unshift(createElement("section", {key: "user", "aria-label": "User map"},
       createElement("h2", {className: "geomcp-app-map-title"}, "User map"),
       createElement(MapPage, {mapData: userData, MapSurfaceComponent: MapSurfaceView, onViewBoundsReaderChange})));
     reactRoot.render(createElement("div", {className: "geomcp-app-maps", key: revision}, ...maps));
+    recordDiagnostic("maps_mount_requested", {revision, session_id: sessionId});
     requestFullscreen();
-  } catch {
+  } catch (error) {
     showError("The map tool did not provide valid Interactive map data for this App.");
+    recordDiagnostic("app_map_delivery_failed", {revision, stage: deliveryStage, error: diagnosticError(error)}, true);
   }
 };
 
@@ -382,6 +455,7 @@ app.onteardown = async () => {
   interactiveMapUrl = null;
   resizeObserver.disconnect();
   reactRoot.unmount();
+  recordDiagnostic("app_teardown");
   return {};
 };
 
@@ -413,10 +487,16 @@ copyButton.addEventListener("click", () => {
 });
 
 applyHostDimensions(undefined);
+recordDiagnostic("host_connection_started");
 void app.connect().then(() => {
   if (tornDown) return;
   appConnected = true;
+  recordDiagnostic("host_connected", {host_info: app.getHostVersion() ?? null, host_capabilities: app.getHostCapabilities() ?? null});
   submitInitialAiImage();
   applyHostDimensions(app.getHostContext());
   requestFullscreen();
-}).catch(() => { if (!tornDown) showError("This chat host could not initialize the map App."); });
+}).catch((error: unknown) => {
+  if (tornDown) return;
+  showError("This chat host could not initialize the map App.");
+  recordDiagnostic("host_connection_failed", {error: diagnosticError(error)}, true);
+});

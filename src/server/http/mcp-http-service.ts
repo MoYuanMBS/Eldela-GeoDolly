@@ -9,7 +9,7 @@ import {readFileSync} from "node:fs";
 import {createServer, type IncomingMessage, type Server, type ServerResponse} from "node:http";
 import {createServer as createHttpsServer} from "node:https";
 import {NodeStreamableHTTPServerTransport} from "@modelcontextprotocol/node";
-import {isJSONRPCNotification, isJSONRPCRequest, isJSONRPCResponse, validateHostHeader, type McpServer} from "@modelcontextprotocol/server";
+import {isCallToolResult, isInitializeRequest, isJSONRPCErrorResponse, isJSONRPCNotification, isJSONRPCRequest, isJSONRPCResponse, validateHostHeader, type McpServer} from "@modelcontextprotocol/server";
 import type {WebConfigType} from "../../models/backend/config-models.js";
 import type {McpHttpSession} from "../../models/backend/mcp-http-models.js";
 import type {SessionManager} from "../map-session/session-manager.js";
@@ -71,10 +71,13 @@ export function createMcpHttpService(webConfig: WebConfigType, sessionManager: S
         onsessioninitialized: (id) => { sessions.set(id, connection); },
       });
       const connection: McpHttpSession = {server, transport, lastActivity: Date.now(), activeResponses: 0, pendingRequests: new Set()};
+      // 只保留在途请求的诊断摘要；协议会话 ID 与地图 Session ID 分开记录，不保存参数或地图正文。
+      const diagnosticRequests = new Map<string | number, {method: string; tool_name?: string; resource_uri?: string}>();
       connections.add(connection);
       // DELETE、闲置回收或全局关闭会触发此清理；普通 HTTP/SSE 断线不调用 server.close()。
       server.server.onclose = () => {
         if (transport.sessionId !== undefined) sessions.delete(transport.sessionId);
+        diagnosticRequests.clear();
         connections.delete(connection);
       };
       server.server.onerror = () => logger.warning("mcp_session_protocol_error", {reason_code: "protocol_error"});
@@ -83,24 +86,63 @@ export function createMcpHttpService(webConfig: WebConfigType, sessionManager: S
         // HTTP 响应结束与工具执行完成是两个边界；独立跟踪请求，保护断线后仍在排队或执行的工具。
         const onmessage = transport.onmessage;
         transport.onmessage = (message, extra) => {
-          if (isJSONRPCRequest(message)) connection.pendingRequests.add(message.id);
+          if (isJSONRPCRequest(message)) {
+            connection.pendingRequests.add(message.id);
+            if (["initialize", "tools/list", "tools/call", "resources/list", "resources/read"].includes(message.method)) {
+              const diagnostic = {
+                method: message.method,
+                ...(message.method === "tools/call" && typeof message.params?.name === "string" ? {tool_name: message.params.name} : {}),
+                ...(message.method === "resources/read" && typeof message.params?.uri === "string" ? {resource_uri: message.params.uri} : {})
+              };
+              diagnosticRequests.set(message.id, diagnostic);
+              logger.info("mcp_diagnostic_request", {mcp_session_id: transport.sessionId ?? null, request_id: message.id, ...diagnostic});
+              if (isInitializeRequest(message)) logger.info("mcp_client_initialize", {request_id: message.id, client_info: message.params.clientInfo, protocol_version: message.params.protocolVersion});
+            }
+          }
           onmessage?.(message, extra);
           if (isJSONRPCNotification(message) && message.method === "notifications/cancelled") {
             // SDK 接收通知后取消请求 signal，并可能省略回复；主动移除 ID、结束该请求的 SSE，避免永久残留。
             const requestId = message.params?.requestId;
             if (typeof requestId === "string" || typeof requestId === "number") {
               connection.pendingRequests.delete(requestId);
+              diagnosticRequests.delete(requestId);
               transport.closeSSEStream(requestId);
             }
           }
         };
         const send = transport.send.bind(transport);
         transport.send = async (message, options) => {
+          const diagnostic = isJSONRPCResponse(message) && message.id !== undefined ? diagnosticRequests.get(message.id) : undefined;
           try {
             await send(message, options);
+            if (diagnostic !== undefined && isJSONRPCResponse(message)) {
+              const details = {mcp_session_id: transport.sessionId ?? null, request_id: message.id, ...diagnostic};
+              if (isJSONRPCErrorResponse(message)) {
+                logger.warning("mcp_diagnostic_response_error", {...details, error: message.error});
+              } else if (diagnostic.method === "tools/call" && isCallToolResult(message.result)) {
+                const result = message.result;
+                const delivery = result._meta?.["io.geomcp/interactiveMap"];
+                const data = typeof delivery === "object" && delivery !== null && "data" in delivery ? delivery.data : undefined;
+                const mapSessionId = typeof data === "object" && data !== null && "session_id" in data && typeof data.session_id === "string" ? data.session_id : null;
+                const summary = {
+                  ...details, is_error: result.isError === true, content_types: result.content.map((block) => block.type),
+                  has_structured_content: result.structuredContent !== undefined, metadata_keys: Object.keys(result._meta ?? {}),
+                  has_interactive_map_data: delivery !== undefined && delivery !== null, map_session_id: mapSessionId
+                };
+                if (result.isError === true) logger.warning("mcp_diagnostic_tool_result_error", summary);
+                else if (["tool_a", "tool_b"].includes(diagnostic.tool_name ?? "") && !summary.has_interactive_map_data) logger.warning("mcp_diagnostic_map_metadata_missing", summary);
+                else logger.info("mcp_diagnostic_tool_result_sent", summary);
+              } else {
+                // send 成功只说明协议响应已发送；资源读取和工具成功均不能证明宿主已挂载 App。
+                logger.info("mcp_diagnostic_response_sent", details);
+              }
+            }
           } finally {
             // 发送失败也表示本次 handler 的回复已处理完，不能因客户端断线一直阻止会话回收。
-            if (isJSONRPCResponse(message) && message.id !== undefined) connection.pendingRequests.delete(message.id);
+            if (isJSONRPCResponse(message) && message.id !== undefined) {
+              connection.pendingRequests.delete(message.id);
+              diagnosticRequests.delete(message.id);
+            }
             connection.lastActivity = Date.now();
           }
         };
