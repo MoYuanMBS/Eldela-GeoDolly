@@ -1,0 +1,49 @@
+PS D:\ProjectsLocal\Eldela-GeoDolly> $env:GEOMCP_LOG_LEVEL = "INFO"; npm run dev
+
+> geomcp@0.1.0 dev
+> tsx src/index.ts
+
+{"ts":"2026-10-07 20:18:05","level":"INFO","logger":"geomcp.event","event":"mcp_http_listening","url":"http://127.0.0.1:23336/mcp"}
+{"ts":"2026-10-07 20:18:46","level":"WARNING","logger":"geomcp.warning","event":"mcp_session_protocol_error","reason_code":"protocol_error"}
+{"ts":"2026-10-07 20:18:46","level":"INFO","logger":"geomcp.event","event":"mcp_diagnostic_request","mcp_session_id":"9593f95e-542c-4749-a411-48726ba848f9","request_id":0,"method":"initialize"}
+{"ts":"2026-10-07 20:18:46","level":"INFO","logger":"geomcp.event","event":"mcp_client_initialize","request_id":0,"client_info":{"name":"claude-code","title":"Claude Code","version":"2.1.284","description":"Anthropic's agentic coding tool","websiteUrl":"https://claude.com/claude-code"},"protocol_version":"2025-11-25"}
+{"ts":"2026-10-07 20:18:46","level":"INFO","logger":"geomcp.event","event":"mcp_diagnostic_response_sent","mcp_session_id":"9593f95e-542c-4749-a411-48726ba848f9","request_id":0,"method":"initialize"}
+{"ts":"2026-10-07 20:18:46","level":"INFO","logger":"geomcp.event","event":"mcp_diagnostic_request","mcp_session_id":"9593f95e-542c-4749-a411-48726ba848f9","request_id":1,"method":"tools/list"}
+{"ts":"2026-10-07 20:18:46","level":"INFO","logger":"geomcp.event","event":"mcp_diagnostic_response_sent","mcp_session_id":"9593f95e-542c-4749-a411-48726ba848f9","request_id":1,"method":"tools/list"}
+{"ts":"2026-10-07 20:18:46","level":"INFO","logger":"geomcp.event","event":"mcp_diagnostic_request","mcp_session_id":"9593f95e-542c-4749-a411-48726ba848f9","request_id":2,"method":"resources/list"}
+{"ts":"2026-10-07 20:18:46","level":"INFO","logger":"geomcp.event","event":"mcp_diagnostic_response_sent","mcp_session_id":"9593f95e-542c-4749-a411-48726ba848f9","request_id":2,"method":"resources/list"}
+{"ts":"2026-10-07 20:18:54","level":"INFO","logger":"geomcp.event","event":"mcp_diagnostic_request","mcp_session_id":"9593f95e-542c-4749-a411-48726ba848f9","request_id":3,"method":"tools/call","tool_name":"location_search"}
+{"ts": "2026-10-07 20:18:54", "level": "INFO", "logger": "geomcp.event", "event": "bridge_dispatch", "action": "search_location", "status": "started"}
+{"ts": "2026-10-07 20:18:54", "level": "INFO", "logger": "httpx", "event": "HTTP Request: GET https://nominatim.openstreetmap.org/search?q=Hetch+Hetchy+Reservoir&format=jsonv2&limit=30&addressdetails=1&polygon_geojson=1 \"HTTP/1.1 200 OK\""}
+{"ts": "2026-10-07 20:18:54", "level": "INFO", "logger": "geomcp.event", "event": "bridge_completed", "ok": true, "status": "completed"}
+{"ts":"2026-10-07 20:18:54","level":"INFO","logger":"geomcp.event","event":"mcp_diagnostic_tool_result_sent","mcp_session_id":"9593f95e-542c-4749-a411-48726ba848f9","request_id":3,"method":"tools/call","tool_name":"location_search","is_error":false,"content_types":["text"],"has_structured_content":false,"metadata_keys":[],"has_interactive_map_data":false,"map_session_id":null}
+{"ts":"2026-10-07 20:19:14","level":"INFO","logger":"geomcp.event","event":"mcp_diagnostic_request","mcp_session_id":"9593f95e-542c-4749-a411-48726ba848f9","request_id":4,"method":"tools/call","tool_name":"tool_b"}
+{"ts": "2026-10-07 20:19:14", "level": "INFO", "logger": "geomcp.event", "event": "bridge_dispatch", "action": "tool_b", "status": "started"}
+{"ts": "2026-10-07 20:19:14", "level": "INFO", "logger": "geomcp.event", "event": "core area MultiPolygon calculate", "status": "applied", "algorithm": "coverage_simplify", "raw_bbox_area_m2": 59626261.75, "tolerance_m": 34.15, "current_max_node": 202, "reason": "passed", "nodes": {"before": 483, "after": 202}}
+{"ts": "2026-10-07 20:19:59", "level": "INFO", "logger": "httpx", "event": "HTTP Request: POST https://overpass.openstreetmap.fr/api/interpreter \"HTTP/1.1 200 OK\""}
+{"ts": "2026-10-07 20:20:00", "level": "INFO", "logger": "httpx", "event": "HTTP Request: POST https://overpass.openstreetmap.fr/api/interpreter \"HTTP/1.1 200 OK\""}
+{"ts": "2026-10-07 20:20:00", "level": "INFO", "logger": "geomcp.event", "event": "bridge_completed", "ok": true, "status": "completed"}
+{"ts":"2026-10-07 20:20:00","level":"INFO","logger":"geomcp.event","event":"mcp_diagnostic_tool_result_sent","mcp_session_id":"9593f95e-542c-4749-a411-48726ba848f9","request_id":4,"method":"tools/call","tool_name":"tool_b","is_error":false,"content_types":["text"],"has_structured_content":false,"metadata_keys":["io.geomcp/interactiveMap"],"has_interactive_map_data":true,"map_session_id":"260d68baa54-1"}
+{"ts":"2026-10-07 20:20:58","level":"WARNING","logger":"geomcp.warning","event":"mcp_session_protocol_error","reason_code":"protocol_error"}
+{"ts":"2026-10-07 20:20:58","level":"INFO","logger":"geomcp.event","event":"mcp_diagnostic_request","mcp_session_id":"4183691d-a024-42ed-a681-8b3e2a251d6d","request_id":0,"method":"initialize"}
+{"ts":"2026-10-07 20:20:58","level":"INFO","logger":"geomcp.event","event":"mcp_client_initialize","request_id":0,"client_info":{"name":"claude-code","title":"Claude Code","version":"2.1.293","description":"Anthropic's agentic coding tool","websiteUrl":"https://claude.com/claude-code"},"protocol_version":"2025-11-25"}
+{"ts":"2026-10-07 20:20:58","level":"INFO","logger":"geomcp.event","event":"mcp_diagnostic_response_sent","mcp_session_id":"4183691d-a024-42ed-a681-8b3e2a251d6d","request_id":0,"method":"initialize"}
+{"ts":"2026-10-07 20:20:58","level":"INFO","logger":"geomcp.event","event":"mcp_diagnostic_request","mcp_session_id":"4183691d-a024-42ed-a681-8b3e2a251d6d","request_id":1,"method":"tools/list"}
+{"ts":"2026-10-07 20:20:58","level":"INFO","logger":"geomcp.event","event":"mcp_diagnostic_response_sent","mcp_session_id":"4183691d-a024-42ed-a681-8b3e2a251d6d","request_id":1,"method":"tools/list"}
+{"ts":"2026-10-07 20:20:58","level":"INFO","logger":"geomcp.event","event":"mcp_diagnostic_request","mcp_session_id":"4183691d-a024-42ed-a681-8b3e2a251d6d","request_id":2,"method":"resources/list"}
+{"ts":"2026-10-07 20:20:58","level":"INFO","logger":"geomcp.event","event":"mcp_diagnostic_response_sent","mcp_session_id":"4183691d-a024-42ed-a681-8b3e2a251d6d","request_id":2,"method":"resources/list"}
+{"ts":"2026-10-07 20:21:07","level":"INFO","logger":"geomcp.event","event":"mcp_diagnostic_request","mcp_session_id":"4183691d-a024-42ed-a681-8b3e2a251d6d","request_id":3,"method":"tools/call","tool_name":"tool_b"}
+{"ts": "2026-10-07 20:21:08", "level": "INFO", "logger": "geomcp.event", "event": "bridge_dispatch", "action": "tool_b", "status": "started"}
+{"ts": "2026-10-07 20:21:08", "level": "INFO", "logger": "geomcp.event", "event": "core area MultiPolygon calculate", "status": "applied", "algorithm": "coverage_simplify", "raw_bbox_area_m2": 59626261.75, "tolerance_m": 34.15, "current_max_node": 202, "reason": "passed", "nodes": {"before": 483, "after": 202}}
+{"ts": "2026-10-07 20:21:51", "level": "INFO", "logger": "httpx", "event": "HTTP Request: POST https://overpass.openstreetmap.fr/api/interpreter \"HTTP/1.1 200 OK\""}
+{"ts": "2026-10-07 20:21:51", "level": "INFO", "logger": "httpx", "event": "HTTP Request: POST https://overpass.openstreetmap.fr/api/interpreter \"HTTP/1.1 200 OK\""}
+{"ts": "2026-10-07 20:21:51", "level": "INFO", "logger": "geomcp.event", "event": "bridge_completed", "ok": true, "status": "completed"}
+{"ts":"2026-10-07 20:21:51","level":"INFO","logger":"geomcp.event","event":"mcp_diagnostic_tool_result_sent","mcp_session_id":"4183691d-a024-42ed-a681-8b3e2a251d6d","request_id":3,"method":"tools/call","tool_name":"tool_b","is_error":false,"content_types":["text"],"has_structured_content":false,"metadata_keys":["io.geomcp/interactiveMap"],"has_interactive_map_data":true,"map_session_id":"260d68baa54-1"}
+{"ts":"2026-10-07 20:25:49","level":"WARNING","logger":"geomcp.warning","event":"mcp_session_protocol_error","reason_code":"protocol_error"}
+{"ts":"2026-10-07 20:25:49","level":"INFO","logger":"geomcp.event","event":"mcp_diagnostic_request","mcp_session_id":"714bf8df-5e31-4c39-b532-98ef98a281ea","request_id":0,"method":"initialize"}
+{"ts":"2026-10-07 20:25:49","level":"INFO","logger":"geomcp.event","event":"mcp_client_initialize","request_id":0,"client_info":{"name":"claude-code","title":"Claude Code","version":"2.1.293","description":"Anthropic's agentic coding tool","websiteUrl":"https://claude.com/claude-code"},"protocol_version":"2025-11-25"}
+{"ts":"2026-10-07 20:25:49","level":"INFO","logger":"geomcp.event","event":"mcp_diagnostic_response_sent","mcp_session_id":"714bf8df-5e31-4c39-b532-98ef98a281ea","request_id":0,"method":"initialize"}
+{"ts":"2026-10-07 20:25:49","level":"INFO","logger":"geomcp.event","event":"mcp_diagnostic_request","mcp_session_id":"714bf8df-5e31-4c39-b532-98ef98a281ea","request_id":1,"method":"tools/list"}
+{"ts":"2026-10-07 20:25:49","level":"INFO","logger":"geomcp.event","event":"mcp_diagnostic_response_sent","mcp_session_id":"714bf8df-5e31-4c39-b532-98ef98a281ea","request_id":1,"method":"tools/list"}
+{"ts":"2026-10-07 20:25:49","level":"INFO","logger":"geomcp.event","event":"mcp_diagnostic_request","mcp_session_id":"714bf8df-5e31-4c39-b532-98ef98a281ea","request_id":2,"method":"resources/list"}
+{"ts":"2026-10-07 20:25:49","level":"INFO","logger":"geomcp.event","event":"mcp_diagnostic_response_sent","mcp_session_id":"714bf8df-5e31-4c39-b532-98ef98a281ea","request_id":2,"method":"resources/list"}

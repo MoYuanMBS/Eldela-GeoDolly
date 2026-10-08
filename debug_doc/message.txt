@@ -1,0 +1,159 @@
+❯ 
+● Bash(H=(-H "Content-Type: application/json" -H "Accept: application/json, text/event-stream"); U=http://127.0.0.1:23336/mcp
+  curl -s -m 10 -D hdr.txt -o /dev/null -X POST $U "${H[@]}" -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"t","version":"0"}}}'
+  cat hdr.txt | head -8; SID=$(grep -i '^mcp-session-id' hdr.txt | cut -d' ' -f2 | tr -d '\r'); rm hdr.t
+      "lat": 37.9396192,
+      "lon": -119.7250259,
+      "category": null,
+      "type": "reservoir",
+      "importance": 0.3897107592752421,
+      "address": {
+        "reservoir": "Hetch Hetchy Reservoir",
+        "county": "Tuolumne County",
+        "state": "California",
+        "ISO3166-2-lvl4": "US-CA",
+        "country": "United States",
+        "country_code": "us"
+      },
+      "boundingbox": [
+        37.9158929,
+        37.963396,
+        -119.7894668,
+-119.6608196
+      ]
+    }
+  ],
+  "message": null
+}
+
+location_search 在你启动的服务上跑通了,只返回一个候选:
+
+┌────────────┬────────────────────────────────────────────┐
+│     项     │                     值                     │
+├────────────┼────────────────────────────────────────────┤                                                                                                                                                                            ndex      │ 1                                          │
+├────────────┼────────────────────────────────────────────┤
+│ 名称       │ Hetch Hetchy Reservoir                     │                                                                                                                                                                            ──────────┼────────────────────────────────────────────┤r/12795800]\n    Yosemite Wilderness: [r/13824328]\n  feature: {}\nrecords:\n  node:\n    \"12180968071\":\n      tags:\n        access: private\n        leisure: slipway\n  way:\n    \"10698777\":\n      tags:\n        foot: yes\n        highway: service\n        motor_vehicle: no\n        surface: concrete\n    \"83473505\":\n      tags:\n        natural: rock\n    \"189656737\":\n      tags:\n        area: yes\n        material: concrete\n        name: O'Shaughnessy Dam\n        operator: City of San Fransisco Water\n        ref:US:NID: CA00123\n        waterway: dam\n    \"189656738\":\n      tags:\n        layer: \"-1\"\n        name: Tuolumne River\n        tunnel: flooded\n        waterway: pressurised\n    \"234944279\":\n      tags:\n        layer: \"-1\"\n        location: underground\n        man_made: pipeline\n        name: Canyon Power Tunnel\n        operator: San Francisco Public Utilities Commission\n        substance: water\n        waterway: pressurised\n    \"445753545\":\n      tags:\n        intermittent: yes\n        material: stone\n        usage: spillway\n        waterway: canal\n    \"949427023\":\n    tags:\n        name: Tuolumne River\n        waterway: river\n    \"949430201\":\n      tags:\n    49430202\":\n      tags:\n        waterway: stream\n    \"949430203\":\n      tags:\n        name:Rancheria Creek\n        waterway: stream\n    \"949430204\":\n      tags:\n        name: Tiltill Creek\n        waterway: stream\n    \"949430205\":\n      tags:\n        name: Falls Creek\n        waterway: stream\n    \"949430206\":\n      tags:\n        intermittent: yes\n        waterway: river\n    \"1054105468\":\n      tags:\n        waterway: dam\n    \"1076252721\":\n      tags:\n        intermittent: yes\n        waterway: stream\n   \"1076252722\":\n      tags:\n        intermittent: yes\n        waterway: stream\n    \"1076252723ermittent: yes\n        waterway: stream\n    \"1076252725\":\n      tags:\n        intermittent: yes\n        waterway: stream\n    \"1076252726\":\n      tags:\n        intermittent: yes\n        waterway: stream\n    \"1185727842\":\n      tags:\n        intermittent: yes\n        waterway: stream\n    \"1186022274\":\n        tags:\n        intermittent: yes\n        waterway: stream\n    \"1186022276\":\n      tags:\n      waterway: stream\n    \"1186022277\":\n      tags:\n        intermittent: yes\n        waterway:stream\n    \"1186022282\":\n      tags:\n        waterway: stream\n    \"1208599258\":\n      tags:\n        gnis:feature_id: \"253592\"\n        name: Grand Canyon of the Tuolumne\n        natural: valley\n    \"1251743321\":\n      tags:\n        gnis:feature_id: \"252172\"\n        name: Little Hetch Hetchy Valley\n        natural: valley\n    \"1300379184\":\n      tags:\n        natural: scrub\n    \"1300379187\":\n      tags:\n        natural: bare_rock\n    \"1316020576\":\n      tags:\n        access: private\n        highway: service\n    \"1434962138\":\n      tags:\n        landuse: meadow\n  relation:\n    \"1249596\":\n      tags:\n        ele: \"1153\"\n        fishing: no\n        gnis:feature_id: \"261289\"\n        intermittent: no\n        name: Hetch Hetchy Reservoir\n        natural: water\n        salt: no\n        type: multipolygon\n        water: reservoir\n    \"12795800\":\n      tags:\n        destination: San Joaquin River\n        gnis:feature_id: \"255171\"\n        name: Tuolumne River\n        type: waterway\n        waterway: river\n    \"12799304\":\n      tags:\n        destination: Tuolumne River\n        gnis:feature_id: \"265177\"\n        name: Rancheria Creek\n        type: waterway\n \"12799305\":\n      tags:\n        destination: Tuolumne River\n        gnis:feature_id:   \"13824328\":\n      tags:\n        boundary: protected_area\n        leisure: nature_reserve\n        name: Yosemite Wilderness\n        operator: National Park Service\n        operator:short: NPS\n        operator:type: public\n        ownership: national\n        protect_class: 1b\n        protected: perpetuity\n        protected_area: wilderness_preserve\n        protection_title: Wilderness Area\n        start_date: \"1984\"\n        type: boundary\n    \"17821342\":\n      tags:\n        natural: wood\n        type: multipolygon\n    \"17821343\":\n      tags:\n        natural: bare_rock\n        type: multipolygon\ninfo: \"\"\n"
+}
+
+tool_b 跑通了。返回了新的地图 session ID 260d68baa54-1,也有结构化 YAML 结果。
+
+范围(bbox):经度 -119.800 到 -119.650,纬度 37.906 到 37.973,覆盖水库及周边。
+
+主要要素
+- 水库本体:Hetch Hetchy Reservoir(relation 1249596),海拔 1153 m,OSM 标为 water=reservoir。
+- 大坝:O'Shaughnessy Dam(189656737),运营方为旧金山水务(City of San Francisco Water),NID 编号 CA00123。
+- 输水设施
+  - Canyon Power Tunnel:地下输水管道,运营方是 SFPUC。
+  - Tuolumne River:有一段标为 tunnel: flooded、waterway: pressurised,在地下。
+  - 溢洪道:usage=spillway,间歇性使用。
+- 河流:Tuolumne River 是干流,最终汇入 San Joaquin River。Rancheria Creek、Tiltill Creek、Falls Creek 都汇入 Tuolumne River,另有十几条无名或间歇性小溪。
+- 地貌:Grand Canyon of the Tuolumne、Little Hetch Hetchy Valley(山谷),还有裸岩、灌丛、林地和草甸。
+- 保护区:整片位于 Yosemite Wilderness(NPS,protect_class 1b,1984 年设立)。
+- 人工设施:很少,只有一条混凝土服务道路(access 不限制,仅限步行)、一条私有服务道路和一处私有滑道,没有其他设施。                                                                                                                             
+交互地图是通过 MCP app 在支持的客户端里显示的,我在终端里看不到。如果你的客户端没有显示地图,可以改用 screenshot 再调一次,我会拿到 WebP 快照链接。                                                                                          
+❯ 再试一次请求交互式地图
+1 skill available
+
+● geodolly - tool_b (MCP)(session_id: "260d68baa54", selected_indices: [1], basemap: "osm", visual_output: "interactive")
+{                                                                                                                                                                                                                                         "session_id": "260d68baa54-1",
+
+    -119.65034173150924,
+37.97332108489879
+  ],
+  "ai_output_yaml": "lookup:\n  display: {}\n  name:\n    Canyon Power Tunnel: [w/234944279]\n    Falls Creek: [w/949430205, r/12799306]\n    Grand Canyon of the Tuolumne: [w/1208599258]\n    Hetch Hetchy Reservoir: [r/1249596]\n    Little Hetch Hetchy Valley: [w/1251743321]\n    O'Shaughnessy Dam: [w/189656737]\n    Rancheria Creek: [w/949430203, r/12799304]\n    Tiltill Creek: [w/949430204, r/12799305]\n    Tuolumne River: [w/189656738, w/949427023, r/12795800]\n    Yosemite Wilderness: [r/13824328]\n  feature: {}\nrecords:\n  node:\n    \"12180968071\":\n      tags:\n        access: private\n        leisure: slipway\n  way:\n    \"10698777\":\n      tags:\n        foot: yes\n        highway: service\n        motor_vehicle: no\n        surface: concrete\n    \"83473505\":\n      tags:\n        natural: rock\n    \"189656737\":\n      tags:\n        area: yes\n        material: concrete\n        name: O'Shaughnessy Dam\n        operator: City of San Fransisco Water\n        ref:US:NID: CA00123\n        waterway: dam\n    \"189656738\":\n      tags:\n        layer: \"-1\"\n        name: Tuolumne River\n        tunnel: flooded\n        waterway: pressurised\n    \"234944279\":\n      tags:\n        layer: \"-1\"\n        location: underground\n        man_made: pipeline\n        name: Canyon Power Tunnel\n        operator: San Francisco Public Utilities Commission\n        substance: water\n        waterway: pressurised\n    \"445753545\":\n      tags:\n        intermittent: yes\n        material: stone\n        usage: spillway\n        waterway: canal\n    \"949427023\":\n      tags:\n        name: Tuolumne River\n        waterway: river\n    \"949430201\":\n      tags:\n        waterway: stream\n    \"949430202\":\n      tags:\n        waterway: stream\n    \"949430203\":\n      tags:\n        name: Rancheria Creek\n        waterway: stream\n    \"949430204\":\n      tags:\n        name: Tiltill Creek\n        waterway: stream\n    \"949430205\":\n      tags:\n        name: Falls Creek\n        waterway: stream\n    \"949430206\":\n      tags:\n        intermittent: yes\n        waterway: river\n    \"1054105468\":\n      tags:\n        waterway: dam\n    \"1076252721\":\n      tags:\n        intermittent: yes\n        waterway: stream\n    \"1076252722\":\n      tags:\n        intermittent: yes\n        waterway: stream\n    \"1076252723\":\n      tags:\n        intermittent: yes\n        waterway: stream\n    \"1076252725\":\n      tags:\n        intermittent: yes\n        waterway: stream\n    \"1076252726\":\n      tags:\n        intermittent: yes\n        waterway: stream\n    \"1185727842\":\n      tags:\n        intermittent: yes\n        waterway: stream\n    \"1186022274\":\n      tags:\n        intermittent: yes\n        waterway: stream\n    \"1186022276\":\n      tags:\n        intermittent: yes\n        waterway: stream\n    \"1186022277\":\n      tags:\n        intermittent: yes\n        waterway: stream\n    \"1186022282\":\n      tags:\n        waterway: stream\n    \"1208599258\":\n      tags:\n        gnis:feature_id: \"253592\"\n        name: Grand Canyon of the Tuolumne\n        natural: valley\n    \"1251743321\":\n      tags:\n        gnis:feature_id: \"252172\"\n        name: Little Hetch Hetchy Valley\n        natural: valley\n    \"1300379184\":\n      tags:\n        natural: scrub\n    \"1300379187\":\n      tags:\n        natural: bare_rock\n    \"1316020576\":\n      tags:\n        access: private\n        highway: service\n    \"1434962138\":\n      tags:\n        landuse: meadow\n  relation:\n    \"1249596\":\n      tags:\n        ele: \"1153\"\n        fishing: no\n        gnis:feature_id: \"261289\"\n        intermittent: no\n        name: Hetch Hetchy Reservoir\n        natural: water\n        salt: no\n        type: multipolygon\n        water: reservoir\n    \"12795800\":\n      tags:\n        destination: San Joaquin River\n        gnis:feature_id: \"255171\"\n        namee: waterway\n        waterway: river\n    \"12799304\":\n      tags:\n        destination: TuolumneRiver\n        gnis:feature_id: \"265177\"\n        name: Rancheria Creek\n        type: waterway\n        waterway: stream\n    \"12799305\":\n      tags:\n        destination: Tuolumne River\n        gnis:feature_id: \"1660001\"\n        name: Tiltill Creek\n        type: waterway\n        waterway: stream\n    \"12799306\":\n      tags:\n        destination: Tuolumne River\n        gnis:feature_id: \"260042\"\n        name: Falls Creek\n        type: waterway\n        waterway: stream\n    \"13824328\":\n      tags:\n        boundary: protected_area\n        leisure: nature_reserve\n        name: Yosemite Wilderness\n        operator: National Park Service\n        operator:short: NPS\n        operator:type: public\n        ownership: national\n        protect_class: 1b\n        protected: perpetuity\n        protected_area: wilderness_preserve\n        protection_title: Wilderness Area\n        start_date: \"1984\"\n        type: boundary\n    \"17821342\":\n      tags:\n        natural: wood\n        type: multipolygon\n    \"17821343\":\n      tags:\n        natural: bare_rock\n        type: multipolygon\ninfo: \"\"\n"
+}
+
+我又用 visual_output: "interactive" 调了一次 tool_b,返回内容和上次完全一样:
+
+- 地图 session ID 仍是 260d68baa54-1。
+- bbox 和 YAML 都没变。
+- 结果里没有地图链接,也没有 MCP app 的展示内容。
+
+所以我这边看不到交互地图是否真的显示出来了。工具只回了结构化数据,界面展示由客户端负责。
+
+你那边有没有看到地图?请按情况告诉我:
+
+1. 看到了地图:说明服务和 MCP app 正常,只是我看不到。
+2. 没看到:Claude 桌面端里能不能渲染,要看它是否支持 MCP Apps。这时我可以改用 screenshot 拿 WebP 快照链接,或者看一下 npm run dev 终端里的日志,确认交互地图的启动流程有没有报错。需要哪个?
+
+❯ 还有什么输出模式
+
+visual_output 一共三种取值:
+
+┌─────────────┬────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│     值      │                                                      效果                                                      │
+├─────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ none        │ 不返回可视化链接,只有文本和 YAML。服务端仍会生成地图和快照,只是不把链接给我。                                  │
+├─────────────┼───────────────────────────────────────────────────────────────────────────────────────
+│ screenshot  │ 在文本结果里给一个 WebP 快照链接,是静态图。                                                                    │
+├─────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ interactive │ 给一个简化的地图页链接,可以在浏览器里平移缩放。支持 MCP app 的客户端会另外显示完整交互
+└─────────────┴────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+另外还有两个相关的参数:
+
+- include_overlay_geojson: true:额外返回一份 Overlay JSON,里面是完整的几何数据。这个功能要部署配置里的 output.allow_overlay_geojson 打开,并且分析结果里有 Overlay 数据才会出现。
+- basemap:底图可选 osm 或 arcgis_satellite(卫星图)。
+
+上面两次 interactive 的结果里都没有链接,这和文档说的"文本里给一个简化地图页链接"不一致。可能是这个分支把链接改成只走 MCP app 展示了。要不要我换成 screenshot 试一次,看有没有 WebP 链接?
+
+
+❯ 再试一次请求交互式地图Commission\n        substance: water\n        waterway: pressurised\n    \"445753545\":\n      tags:\n        intermittent: yes\n        material: stone\n        usage: spillway\n        waterway: canal\n    \"949427023\":\n      tags:\n        name: Tuolumne River\n        waterway: river\n    \"949430201\":\n      tags:\n        waterway: stream\n    \"949430202\":\n      tags:\n        waterway: stream\n    \"949430203\":\n      tags:\n        name: Rancheria Creek\n        waterway: stream\n    \"949430204\":\n      tags:\n        name: Tiltill Creek\n        waterway: stream\n    \"949430205\":\n      tags:\n        name: Falls Creek\n        waterway: stream\n    \"949430206\":\n      tags:\n        intermittent: yes\n        waterway: river\n    \"1054105468\":\n      tags:\n        waterway: dam\n    \"1076252721\":\n      tags:\n        intermittent: yes\n        waterway: stream\n
+\"1076252722\":\n      tags:\n        intermittent: yes\n        waterway: stream\n    \"1076252723ermittent: yes\n        waterway: stream\n    \"1076252725\":\n      tags:\n        intermittent: yes\n        waterway: stream\n    \"1076252726\":\n      tags:\n        intermittent: yes\n        waterway: stream\n    \"1185727842\":\n      tags:\n        intermittent: yes\n        waterway: stream\n    \"1186022274\":\n      tags:\n        intermittent: yes\n        waterway: stream\n    \"1186022276\":\n      tags:\n        intermittent: yes\n        waterway: stream\n    \"1186022277\":\n      tags:\n        intermittent: yes\n        waterway: stream\n    \"1186022282\":\n      tags:\n        waterway: stream\n    \"1208599258\":\n      tags:\n        gnis:feature_id: \"253592\"\n        name: Grand Canyon of the Tuolumne\n        natural: valley\n    \"1251743321\":\n      tags:\n        gnis:feature_id: \"252172\"\n        name: Little Hetch Hetchy Valley\n        natural: valley\n    \"1300379184\":\n      tags:\n        natural: scrub\n    \"1300379187\":\n      tags:\n        natural: bare_rock\n    \"1316020576\":\n      tags:\n        access: private\n        highway: service\n    \"1434962138\":\n      tags:\n        landuse: meadow\n  relation:\n    \"1249596\":\n      tags:\n        ele: \"1153\"\n        fishing: no\n        gnis:feature_id: \"261289\"\n        intermittent: no\n        name: Hetch Hetchy Reservoir\n        natural: water\n        salt: no\n        type: multipolygon\n        water: reservoir\n    \"12795800\":\n      tags:\n        destination: San Joaquin River\n        gnis:feature_id: \"255171\"\n        name: Tuolumne River\n        type: waterway\n        waterway: river\n    \"12799304\":\n      tags:\n        destination: Tuolumne River\n        gnis:feature_id: \"265177\"\n        name: Rancheria Creek\n        type: waterway\n        waterway: stream\n    \"12799305\":\n      tags:\n        destination: Tuolumne River\n        gnis:feature_id: \"1660001\"\n        name: Tiltill Creek\n        type: waterway\n        waterway: stream\n    \"12799306\":\n      tags:\n        destination: Tuolumne River\n        gnis:feature_id: \"260042\"\n        name: Falls Creek\n        type: waterway\n        waterway: stream\n    \"13824328\":\n      tags:\n        boundary: protected_area\n        leisure: nature_reserve\n        name: Yosemite Wilderness\n        operator: National Park Service\n        operator:short: NPS\n        operator:type: public\n        ownership: national\n        protect_class: 1b\n        protected: perpetuity\n        protected_area: wilderness_preserve\n        protection_title: Wilderness Area\n        start_date: \"1984\"\n        type: boundary\n    \"17821342\":\n      tags:\n        natural: wood\n        type: multipolygon\n    \"17821343\":\n      tags:\n        natural: bare_rock\n        type: multipolygon\ninfo: \"\"\n"
+}
+
+我又用 visual_output: "interactive" 调了一次 tool_b,返回内容和上次完全一样:
+
+- 地图 session ID 仍是 260d68baa54-1。
+- bbox 和 YAML 都没变。
+- 结果里没有地图链接,也没有 MCP app 的展示内容。
+
+所以我这边看不到交互地图是否真的显示出来了。工具只回了结构化数据,界面展示由客户端负责。
+
+你那边有没有看到地图?请按情况告诉我:
+
+1. 看到了地图:说明服务和 MCP app 正常,只是我看不到。
+2. 没看到:Claude 桌面端里能不能渲染,要看它是否支持 MCP Apps。这时我可以改用 screenshot 拿 WebP 快照链接,或者看一下 npm run dev 终端里的日志,确认交互地图的启动流程有没有报错。需要哪个?
+
+❯ 还有什么输出模式
+
+visual_output 一共三种取值:
+
+┌─────────────┬────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│     值      │                                                      效果                                                      │
+├─────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ none        │ 不返回可视化链接,只有文本和 YAML。服务端仍会生成地图和快照,只是不把链接给我。                                  │
+├─────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ screenshot  │ 在文本结果里给一个 WebP 快照链接,是静态图。                                                                    │
+├─────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ interactive │ 给一个简化的地图页链接,可以在浏览器里平移缩放。支持 MCP app 的客户端会另外显示完整交互地图(有要素检查和测量)。 │
+└─────────────┴───────────────────────────────────────────────────────────────────────────────────────
+
+另外还有两个相关的参数:
+
+- include_overlay_geojson: true:额外返回一份 Overlay JSON,里面是完整的几何数据。这个功能要部署配置里的 output.allow_overlay_geojson 打开,并且分析结果里有 Overlay 数据才会出现。
+- basemap:底图可选 osm 或 arcgis_satellite(卫星图)。
+
+上面两次 interactive 的结果里都没有链接,这和文档说的"文本里给一个简化地图页链接"不一致。可能是这个分支把链接改成只走 MCP app 展示了。要不要我换成 screenshot 试一次,看有没有 WebP 链接?
+
+❯ 你上次收到的原始数据是什么
+
+上次(第二次调用 tool_b,interactive)收到的原始结果是一个只有三个字段的 JSON 对象:
+
+{
+  "session_id": "260d68baa54-1",
+  "bbox": [-119.8000471858802, 37.90596041328216, -119.65034173150924, 37.97332108489879],
+  "ai_output_yaml": "lookup:\n  display: {}\n  name:\n    Canyon Power Tunnel: [w/234944279]\n ... info: \"\"\n"
+}
+
+- session_id:新的地图 session ID,260d68baa54-1。
+- bbox:四个数字,顺序是 西、南、东、北(经度在前)。
+- ai_output_yaml:一个字符串,内容是 YAML,有四个顶层段:
+  - lookup.name:名称到 OSM 对象 ID 的映射,比如 Hetch Hetchy Reservoir: [r/1249596]。
+  - lookup.display 和 lookup.feature:都是空的 {}。
+  - records:按 node、way、relation 分组的要素标签,没有坐标和几何。
+  - info:空字符串。
+
+返回里没有其他字段,所以没有地图链接、图片、structuredContent 或 _meta。MCP 工具结果在协议上可以带额外的元数据或资源引用,但我这边看到的就只有上面这些文本。
+
+交互地图能不能显示,取决于客户端是否读取这个工具关联的 MCP app 资源,这部分在我拿到的结果里看不到。
