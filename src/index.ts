@@ -12,6 +12,7 @@
 
 import {registerAppTool} from "@modelcontextprotocol/ext-apps/server";
 import {McpServer} from "@modelcontextprotocol/server";
+import {z} from "zod";
 
 import {listenMapHttpService} from "./server/http/map-http-service.js";
 import {createMcpHttpService} from "./server/http/mcp-http-service.js";
@@ -114,6 +115,29 @@ function buildServer(scheduler: ToolExecutionScheduler, services: ToolFlowServic
     },
     createPublishedMapToolHandler(funcToolB, mapToolHandlerOptions),
   );
+
+  // 临时诊断入口只供 App 通过宿主调用，不关联 UI 资源，也不进入模型工具列表。
+  registerAppTool(server, "geomcp_report_app_diagnostics", {
+    description: "Receives temporary GeoMCP App diagnostics and writes them to the backend terminal.",
+    inputSchema: z.object({
+      app_instance_id: z.string().min(1).max(100),
+      entries: z.array(z.object({
+        time: z.iso.datetime(),
+        level: z.enum(["INFO", "WARNING"]),
+        event: z.string().min(1).max(100),
+        details: z.json().nullable(),
+      }).strict()).min(1).max(16),
+    }).strict(),
+    annotations: {readOnlyHint: false, destructiveHint: false, openWorldHint: false},
+    _meta: {ui: {visibility: ["app"]}},
+  }, async ({app_instance_id, entries}) => {
+    for (const entry of entries) {
+      const details = {source: "mcp_app", app_instance_id, app_time: entry.time, app_event: entry.event, details: entry.details};
+      if (entry.level === "WARNING") logger.warning("mcp_app_diagnostic", details);
+      else logger.info("mcp_app_diagnostic", details);
+    }
+    return createTextToolResult(JSON.stringify({accepted: entries.length}));
+  });
 
   return server;
 }

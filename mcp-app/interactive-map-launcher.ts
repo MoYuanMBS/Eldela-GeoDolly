@@ -67,9 +67,32 @@ copyDiagnostics.textContent = "复制诊断";
 diagnostics.append(diagnosticSummary, diagnosticText, copyDiagnostics);
 rootElement.append(diagnostics);
 const diagnosticEntries: string[] = [];
+const diagnosticInstanceId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+const diagnosticReports: Array<{time: string; level: "INFO" | "WARNING"; event: string; details: unknown}> = [];
+let diagnosticReportingReady = false;
+let diagnosticReportInFlight = false;
+let diagnosticReportingFailed = false;
+
+function flushDiagnosticReports(): void {
+  if (!diagnosticReportingReady || diagnosticReportInFlight || diagnosticReportingFailed || diagnosticReports.length === 0) return;
+  diagnosticReportInFlight = true;
+  const entries = diagnosticReports.splice(0, 16);
+  // 握手前事件先缓存；只走宿主的 MCP 代理，不从 iframe 发跨域 HTTP，也不阻塞地图流程。
+  void app.callServerTool({name: "geomcp_report_app_diagnostics", arguments: {app_instance_id: diagnosticInstanceId, entries}}, {timeout: 5000}).then((result) => {
+    if (result.isError === true) throw new AppError("app_diagnostic_report_rejected", "Host or server rejected the diagnostic report");
+  }).catch((error: unknown) => {
+    // 回传失败只保留本地诊断，停止发送以免递归报告同一个通道错误。
+    diagnosticReportingFailed = true;
+    diagnosticReports.length = 0;
+    recordDiagnostic("diagnostic_report_failed", {error: diagnosticError(error)}, true);
+  }).finally(() => {
+    diagnosticReportInFlight = false;
+    flushDiagnosticReports();
+  });
+}
 
 function recordDiagnostic(event: string, details: unknown = null, warning = false): void {
-  const entry = {time: new Date().toISOString(), level: warning ? "WARNING" : "INFO", event, details};
+  const entry = {time: new Date().toISOString(), level: warning ? "WARNING" as const : "INFO" as const, event, details};
   diagnosticEntries.push(JSON.stringify(entry));
   if (diagnosticEntries.length > 100) diagnosticEntries.shift();
   diagnosticText.textContent = diagnosticEntries.join("\n");
@@ -77,6 +100,11 @@ function recordDiagnostic(event: string, details: unknown = null, warning = fals
   if (warning) diagnostics.open = true;
   if (warning) console.warn("[GeoMCP]", entry);
   else console.info("[GeoMCP]", entry);
+  if (!diagnosticReportingFailed) {
+    diagnosticReports.push(entry);
+    if (diagnosticReports.length > 100) diagnosticReports.shift();
+    flushDiagnosticReports();
+  }
 }
 
 function diagnosticError(error: unknown) {
@@ -84,6 +112,13 @@ function diagnosticError(error: unknown) {
   if (error instanceof z.ZodError) return new AppError("app_data_validation", "Map App data failed validation", {issues: error.issues.slice(0, 12).map((issue) => ({path: issue.path.map(String).join("."), message: issue.message})), issue_count: error.issues.length}).toJSON();
   return AppError.fromUnknown(error, "app_diagnostic_error", "Map App operation failed").toJSON();
 }
+
+window.addEventListener("error", (event) => {
+  recordDiagnostic("app_runtime_error", {error: diagnosticError(event.error ?? new AppError("app_runtime_error", event.message)), line: event.lineno, column: event.colno}, true);
+});
+window.addEventListener("unhandledrejection", (event) => {
+  recordDiagnostic("app_unhandled_rejection", {error: diagnosticError(event.reason)}, true);
+});
 
 copyDiagnostics.addEventListener("click", () => {
   void Promise.resolve().then(() => navigator.clipboard.writeText(diagnosticEntries.join("\n"))).then(() => {
@@ -175,6 +210,11 @@ function selectUrlForManualCopy(): void {
 }
 
 const app = new App({name: `${GEOMCP_NAME} Map`, version: "2.0.0"}, {tools: {listChanged: true}}, {autoResize: false});
+const onAppProtocolError = app.onerror;
+app.onerror = (error) => {
+  onAppProtocolError?.(error);
+  recordDiagnostic("app_protocol_error", {error: diagnosticError(error)}, true);
+};
 // 同一个 App 承载两张地图；connect 前完成注册，每次工具调用通过 getter 读取当前绑定。
 const {fitAiMapTool, setAiMapTool, captureAiMapTool, fitAiMapToUserViewTool} = registerAiMapTools(app, () => aiBinding, () => userBinding);
 const diagnosticTools = {geomcp_fit_ai_map_bbox: fitAiMapTool, geomcp_set_ai_map_center_zoom: setAiMapTool, geomcp_capture_ai_map: captureAiMapTool, geomcp_fit_ai_map_to_user_view: fitAiMapToUserViewTool};
@@ -491,7 +531,9 @@ recordDiagnostic("host_connection_started");
 void app.connect().then(() => {
   if (tornDown) return;
   appConnected = true;
+  diagnosticReportingReady = app.getHostCapabilities()?.serverTools !== undefined;
   recordDiagnostic("host_connected", {host_info: app.getHostVersion() ?? null, host_capabilities: app.getHostCapabilities() ?? null});
+  if (!diagnosticReportingReady) recordDiagnostic("diagnostic_reporting_unavailable", {reason: "Host did not advertise serverTools"});
   submitInitialAiImage();
   applyHostDimensions(app.getHostContext());
   requestFullscreen();

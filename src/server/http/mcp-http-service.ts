@@ -80,7 +80,7 @@ export function createMcpHttpService(webConfig: WebConfigType, sessionManager: S
         diagnosticRequests.clear();
         connections.delete(connection);
       };
-      server.server.onerror = () => logger.warning("mcp_session_protocol_error", {reason_code: "protocol_error"});
+      server.server.onerror = (error) => logger.warning("mcp_session_protocol_error", {reason_code: "protocol_error", mcp_session_id: transport.sessionId ?? null, error: {name: error.name, message: error.message}});
       try {
         await server.connect(transport);
         // HTTP 响应结束与工具执行完成是两个边界；独立跟踪请求，保护断线后仍在排队或执行的工具。
@@ -96,7 +96,7 @@ export function createMcpHttpService(webConfig: WebConfigType, sessionManager: S
               };
               diagnosticRequests.set(message.id, diagnostic);
               logger.info("mcp_diagnostic_request", {mcp_session_id: transport.sessionId ?? null, request_id: message.id, ...diagnostic});
-              if (isInitializeRequest(message)) logger.info("mcp_client_initialize", {request_id: message.id, client_info: message.params.clientInfo, protocol_version: message.params.protocolVersion});
+              if (isInitializeRequest(message)) logger.info("mcp_client_initialize", {mcp_session_id: transport.sessionId ?? null, request_id: message.id, client_info: message.params.clientInfo, protocol_version: message.params.protocolVersion, client_capabilities: message.params.capabilities});
             }
           }
           onmessage?.(message, extra);
