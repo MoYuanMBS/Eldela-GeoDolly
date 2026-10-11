@@ -4,7 +4,6 @@ import {App, type McpUiHostContext} from "@modelcontextprotocol/ext-apps";
 import {createElement, type ReactNode} from "react";
 import {flushSync} from "react-dom";
 import {createRoot} from "react-dom/client";
-import {z} from "zod";
 import "../styles/ui-palette.css";
 import "../styles/ui-typography.css";
 import "../styles/web.css";
@@ -14,10 +13,9 @@ import "../styles/ui-assets.css";
 import "../styles/ui-scrollbar.css";
 import {MapPage} from "../src/browser/web/map-page.js";
 import {MapSurfaceView} from "../src/browser/browser-map-flow/map-surface-view.js";
-import {finalSessionIdSchema} from "../src/models/backend/session-id-models.js";
-import {mcpInteractiveMapDataSchema, type InteractiveMapDataType} from "../src/models/web/interactive-ui-models.js";
+import {visualOutputSchema, type VisualOutputType} from "../src/models/backend/bridge-models.js";
+import {mcpInteractiveMapDataSchema, type InteractiveMapDataType, type McpInteractiveMapDataType} from "../src/models/web/interactive-ui-models.js";
 import * as mapAppModels from "../src/models/web/map-app-models.js";
-import type {CommonVisualMapPayloadType} from "../src/models/mapsurface/map-payload-models.js";
 import type {AiMapViewCommands, MapSurfaceBoundsReader} from "../src/browser/web/map-surface-port.js";
 import {AiMap} from "./ai-map.js";
 import {registerAiMapTools, type AiMapJobResult, type AiMapToolBinding, type UserMapToolBinding} from "./register-tools.js";
@@ -25,13 +23,6 @@ import type {AiMapCapturePort} from "./ai-map-screenshot.js";
 import type {AiMapScreenshot} from "../src/models/web/snapshot-ui-models.js";
 import {AppError} from "../src/shared/app-error.js";
 import {GEOMCP_NAME} from "../src/shared/brand.js";
-
-const INTERACTIVE_MAP_META_KEY = "io.geomcp/interactiveMap";
-const clientOutputSchema = z.object({
-  url: z.url(),
-  session_id: finalSessionIdSchema,
-  map_data: mcpInteractiveMapDataSchema,
-}).strict();
 
 function requireElement<T extends HTMLElement>(id: string): T {
   const element = document.getElementById(id);
@@ -60,6 +51,8 @@ let fullscreenRequested = false;
 // 代次对应一次结果交付；同 Session 重发也必须区分，以撤销上一轮初始化和迟到回调。
 let resultRevision = 0;
 let tornDown = false;
+let visualOutput: VisualOutputType | null = null;
+let mapDataRequest: AbortController | null = null;
 // 只保存当前已 ready 的命令/读取端口；两张地图的 Leaflet 实例仍由各自 runtime 持有。
 interface AiMapBinding extends AiMapToolBinding {
   port: AiMapCapturePort;
@@ -86,12 +79,13 @@ resizeObserver.observe(mapContent);
 // 共享交付或 App 初始化失败时清理两张地图；AI 的局部失败由下面的独立路径处理。
 function showError(errorMessage: string): void {
   resultRevision += 1;
+  mapDataRequest?.abort();
+  mapDataRequest = null;
   userBinding = null;
   revokeAiBinding();
-  interactiveMapUrl = null;
   flushSync(() => reactRoot.render(null));
   viewport.hidden = true;
-  fallback.hidden = true;
+  fallback.hidden = interactiveMapUrl === null;
   rootElement.dataset.state = "error";
   message.hidden = false;
   message.textContent = errorMessage;
@@ -247,95 +241,101 @@ function submitInitialAiImage(): void {
   });
 }
 
-// URL 只接受当前部署和当前 Session 的固定路由，避免备用链接或视觉 URL 混入别处的数据。
-function validateMapUrl(value: string, sessionId: string, routes: readonly string[]): URL {
-  const url = new URL(value);
-  if (url.origin !== publicBaseUrl.origin || !routes.some((route) => url.pathname === `${publicBasePath}/session/${sessionId}/${route}`) || url.username !== "" || url.password !== "" || url.search !== "" || url.hash !== "") {
-    throw new AppError("invalid_app_map_url", "Map URL does not match its session and App deployment");
+// 数据请求直接访问构建期 Server 地址；Host 只交付指针，不参与数据传输或 ACK。
+async function loadMapData(sessionId: string, signal: AbortSignal): Promise<McpInteractiveMapDataType> {
+  if (app.getHostCapabilities()?.sandbox?.csp?.connectDomains?.length === 0) {
+    throw new AppError("app_map_connection_denied", "The chat host did not allow map data requests. Open the map in a browser.");
   }
-  return url;
+  const url = `${publicBaseUrl.origin}${publicBasePath}/session/${encodeURIComponent(sessionId)}/mapdata`;
+  const response = await fetch(url, {cache: "no-store", credentials: "omit", signal});
+  if (!response.ok) {
+    throw new AppError("app_map_data_request", response.status === 410 ? "已过期" : `Map data request failed with HTTP ${response.status}`);
+  }
+  return mcpInteractiveMapDataSchema.parse(await response.json());
 }
 
-function assembleMapPayload(data: mapAppModels.MapAppSharedDataType, layout: mapAppModels.UserMapAppPayloadType | mapAppModels.AiMapAppPayloadType): CommonVisualMapPayloadType {
-  const {session_id, visual_output, ai_output, display_id_by_feature_id, relation_membership_by_feature_id, selected_location_name, ...visual} = data;
-  // 共享业务字段已在接收边界校验；只新建角色的顶层容器，嵌套 Overlay/Core 数据继续使用同一引用。
-  // map_size 是地图本身的 [width, height] 逻辑像素，映射回既有字段，不把角色 UI 高度计入其中。
-  return {...visual, screenshot_size: layout.map_size, center: layout.center, leaflet_bbox: layout.leaflet_bbox, leaflet: appLeafletConfig};
-}
+app.ontoolinput = (input): void => {
+  if (tornDown) return;
+  const mode = visualOutputSchema.safeParse(input.arguments?.visual_output);
+  visualOutput = mode.success ? mode.data : null;
+};
 
 app.ontoolresult = (result): void => {
   if (tornDown) return;
   const revision = ++resultRevision;
+  // 模式属于本次交付；在异步 GET 前固定它，缺少新输入时不沿用上一次的模式。
+  const mode = visualOutput;
+  visualOutput = null;
+  mapDataRequest?.abort();
+  mapDataRequest = null;
   userBinding = null;
   revokeAiBinding();
+  interactiveMapUrl = null;
+  urlField.value = "";
+  viewport.hidden = true;
+  fallback.hidden = true;
+  message.hidden = false;
+  message.textContent = "Loading the Interactive map…";
+  rootElement.dataset.state = "loading";
   // 同 Session 重发也必须同步撤销旧 effect，阻止迟到初始化和旧命令继续使用旧实例。
   flushSync(() => reactRoot.render(null));
   if (result.isError === true) {
     showError("The map tool returned an error. No Interactive map is available.");
     return;
   }
-  try {
-    const raw = result._meta?.[INTERACTIVE_MAP_META_KEY];
-    let sessionId: string;
-    let url: URL;
-    let userData: InteractiveMapDataType;
+  const output = mapAppModels.mapAppResultSchema.safeParse(result.structuredContent);
+  if (!output.success) {
+    // 记录交付形状与校验失败项，便于定位 Host 转交差异。
+    const structuredContent = result.structuredContent;
+    console.warn("[GeoMCP] Map tool result validation failed.", {
+      result_keys: Object.keys(result),
+      structured_content_type: structuredContent === null ? "null" : Array.isArray(structuredContent) ? "array" : typeof structuredContent,
+      structured_content_keys: structuredContent !== null && typeof structuredContent === "object" ? Object.keys(structuredContent) : [],
+      issues: output.error.issues
+    });
+    showError("The map tool did not provide a valid Session ID for this App.");
+    return;
+  }
+  const sessionId = output.data.session_id;
+  interactiveMapUrl = `${publicBaseUrl.origin}${publicBasePath}/session/${encodeURIComponent(sessionId)}/interactive`;
+  urlField.value = interactiveMapUrl;
+  fallback.hidden = false;
+  fallbackStatus.textContent = "Open or copy the map URL to view it in a browser.";
+  const controller = new AbortController();
+  mapDataRequest = controller;
+  void (async () => {
+    const data = await loadMapData(sessionId, controller.signal);
+    // 取消请求仍可能已有响应；同 Session 的旧结果也不能覆盖新地图或恢复旧 AI 工具。
+    if (controller.signal.aborted || tornDown || revision !== resultRevision) return;
+    const userData: InteractiveMapDataType = {
+      ...data,
+      map_payload: {...data.map_payload, leaflet: appLeafletConfig},
+      style_payload: appStylePayload,
+    };
     const maps: ReactNode[] = [];
-    if (typeof raw === "object" && raw !== null && "data" in raw) {
-      // 一次校验共享业务数据和 User 布局；AI 布局留给下方单独校验，使其失败只影响 AI 区域。
-      const output = mapAppModels.mapAppResultSchema.parse(raw);
-      const data = output.data;
-      sessionId = data.session_id;
-      url = validateMapUrl(output.user_payload.url, sessionId, ["interactive"]);
-      userData = {
-        map_payload: assembleMapPayload(data, output.user_payload),
-        style_payload: appStylePayload,
-        ai_output: data.ai_output,
-        display_id_by_feature_id: data.display_id_by_feature_id,
-        relation_membership_by_feature_id: data.relation_membership_by_feature_id,
-        selected_location_name: data.selected_location_name,
-      };
-      try {
-        if (data.visual_output === "none") {
-          if (output.ai_payload !== null) throw new AppError("invalid_app_ai_map_data", "AI map payload must be null when visual_output is none");
+    if (mode === null) {
+      maps.push(createElement("section", {key: "ai-error", className: "geomcp-map-page-state geomcp-map-page-error", role: "alert"}, "The tool input did not provide a valid AI visual mode. The User map is available."));
+    } else if (mode !== "none") {
+      // 角色仅装配顶层容器，地图业务对象与构建样式共享引用，不再次解析完整数据。
+      const aiData = {map_payload: userData.map_payload, style_payload: appStylePayload};
+      const onAiViewCommandsChange = (port: AiMapCapturePort | null): void => {
+        if (tornDown || revision !== resultRevision) return;
+        if (port === null) {
+          revokeAiBinding();
         } else {
-          const layout = mapAppModels.aiMapAppPayloadSchema.parse(output.ai_payload);
-          if (layout.url !== undefined) validateMapUrl(layout.url, sessionId, ["snapshot-interactive", "snapshot.webp"]);
-          const aiData = {map_payload: assembleMapPayload(data, layout), style_payload: appStylePayload};
-          const mode = data.visual_output;
-          const onAiViewCommandsChange = (port: AiMapCapturePort | null): void => {
-            // 旧实例的 ready 或 cleanup 可能迟到；仅当前代次能启用工具或撤销当前绑定。
-            if (tornDown || revision !== resultRevision) return;
-            if (port === null) {
-              revokeAiBinding();
-            } else {
-              const binding: AiMapBinding = {
-                sessionId, port, mode, revision,
-                initialStarted: false, initialFinished: mode !== "screenshot",
-                run: (operation, signal) => runAiMapJob(binding, operation, signal)
-              };
-              aiBinding = binding;
-              syncAiTools();
-              submitInitialAiImage();
-            }
+          const binding: AiMapBinding = {
+            sessionId, port, mode, revision,
+            initialStarted: false, initialFinished: mode !== "screenshot",
+            run: (operation, signal) => runAiMapJob(binding, operation, signal)
           };
-          maps.push(createElement("section", {key: "ai", "aria-label": "AI map"},
-            createElement("h2", {className: "geomcp-app-map-title"}, "AI map"),
-            createElement(AiMap, {mapData: aiData, onAiViewCommandsChange})));
+          aiBinding = binding;
+          syncAiTools();
+          submitInitialAiImage();
         }
-      } catch (error) {
-        console.error("ai_map_delivery_invalid", error);
-        maps.push(createElement("section", {key: "ai-error", className: "geomcp-map-page-state geomcp-map-page-error", role: "alert"}, "The tool did not provide valid AI map data. The User map is available."));
-      }
-    } else {
-      // 旧后端仍只创建 User 地图；同样只校验一次，不复制已校验的 Overlay。
-      const output = clientOutputSchema.parse(raw);
-      sessionId = output.session_id;
-      url = validateMapUrl(output.url, sessionId, ["interactive"]);
-      userData = {
-        ...output.map_data,
-        map_payload: {...output.map_data.map_payload, leaflet: appLeafletConfig},
-        style_payload: appStylePayload,
       };
+      maps.push(createElement("section", {key: "ai", "aria-label": "AI map"},
+        createElement("h2", {className: "geomcp-app-map-title"}, "AI map"),
+        createElement(AiMap, {mapData: aiData, onAiViewCommandsChange})));
     }
     let tileMeta = document.querySelector<HTMLMetaElement>('meta[name="geomcp-basemap-base-url"]');
     if (tileMeta === null) {
@@ -343,13 +343,9 @@ app.ontoolresult = (result): void => {
       tileMeta.name = "geomcp-basemap-base-url";
       document.head.append(tileMeta);
     }
-    tileMeta.content = `${publicBaseUrl.origin}${publicBasePath}/basemap/${sessionId}`;
-    interactiveMapUrl = url.href;
-    urlField.value = url.href;
+    tileMeta.content = `${publicBaseUrl.origin}${publicBasePath}/basemap/${encodeURIComponent(sessionId)}`;
     message.hidden = true;
     viewport.hidden = false;
-    fallback.hidden = false;
-    fallbackStatus.textContent = "Open or copy the map URL to view it in a browser.";
     rootElement.dataset.state = "ready";
     const onViewBoundsReaderChange = (reader: MapSurfaceBoundsReader | null): void => {
       // 旧 User 实例的 ready/cleanup 不得启用新代次工具，也不得撤销新实例的绑定。
@@ -362,9 +358,12 @@ app.ontoolresult = (result): void => {
       createElement(MapPage, {mapData: userData, MapSurfaceComponent: MapSurfaceView, onViewBoundsReaderChange})));
     reactRoot.render(createElement("div", {className: "geomcp-app-maps", key: revision}, ...maps));
     requestFullscreen();
-  } catch {
-    showError("The map tool did not provide valid Interactive map data for this App.");
-  }
+  })().catch((error: unknown) => {
+    if (controller.signal.aborted || tornDown || revision !== resultRevision) return;
+    showError(error instanceof AppError ? error.message : "The Interactive map data could not be loaded. Open the map in a browser.");
+  }).finally(() => {
+    if (mapDataRequest === controller) mapDataRequest = null;
+  });
 };
 
 // SDK 合并增量 context 后再读取，避免主题通知清除已有尺寸约束。
@@ -377,6 +376,8 @@ app.onteardown = async () => {
   // 先拒绝后续通知/迟到 connect，再撤销工具；React unmount 会取消两张地图的异步任务并释放 runtime。
   tornDown = true;
   resultRevision += 1;
+  mapDataRequest?.abort();
+  mapDataRequest = null;
   userBinding = null;
   revokeAiBinding();
   interactiveMapUrl = null;

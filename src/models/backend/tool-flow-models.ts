@@ -32,7 +32,6 @@ import type {
 } from "../mapsurface/map-payload-models.js";
 import type {InteractiveMapArchiveType} from "./map-session-models.js";
 import type {ToolExecutionContextType} from "./tool-execution-models.js";
-import type {InteractiveMapDataType} from "../web/interactive-ui-models.js";
 import type {MapAppDeliveryType} from "../web/map-app-models.js";
 
 /** processToolReply() 生成的公共数据结果；样式与具体 render_mode 不进入该阶段。 */
@@ -113,13 +112,13 @@ export type NonCoreFlowInput = Omit<
 export type BasemapOnlyFlowInput = CommonMapPayloadFields;
 
 /**
- * 地图模式与公共数据整理完成后，供发布阶段消费的 Node 数据和严格 HTTP Interactive runtime。
- * 此处的 ai_output 仍是业务记录；发布阶段才生成 YAML 与 MCP App 交付包装。
+ * 地图模式与公共数据整理完成后，供发布阶段消费的 Node 数据和纯业务归档。
+ * 此处的 ai_output 仍是业务记录；发布阶段才生成 YAML 与 MCP App 成功指针。
  */
 export type RunToolFlowResultType = Readonly<{
   /** 归档、运行时与最终发布共同使用的最终候选会话 ID。 */
   session_id: string;
-  /** 原样透传 Tool 输入，供发布层选择是否交付 AI App 布局。 */
+  /** 原样透传 Tool 输入；App 的模式由 Host toolinput 独立传入。 */
   visual_output: VisualOutputType;
   /** 记录实际查询 / 降级模式；渲染模式已单独保存在 archive 与 runtime 中。 */
   effective_query_mode: EffectiveQueryModeType;
@@ -133,8 +132,6 @@ export type RunToolFlowResultType = Readonly<{
   selected_location_name: string | null;
   /** 文件层只保存这份纯数据 Archive；Browser runtime 由当前配置另行组装。 */
   interactive_archive: InteractiveMapArchiveType;
-  /** /interactive 页面使用的完整数据与当前 Leaflet / UI 配置，区别于 App 的共享 data。 */
-  interactive_runtime: InteractiveMapDataType;
   /** 保留 Python 的执行说明，供发布层生成 AI YAML 的独立 info 字段。 */
   info: string;
 }>;
@@ -151,17 +148,14 @@ export type AiPublishedToolFlowResultType = Readonly<{
   overlay_output_json?: string;
 }>;
 
-/**
- * 进入 MCP Tool Result `_meta["io.geomcp/interactiveMap"]` 的 App 交付，不放入 AI-facing content。
- * data 保存共享业务对象，user_payload / ai_payload 只保存各自布局与 URL；none 时仍保留 User 交付。
- */
+/** 进入 MCP structuredContent 的成功指针，完整业务数据由 /mapdata 提供。 */
 export type ClientPublishedToolFlowResultType = MapAppDeliveryType;
 
 /** Tool Flow 在构造阶段就分离 AI 与客户端发布路径，禁止先混合再删除敏感字段。 */
 export type PublishedToolFlowResultType = Readonly<{
-  /** AI-facing 发布包装，区别于共享 data.ai_output 中按 OSM 类型分组的业务记录。 */
+  /** AI-facing 发布包装，区别于地图数据中按 OSM 类型分组的业务记录。 */
   ai_output: AiPublishedToolFlowResultType;
-  /** 完整客户端交付，只由 MCP handler 放入 _meta，保留共享数据与角色布局的分离。 */
+  /** 客户端成功指针，由 MCP handler 放入 structuredContent。 */
   client_output: ClientPublishedToolFlowResultType;
 }>;
 

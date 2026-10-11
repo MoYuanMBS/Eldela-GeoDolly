@@ -243,7 +243,7 @@ export async function sessionFilesAreComplete(sessionId: string): Promise<boolea
     const archive = interactiveMapArchiveSchema.parse(
       JSON.parse(await readFile(path.join(sessionPath, ...interactiveMapArchivePath), "utf8")) as unknown,
     );
-    if (archive.render_mode === "basemap_only") return true;
+    if (archive.map_payload.render_mode === "basemap_only") return true;
 
     const aiOutputStats = await stat(path.join(sessionPath, ...aiOutputPath));
     return aiOutputStats.isFile() && aiOutputStats.size > 0;

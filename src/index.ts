@@ -23,6 +23,7 @@ import {
   locSearchReplyRawSchema,
   AitoolInputReqSchema,
 } from "./models/backend/bridge-models.js";
+import {mapAppResultSchema} from "./models/web/map-app-models.js";
 import type {ToolFlowServicesType} from "./server/tools/tool-flow.js";
 import {ToolExecutionScheduler} from "./server/tools/tool-execution-scheduler.js";
 import {createErrorToolResult, createPublishedMapToolHandler, createTextToolResult} from "./server/tools/mcp-tool-handler.js";
@@ -98,6 +99,7 @@ function buildServer(scheduler: ToolExecutionScheduler, services: ToolFlowServic
       title: toolPromptsConfig.tool_a.title,
       description: toolPromptsConfig.tool_a.description,
       inputSchema: AitoolInputReqSchema,
+      outputSchema: mapAppResultSchema,
       _meta: {ui: {resourceUri: INTERACTIVE_MAP_LAUNCHER_URI, visibility: ["model"]}},
     },
     createPublishedMapToolHandler(funcToolA, mapToolHandlerOptions),
@@ -110,6 +112,7 @@ function buildServer(scheduler: ToolExecutionScheduler, services: ToolFlowServic
       title: toolPromptsConfig.tool_b.title,
       description: toolPromptsConfig.tool_b.description,
       inputSchema: AitoolInputReqSchema,
+      outputSchema: mapAppResultSchema,
       _meta: {ui: {resourceUri: INTERACTIVE_MAP_LAUNCHER_URI, visibility: ["model"]}},
     },
     createPublishedMapToolHandler(funcToolB, mapToolHandlerOptions),

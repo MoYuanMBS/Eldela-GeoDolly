@@ -20,11 +20,11 @@ export function createTextToolResult(text: string, isError = false) {
   };
 }
 
-/** 客户端 URL 只进入 `_meta`，AI-facing JSON 只序列化已经分离的 `ai_output`。 */
+/** structuredContent 只交付成功指针，AI-facing JSON 保持独立 content 路径。 */
 function createPublishedToolResult(publication: PublishedToolFlowResultType) {
   return {
     ...createTextToolResult(JSON.stringify(publication.ai_output, null, 2)),
-    _meta: {"io.geomcp/interactiveMap": publication.client_output},
+    structuredContent: publication.client_output,
   };
 }
 

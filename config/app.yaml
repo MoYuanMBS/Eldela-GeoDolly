@@ -93,7 +93,7 @@ overpass:
   # Overlay 二阶段 skel 批次请求启动间隔秒数；降低公共服务限流概率。
   overlay_skel_batch_delay_seconds: 2.00
   # Overpass API 请求地址。
-  endpoint: "https://overpass-api.de/api/interpreter"
+  endpoint: "https://overpass.openstreetmap.fr/api/interpreter"
   # 可选 Overpass API 请求地址池；为空时只使用 endpoint。
   endpoints: []
   # endpoint 地址池策略：failover 优先单服务并在失败后切换；round_robin 每个请求轮流选择服务。

@@ -1,6 +1,6 @@
 import {useCallback, useEffect, useMemo, useRef, useState, type CSSProperties} from "react";
 import type {ActiveMeasurementTargetType} from "../../models/measure-tools/measure-tool-models.js";
-import {interactiveMapDataSchema, type InteractiveMapDataType} from "../../models/web/interactive-ui-models.js";
+import {mcpInteractiveMapDataSchema, type InteractiveMapDataType} from "../../models/web/interactive-ui-models.js";
 import {AppError} from "../../shared/app-error.js";
 import {UI_BUILT_IN_CONFIG} from "../../shared/ui.js";
 import {FeatureBar} from "../ui/feature-bar.js";
@@ -104,12 +104,18 @@ export function MapPage({mapDataUrl, mapData, MapSurfaceComponent, onViewBoundsR
     const abortController = new AbortController();
     async function loadMapData() {
       try {
-        const response = await fetch(dataUrl, {cache: "no-store", signal: abortController.signal});
+        const response = await fetch(dataUrl, {cache: "no-store", credentials: "omit", signal: abortController.signal});
         if (!response.ok) {
-          throw new AppError("map_data_request", `Map data request failed with HTTP ${response.status}`);
+          throw new AppError("map_data_request", response.status === 410 ? "已过期" : `Map data request failed with HTTP ${response.status}`);
         }
-        const data = interactiveMapDataSchema.parse(await response.json());
-        // UI 只校验并保存传输数据；运行时样式与地图对象均由注入的 MapSurface adapter 创建。
+        const mapData = mcpInteractiveMapDataSchema.parse(await response.json());
+        if (abortController.signal.aborted) return;
+        // HTTP 业务对象只解析一次；当前构建的配置、样式在初始化时装配，不复制嵌套地图数据。
+        const data: InteractiveMapDataType = {
+          ...mapData,
+          map_payload: {...mapData.map_payload, leaflet: __GEOMCP_APP_LEAFLET__},
+          style_payload: __GEOMCP_APP_STYLE__,
+        };
         setLoadState({status: "ready", data});
       } catch (error) {
         if (abortController.signal.aborted) return;

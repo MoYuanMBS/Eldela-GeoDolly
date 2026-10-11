@@ -24,48 +24,60 @@ const archiveViewFields = {
   screenshot_size: mapSurfacePayloadSchema.shape.screenshot_size,
   center: mapSurfacePayloadSchema.shape.center,
   leaflet_bbox: mapSurfacePayloadSchema.shape.leaflet_bbox,
-  basemap: basemapProfileIdSchema,
-  selected_location_name: z.string().nullable(),
+  basemap_id: basemapProfileIdSchema,
 } as const;
 
 const archiveInteractiveFields = {
   ai_output: aiOutputGroupsWithIdsSchema,
-  overlay_output: identifiedOverlayGroupsWithDisplayIdSchema,
   display_id_by_feature_id: displayIdByFeatureIdSchema,
-  relation_member_features_by_relation: relationMemberFeaturesByRelationSchema,
   relation_membership_by_feature_id: relationMembershipByFeatureIdSchema,
+  selected_location_name: z.string().nullable(),
+} as const;
+
+const archiveOverlayFields = {
+  overlay_output: identifiedOverlayGroupsWithDisplayIdSchema,
+  relation_member_features_by_relation: relationMemberFeaturesByRelationSchema,
 } as const;
 
 /** Tool A/Non-core 归档不携带 Core visual，但保留完整 Interactive 数据。 */
 const nonCoreInteractiveMapArchiveSchema = z.object({
-  ...archiveViewFields,
+  map_payload: z.object({
+    ...archiveViewFields,
+    ...archiveOverlayFields,
+    render_mode: z.literal("non_core"),
+    core_visual: z.null(),
+  }).strict(),
   ...archiveInteractiveFields,
-  render_mode: z.literal("non_core"),
-  core_visual: z.null(),
 }).strict();
 
 /** Tool B/Core 归档允许候选原始 GeoJSON 缺失；Browser 会把 null 作为 Core skipped。 */
 const coreInteractiveMapArchiveSchema = z.object({
-  ...archiveViewFields,
+  map_payload: z.object({
+    ...archiveViewFields,
+    ...archiveOverlayFields,
+    render_mode: z.literal("core"),
+    core_visual: coreVisualPayloadSchema,
+  }).strict(),
   ...archiveInteractiveFields,
-  render_mode: z.literal("core"),
-  core_visual: coreVisualPayloadSchema,
 }).strict();
 
 /** Basemap-only 不使用空对象伪造 Interactive 数据，所有 Feature 字段固定为 null。 */
 const basemapOnlyInteractiveMapArchiveSchema = z.object({
-  ...archiveViewFields,
-  render_mode: z.literal("basemap_only"),
+  map_payload: z.object({
+    ...archiveViewFields,
+    render_mode: z.literal("basemap_only"),
+    overlay_output: z.null(),
+    relation_member_features_by_relation: z.null(),
+    core_visual: z.null(),
+  }).strict(),
   ai_output: z.null(),
-  overlay_output: z.null(),
   display_id_by_feature_id: z.null(),
-  relation_member_features_by_relation: z.null(),
   relation_membership_by_feature_id: z.null(),
-  core_visual: z.null(),
+  selected_location_name: z.string().nullable(),
 }).strict();
 
-/** `interactive-map.json` 固定保存的 12 个纯数据字段。 */
-export const interactiveMapArchiveSchema = z.discriminatedUnion("render_mode", [
+/** 与 /mapdata 对齐的纯业务归档；map_payload 中只保存底图 ID。 */
+export const interactiveMapArchiveSchema = z.union([
   coreInteractiveMapArchiveSchema,
   nonCoreInteractiveMapArchiveSchema,
   basemapOnlyInteractiveMapArchiveSchema,

@@ -3,8 +3,9 @@ import {fileURLToPath} from "node:url";
 import react from "@vitejs/plugin-react";
 import {defineConfig} from "vite";
 import {GEOMCP_NAME} from "./src/shared/brand.js";
-import {basemapConfigSchema, browserMapConfigSchema, iframeAdaptiveConfigSchema, uiConfigSchema} from "./src/models/backend/config-models.js";
+import {basemapConfigSchema, browserMapConfigSchema, iframeAdaptiveConfigSchema, leafletConfigSchema, uiConfigSchema} from "./src/models/backend/config-models.js";
 import {config} from "./src/server/utils/config-loader.js";
+import {initializeUserStyle} from "./src/server/utils/user-style/user-style-rule.js";
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 const webRoot = path.join(projectRoot, "src", "browser", "web");
@@ -12,6 +13,7 @@ const iframeAdaptiveConfig = config.getAppSection("iframe_adaptive", iframeAdapt
 const browserMapConfig = config.getAppSection("browser_map", browserMapConfigSchema);
 const uiConfig = config.getAppSection("ui", uiConfigSchema);
 const basemapConfig = config.getAppSection("basemap", basemapConfigSchema);
+const userStyle = initializeUserStyle();
 const brandHtmlPlugin = {
   name: "geomcp-brand-html",
   transformIndexHtml: (html: string): string => html.replaceAll("__GEOMCP_NAME_HTML__", GEOMCP_NAME),
@@ -25,6 +27,8 @@ export default defineConfig({
     transformer: "lightningcss",
   },
   define: {
+    __GEOMCP_APP_LEAFLET__: JSON.stringify(config.getAppSection("leaflet", leafletConfigSchema)),
+    __GEOMCP_APP_STYLE__: JSON.stringify({user_css: userStyle.css, user_rules: userStyle.rules}),
     __GEOMCP_MAP_PADDING__: JSON.stringify(iframeAdaptiveConfig.padding),
     __GEOMCP_MAP_READY_TIMEOUT_MS__: JSON.stringify(browserMapConfig.ready_timeout_seconds * 1000),
     __GEOMCP_SNAPSHOT_MIN_TILE_SUCCESS_RATIO__: JSON.stringify(basemapConfig.snapshot_min_tile_success_ratio),

@@ -11,7 +11,7 @@ import {
 } from "../utils/file-writer.js";
 import {AppError} from "../../shared/app-error.js";
 
-const SESSION_ROUTE_PATTERN = /^\/session\/([^/]+)\/(status|interactive|interactive\/data)$/u;
+const SESSION_ROUTE_PATTERN = /^\/session\/([^/]+)\/(status|interactive|mapdata)$/u;
 const INTERACTIVE_FLOW_ATTRIBUTE = 'data-geomcp-browser-flow="interactive"';
 const MAP_DATA_META_PATTERN = /<meta\s+name="geomcp-map-data-url"\s+content="[^"]*"\s*\/>/u;
 
@@ -95,7 +95,8 @@ export async function resolveSessionHttpRoute(
     return jsonResponse(status);
   }
 
-  if (route === "interactive/data") {
+  if (route === "mapdata") {
+    if (lookup.status === "archived") return emptyResponse(410);
     const archive = await readInteractiveMapArchiveFile(sessionId);
     if (archive === null) {
       sessionManager.unregisterSession(sessionId);
@@ -107,7 +108,7 @@ export async function resolveSessionHttpRoute(
 
   const encodedSessionId = encodeURIComponent(sessionId);
   const basePath = `${publicBasePath}/session/${encodedSessionId}`;
-  const html = buildMapBrowserHtml(htmlTemplate, `${basePath}/interactive/data`, publicBasePath)
+  const html = buildMapBrowserHtml(htmlTemplate, `${basePath}/mapdata`, publicBasePath)
     .replace("</head>", `    <meta name="geomcp-basemap-base-url" content="${publicBasePath}/basemap/${encodedSessionId}" />\n  </head>`);
   return {
     statusCode: 200,

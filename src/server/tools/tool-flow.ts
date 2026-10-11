@@ -37,7 +37,7 @@ import {
   mapSurfacePayloadSchema,
 } from "../../models/mapsurface/map-payload-models.js";
 import {AppError} from "../../shared/app-error.js";
-import {mapAppSharedDataSchema} from "../../models/web/map-app-models.js";
+import {mapAppResultSchema} from "../../models/web/map-app-models.js";
 import {config} from "../utils/config-loader.js";
 import {
   cleanupSessionFiles,
@@ -119,30 +119,24 @@ function buildInteractiveMapArchive(
   mapPayload: CommonVisualMapPayloadType,
 ): InteractiveMapArchiveType {
   const hasInteractiveData = mapPayload.render_mode !== "basemap_only";
+  const {basemap, leaflet, ...archiveMapPayload} = mapPayload;
   return interactiveMapArchiveSchema.parse({
+    map_payload: {...archiveMapPayload, basemap_id: basemap.id},
     ai_output: hasInteractiveData ? processed.ai_output : null,
-    overlay_output: hasInteractiveData ? processed.overlay_output : null,
     display_id_by_feature_id: hasInteractiveData ? processed.display_id_by_feature_id : null,
-    relation_member_features_by_relation: hasInteractiveData ? processed.relation_member_features_by_relation : null,
     relation_membership_by_feature_id: hasInteractiveData ? processed.relation_membership_by_feature_id : null,
     selected_location_name: input.pythonQuery.selected_candidate.name ?? null,
-    screenshot_size: processed.screenshot_size,
-    center: processed.center,
-    leaflet_bbox: processed.leaflet_bbox,
-    render_mode: mapPayload.render_mode,
-    core_visual: mapPayload.render_mode === "core" ? mapPayload.core_visual : null,
-    basemap: input.toolInput.basemap,
   });
 }
 
-/** 前端公共子流程：Archive 与当前版本配置组装成 Interactive runtime。 */
+/** 前端公共子流程：生成归档，并在发布前确认它能恢复合法的 /mapdata。 */
 function prepareFrontendFlow(
   input: ToolFlowInputType,
   processed: ProcessedToolReplyType,
   mapPayload: CommonVisualMapPayloadType,
 ): RunToolFlowResultType {
   const interactiveArchive = buildInteractiveMapArchive(input, processed, mapPayload);
-  const browserRuntime = buildMapRuntimePayloads(interactiveArchive);
+  buildMapRuntimePayloads(interactiveArchive);
   return Object.freeze({
     session_id: processed.session_id,
     visual_output: input.toolInput.visual_output,
@@ -152,7 +146,6 @@ function prepareFrontendFlow(
     relation_membership_by_feature_id: processed.relation_membership_by_feature_id,
     selected_location_name: input.pythonQuery.selected_candidate.name ?? null,
     interactive_archive: interactiveArchive,
-    interactive_runtime: browserRuntime.interactive,
     info: processed.info,
   });
 }
@@ -184,7 +177,7 @@ function runBasemapOnlyFlow(input: ToolFlowInputType, backend: PreparedBackendFl
   return prepareFrontendFlow(input, backend.processed, buildBasemapOnlyMapPayload(backend.commonMapFields));
 }
 
-function serializeOverlayJson(overlayOutput: NonNullable<InteractiveMapArchiveType["overlay_output"]>): string {
+function serializeOverlayJson(overlayOutput: NonNullable<InteractiveMapArchiveType["map_payload"]["overlay_output"]>): string {
   try {
     return `${JSON.stringify(overlayOutput, null, 2)}\n`;
   } catch (error) {
@@ -202,10 +195,10 @@ function buildClientInteractiveUrl(sessionId: string): string {
 function resolveOverlayGeoJsonOutput(
   input: ToolFlowInputType,
   result: RunToolFlowResultType,
-): NonNullable<InteractiveMapArchiveType["overlay_output"]> | undefined {
+): NonNullable<InteractiveMapArchiveType["map_payload"]["overlay_output"]> | undefined {
   const outputConfig = config.getAppSection("output", outputConfigSchema);
   if (!outputConfig.allow_overlay_geojson || input.toolInput.include_overlay_geojson !== true) return undefined;
-  return result.interactive_archive.overlay_output ?? undefined;
+  return result.interactive_archive.map_payload.overlay_output ?? undefined;
 }
 
 /** 数据全部落盘并核验后才登记 Session；App 截图不参与后端发布。 */
@@ -299,8 +292,6 @@ export async function publishToolFlow(
     overlayOutput,
   }, sessionRecord, context, services);
   context.throwIfAborted();
-  const archive = result.interactive_archive;
-  const layout = {map_size: archive.screenshot_size, center: archive.center, leaflet_bbox: archive.leaflet_bbox};
 
   return Object.freeze({
     ai_output: Object.freeze({
@@ -309,22 +300,6 @@ export async function publishToolFlow(
       ...(aiOutputYaml === undefined ? {} : {ai_output_yaml: aiOutputYaml}),
       ...(overlayOutputJson === undefined ? {} : {overlay_output_json: overlayOutputJson}),
     }),
-    client_output: Object.freeze({
-      data: mapAppSharedDataSchema.parse({
-        session_id: result.session_id,
-        visual_output: input.toolInput.visual_output,
-        basemap: input.resolvedBasemap,
-        render_mode: archive.render_mode,
-        overlay_output: archive.overlay_output,
-        relation_member_features_by_relation: archive.relation_member_features_by_relation,
-        core_visual: archive.core_visual,
-        ai_output: result.ai_output,
-        display_id_by_feature_id: result.display_id_by_feature_id,
-        relation_membership_by_feature_id: result.relation_membership_by_feature_id,
-        selected_location_name: result.selected_location_name,
-      }),
-      user_payload: Object.freeze({...layout, url: clientInteractiveUrl}),
-      ai_payload: input.toolInput.visual_output === "none" ? null : Object.freeze({...layout}),
-    }),
+    client_output: Object.freeze(mapAppResultSchema.parse({session_id: result.session_id, success: true})),
   });
 }

@@ -8,7 +8,7 @@ import {
 import {basemapOnlyMapPayloadSchema, commonVisualMapPayloadSchema, coreMapPayloadSchema, nonCoreMapPayloadSchema} from "../mapsurface/map-payload-models.js";
 import {renderStylePayloadSchema} from "../mapsurface/style/user-css-style-models.js";
 
-/** 公开 Interactive route 返回并由同一 Browser App 严格校验的动态数据。 */
+/** 浏览器装配预载 Leaflet 配置与样式后的完整 Interactive runtime。 */
 export const interactiveMapDataSchema = z.object({
   map_payload: commonVisualMapPayloadSchema,
   style_payload: renderStylePayloadSchema,
@@ -28,7 +28,7 @@ export const interactiveMapDataSchema = z.object({
 
 export type InteractiveMapDataType = z.infer<typeof interactiveMapDataSchema>;
 
-/** MCP 只交付地图业务数据；Leaflet 配置与用户样式由 App 构建提供。 */
+/** /mapdata 的统一业务数据；Leaflet 配置与用户样式由两种浏览器构建提供。 */
 export const mcpInteractiveMapDataSchema = z.object({
   map_payload: z.discriminatedUnion("render_mode", [
     coreMapPayloadSchema.omit({leaflet: true}),

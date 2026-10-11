@@ -78,8 +78,8 @@ export function createMapHttpRequestHandler(webConfig: WebConfigType, sessionMan
         return;
       }
       const pathname = requestUrl.pathname.slice(publicBasePath.length);
-      // 底图没有浏览器凭据；CORS 同样覆盖 304 和失败响应，Session 门控仍由原 route 执行。
-      if (request.method === "GET" && pathname.startsWith("/basemap/")) response.setHeader("access-control-allow-origin", "*");
+      // 底图和 mapdata 没有浏览器凭据；CORS 同样覆盖失败响应，Session 门控仍由原 route 执行。
+      if (request.method === "GET" && (pathname.startsWith("/basemap/") || /^\/session\/[^/]+\/mapdata$/u.test(pathname))) response.setHeader("access-control-allow-origin", "*");
       if (request.method !== "GET") {
         writeResponse(response, 405, "", {allow: "GET"});
         return;

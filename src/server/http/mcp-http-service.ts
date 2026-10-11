@@ -141,9 +141,11 @@ export function createMcpHttpService(webConfig: WebConfigType, sessionManager: S
       writeProtocolError(response, 400, "Invalid request URL");
       return;
     }
-    // App 的 opaque iframe 会以 Origin: null 读取底图；仅 GET 底图路径允许跨源，MCP 的 Origin 校验保持原样。
-    const appTileRequest = request.method === "GET" && requestUrl.search === "" && requestUrl.pathname.startsWith(`${publicBasePath}/basemap/`);
-    if (origin !== undefined && !allowedOrigins.has(origin) && !appTileRequest) {
+    // App 的 opaque iframe 会以 Origin: null 读取底图和 mapdata；只放行这两个 GET 入口。
+    const appMapRequest = request.method === "GET" && requestUrl.search === "" && requestUrl.pathname.startsWith(`${publicBasePath}/`) && (
+      requestUrl.pathname.startsWith(`${publicBasePath}/basemap/`) || /^\/session\/[^/]+\/mapdata$/u.test(requestUrl.pathname.slice(publicBasePath.length))
+    );
+    if (origin !== undefined && !allowedOrigins.has(origin) && !appMapRequest) {
       writeProtocolError(response, 403, "Host or Origin is not allowed");
       return;
     }
