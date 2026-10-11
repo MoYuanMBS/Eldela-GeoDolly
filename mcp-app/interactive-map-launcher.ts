@@ -1,6 +1,6 @@
 /// <reference path="../src/browser/web/vite-env.d.ts" />
 
-import {App, type McpUiHostContext} from "@modelcontextprotocol/ext-apps";
+import {App, McpUiToolResultNotificationSchema, type McpUiHostContext} from "@modelcontextprotocol/ext-apps";
 import {createElement, type ReactNode} from "react";
 import {flushSync} from "react-dom";
 import {createRoot} from "react-dom/client";
@@ -254,6 +254,11 @@ async function loadMapData(sessionId: string, signal: AbortSignal): Promise<McpI
   return mcpInteractiveMapDataSchema.parse(await response.json());
 }
 
+// SDK 默认会补空 content；兼容解包要求文本中的对象本身就是完整 ToolResult。
+const embeddedToolResultSchema = McpUiToolResultNotificationSchema.shape.params.extend({
+  content: McpUiToolResultNotificationSchema.shape.params.shape.content.removeDefault(),
+});
+
 app.ontoolinput = (input): void => {
   if (tornDown) return;
   const mode = visualOutputSchema.safeParse(input.arguments?.visual_output);
@@ -283,17 +288,38 @@ app.ontoolresult = (result): void => {
     showError("The map tool returned an error. No Interactive map is available.");
     return;
   }
-  const output = mapAppModels.mapAppResultSchema.safeParse(result.structuredContent);
+  let structuredContent = result.structuredContent;
+  const content = result.content[0];
+  // 只兼容缺失指针的单层文本包装；外层已提供的非法指针不能被内层覆盖。
+  if (!Object.hasOwn(result, "structuredContent") && result.content.length === 1 && content?.type === "text") {
+    let wrappedResult: unknown;
+    try { wrappedResult = JSON.parse(content.text); }
+    catch { wrappedResult = undefined; }
+    const inner = embeddedToolResultSchema.safeParse(wrappedResult);
+    if (inner.success) {
+      if (inner.data.isError === true) {
+        showError("The map tool returned an error. No Interactive map is available.");
+        return;
+      }
+      structuredContent = inner.data.structuredContent;
+    }
+  }
+  const output = mapAppModels.mapAppResultSchema.safeParse(structuredContent);
   if (!output.success) {
-    // 记录交付形状与校验失败项，便于定位 Host 转交差异。
-    const structuredContent = result.structuredContent;
-    console.warn("[GeoMCP] Map tool result validation failed.", {
+    // 错误页同步显示交付形状与校验失败项，便于无 Console 的桌面 Host 收集诊断。
+    const diagnostics = {
+      diagnostic_version: "map-result-diagnostics-v1",
       result_keys: Object.keys(result),
       structured_content_type: structuredContent === null ? "null" : Array.isArray(structuredContent) ? "array" : typeof structuredContent,
       structured_content_keys: structuredContent !== null && typeof structuredContent === "object" ? Object.keys(structuredContent) : [],
       issues: output.error.issues
-    });
+    };
+    console.warn("[GeoMCP] Map tool result validation failed.", diagnostics);
     showError("The map tool did not provide a valid Session ID for this App.");
+    const details = document.createElement("span");
+    details.textContent = JSON.stringify(diagnostics, null, 2);
+    details.style.cssText = "display: block; max-height: 320px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; text-align: left; user-select: text;";
+    message.append(details);
     return;
   }
   const sessionId = output.data.session_id;
