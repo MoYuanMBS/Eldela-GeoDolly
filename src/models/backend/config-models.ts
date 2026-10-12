@@ -345,6 +345,8 @@ export const webConfigSchema = z.object({
   http: z.object({
     /** MCP/地图公开入口与独立 warning service 的监听地址。 */
     listen_host: z.string().trim().min(1),
+    /** 隧道可用公开 HTTPS + 本机 HTTP；省略时沿用公开地址的协议。 */
+    listen_protocol: z.enum(["http", "https"]).optional(),
     warning: z.object({
       port: positiveIntegerSchema.max(65535),
       /** 在 JSON 解析前拒绝过大的 warning 请求，避免诊断通道消耗无界内存。 */

@@ -1,3 +1,4 @@
+import {createHash} from "node:crypto";
 import {readFileSync} from "node:fs";
 import path from "node:path";
 import {fileURLToPath} from "node:url";
@@ -16,6 +17,22 @@ const uiConfig = config.getAppSection("ui", uiConfigSchema);
 const publicBaseUrl = config.getWebConfig().http.map.public_origin;
 const userStyle = initializeUserStyle();
 const logoDataUrl = "data:image/svg+xml;base64," + readFileSync(path.join(projectRoot, "assets", "logo", "graphic.svg")).toString("base64");
+const fontSource = readFileSync(path.join(projectRoot, "assets", "leaflet", "fonts", "SourceHanSansCN-VF.woff2"));
+const fontFileName = "SourceHanSansCN-VF-" + createHash("sha256").update(fontSource).digest("hex").slice(0, 16) + ".woff2";
+const fontStylesPath = path.join(projectRoot, "src", "browser", "leaflet", "styles", "leaflet-font.css").replaceAll("\\", "/");
+
+const appFontPlugin: Plugin = {
+  name: "geomcp-external-app-font",
+  enforce: "pre",
+  transform(source, id) {
+    if (id.split("?", 1)[0].replaceAll("\\", "/") !== fontStylesPath) return null;
+    // library 模式总会内联字体；提前替换为完整 Server URL，避免依赖 Host 的 data: font-src。
+    return source.replace('url("../../../../assets/leaflet/fonts/SourceHanSansCN-VF.woff2")', 'url("' + publicBaseUrl + "/front/fonts/" + fontFileName + '")');
+  },
+  generateBundle() {
+    this.emitFile({type: "asset", fileName: "front/fonts/" + fontFileName, source: fontSource});
+  },
+};
 
 const inlineAppPlugin: Plugin = {
   name: "geomcp-inline-interactive-app",
@@ -28,7 +45,7 @@ const inlineAppPlugin: Plugin = {
       else if (output.fileName.endsWith(".css")) styles.push(typeof output.source === "string" ? output.source : Buffer.from(output.source).toString("utf8"));
     }
     const escapedBaseUrl = publicBaseUrl.replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
-    // Vite library 模式内联图片/字体；再把唯一 JS 和 CSS 装入 MCP 可直接读取的 HTML。
+    // 图片仍内联、字体通过 /front 加载；把唯一 JS 和 CSS 装入 MCP 可直接读取的 HTML。
     const html = [
       '<!doctype html>',
       '<html lang="en">',
@@ -74,7 +91,7 @@ const inlineAppPlugin: Plugin = {
 };
 
 export default defineConfig({
-  plugins: [react(), inlineAppPlugin],
+  plugins: [react(), appFontPlugin, inlineAppPlugin],
   css: {transformer: "lightningcss"},
   define: {
     "process.env.NODE_ENV": JSON.stringify("production"),

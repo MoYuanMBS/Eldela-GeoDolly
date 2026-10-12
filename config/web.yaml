@@ -2,6 +2,9 @@
 http:
   # MCP/地图公开入口与独立 warning service 的监听地址；远程访问时按部署调整。
   listen_host: "127.0.0.1"
+  # MCP/地图本机监听协议；可选 http/https，省略时沿用 public_origin 的协议。
+  # 隧道或反向代理在外部终止 HTTPS 时设为 http；直连 HTTPS 时设为 https。
+  listen_protocol: "http"
   warning:
     # Browser 固定同源 POST /browser-warnings，由部署层转发到此内部端口。
     port: 23446
@@ -11,14 +14,15 @@ http:
     rate_limit_window_seconds: 60
     max_requests_per_window: 600
   map:
-    # MCP、正式 Session、Snapshot、assets 与 basemap 共用此公开端口。
+    # MCP、正式 Session、Snapshot、assets、front 字体与 basemap 共用此本机端口。
     port: 23336
     # IP/localhost 使用 HTTP，域名使用 HTTPS；可写 example.moe/mcp 并保留 /mcp 前缀。
     # 无路径时 MCP 入口为 /mcp；有路径时该路径本身就是 MCP 入口。
-    # 直连部署时这里的公开端口应与上方 port 一致；截图使用独立本机 HTTP 入口。
+    # 直连部署时这里的公开端口应与上方 port 一致；隧道 HTTPS 地址可使用外部 443。
+    # 使用隧道时填部署层提供的 HTTPS 域名，不绑定某个服务商；修改后需重建 App。
     public_origin: "http://127.0.0.1:23336"
   tls:
-    # 域名 HTTPS 必须提供服务器证书链和对应私钥；IP/localhost 模式不读取。
+    # 本机监听 HTTPS 时必须提供服务器证书链和对应私钥；监听 HTTP 时不读取。
     cert_file: "config/key/fullchain.pem"
     key_file: "config/key/privkey.pem"
 

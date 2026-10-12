@@ -58,11 +58,12 @@ function resolveAssetPath(assetsRootPath: string, encodedPathname: string): stri
 
 /**
  * 创建 Session route 与 Browser 构建资源共用的 handler。
- * 构建资源只允许访问 dist/web/assets 的单层 hash 文件，不能借路径穿越读取 cache 或源码。
+ * 构建资源只允许访问 dist/web/assets 的单层 hash 文件与 App 的 hash 字体，不能读取 cache 或源码。
  */
 export function createMapHttpRequestHandler(webConfig: WebConfigType, sessionManager: SessionManager, publicBasePath = ""): RequestListener {
   const webRootPath = path.resolve(process.cwd(), "dist", "web");
   const assetsRootPath = path.join(webRootPath, "assets");
+  const appFontsRootPath = path.resolve(process.cwd(), "dist", "mcp-apps", "front", "fonts");
   let htmlTemplate: string;
   try {
     htmlTemplate = readFileSync(path.join(webRootPath, "index.html"), "utf8");
@@ -78,8 +79,8 @@ export function createMapHttpRequestHandler(webConfig: WebConfigType, sessionMan
         return;
       }
       const pathname = requestUrl.pathname.slice(publicBasePath.length);
-      // 底图和 mapdata 没有浏览器凭据；CORS 同样覆盖失败响应，Session 门控仍由原 route 执行。
-      if (request.method === "GET" && (pathname.startsWith("/basemap/") || /^\/session\/[^/]+\/mapdata$/u.test(pathname))) response.setHeader("access-control-allow-origin", "*");
+      // 底图、mapdata 和 App 字体没有浏览器凭据；CORS 同样覆盖失败响应。
+      if (request.method === "GET" && (pathname.startsWith("/basemap/") || /^\/session\/[^/]+\/mapdata$/u.test(pathname) || pathname.startsWith("/front/fonts/"))) response.setHeader("access-control-allow-origin", "*");
       if (request.method !== "GET") {
         writeResponse(response, 405, "", {allow: "GET"});
         return;
@@ -116,7 +117,10 @@ export function createMapHttpRequestHandler(webConfig: WebConfigType, sessionMan
         return;
       }
 
-      const assetPath = resolveAssetPath(assetsRootPath, pathname);
+      // 字体只允许构建产物的固定名称；不把整个 /front 目录作为静态文件根公开。
+      const assetPath = pathname.startsWith("/front/fonts/")
+        ? (/^\/front\/fonts\/SourceHanSansCN-VF-[a-f0-9]{16}\.woff2$/u.test(pathname) ? path.join(appFontsRootPath, path.basename(pathname)) : null)
+        : resolveAssetPath(assetsRootPath, pathname);
       if (assetPath === null) {
         writeResponse(response, 404);
         return;

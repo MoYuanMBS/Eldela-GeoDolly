@@ -141,11 +141,11 @@ export function createMcpHttpService(webConfig: WebConfigType, sessionManager: S
       writeProtocolError(response, 400, "Invalid request URL");
       return;
     }
-    // App 的 opaque iframe 会以 Origin: null 读取底图和 mapdata；只放行这两个 GET 入口。
-    const appMapRequest = request.method === "GET" && requestUrl.search === "" && requestUrl.pathname.startsWith(`${publicBasePath}/`) && (
-      requestUrl.pathname.startsWith(`${publicBasePath}/basemap/`) || /^\/session\/[^/]+\/mapdata$/u.test(requestUrl.pathname.slice(publicBasePath.length))
+    // App 的 opaque iframe 以 Origin: null 读取底图、mapdata 和字体；只放行这些无凭据 GET。
+    const appResourceRequest = request.method === "GET" && requestUrl.search === "" && requestUrl.pathname.startsWith(`${publicBasePath}/`) && (
+      requestUrl.pathname.startsWith(`${publicBasePath}/basemap/`) || /^\/session\/[^/]+\/mapdata$/u.test(requestUrl.pathname.slice(publicBasePath.length)) || requestUrl.pathname.startsWith(`${publicBasePath}/front/fonts/`)
     );
-    if (origin !== undefined && !allowedOrigins.has(origin) && !appMapRequest) {
+    if (origin !== undefined && !allowedOrigins.has(origin) && !appResourceRequest) {
       writeProtocolError(response, 403, "Host or Origin is not allowed");
       return;
     }
@@ -162,8 +162,9 @@ export function createMcpHttpService(webConfig: WebConfigType, sessionManager: S
 
   let server: Server;
   try {
-    // 协议已由配置模型按公开 Host 类型确定；TLS 在请求到达前建立，证书装载失败直接上抛。
-    server = publicUrl.protocol === "https:"
+    // 隧道在外部终止 TLS 时，本机监听协议可独立选择；省略配置仍沿用公开地址。
+    const listenProtocol = webConfig.http.listen_protocol ?? publicUrl.protocol.slice(0, -1);
+    server = listenProtocol === "https"
       ? createHttpsServer({cert: readFileSync(webConfig.http.tls.cert_file), key: readFileSync(webConfig.http.tls.key_file)}, handler)
       : createServer(handler);
   } catch (error) {
