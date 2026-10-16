@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import json
 import logging
+import os
 from functools import cached_property
 from pathlib import Path
 from typing import Any, TypeVar
 
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 import yaml
 
 from python.utils.internal_models.experts import ExpertConfig, ExpertRegistryType
@@ -17,6 +19,20 @@ from python.utils.models import StrictModel, TransferTypes
 type YamlMapType = dict[str, Any]
 ConfigModelType = TypeVar("ConfigModelType", bound=StrictModel)
 warning_logger = logging.getLogger("geomcp.warning")
+
+
+def _reject_json_constant(value: str) -> None:
+    # Python 默认接受 NaN/Infinity；环境变量使用与 TS JSON.parse 一致的标准 JSON。
+    raise json.JSONDecodeError("non-standard JSON constant", value, 0)
+
+
+def _merge_config_overrides(base: YamlMapType, overrides: YamlMapType) -> YamlMapType:
+    # 对象按字段合并；数组和标量整体替换，不把 false、0、空列表或 null 当作缺失。
+    merged = base.copy()
+    for key, value in overrides.items():
+        original = base.get(key)
+        merged[key] = _merge_config_overrides(original, value) if isinstance(original, dict) and isinstance(value, dict) else value
+    return merged
 
 
 ##### YAML 文件读取 #####
@@ -57,10 +73,19 @@ class _YamlStore:
             raise TransferTypes.AppError(code="invalid_config", message=f"config file read error: {path}", details=str(error)) from error
 
         if loaded_yaml is None:
-            return {}
+            loaded_yaml = {}
 
         if not isinstance(loaded_yaml, dict):
             raise TransferTypes.AppError(code="invalid_config", message=f"config file format error: {path} (expected mapping at top level)")
+
+        # Python 只消费 app.yaml；web 配置及 TS 专属 section 的校验仍由各自消费方负责。
+        environment_value = os.environ.get("GEOMCP_APP_CONFIG_JSON") if file_name == "app.yaml" else None
+        if environment_value is not None:
+            try:
+                overrides = TypeAdapter(YamlMapType).validate_python(json.loads(environment_value, parse_constant=_reject_json_constant), strict=True)
+            except (json.JSONDecodeError, ValidationError) as error:
+                raise TransferTypes.AppError(code="invalid_config", message="config environment parse error: GEOMCP_APP_CONFIG_JSON", details=str(error)) from error
+            loaded_yaml = _merge_config_overrides(loaded_yaml, overrides)
 
         return loaded_yaml
 

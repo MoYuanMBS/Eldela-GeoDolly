@@ -6,7 +6,7 @@
  */
 import { readFileSync, existsSync, readdirSync } from "node:fs";
 import path from "node:path";
-import type { ZodType } from "zod";
+import {z, type ZodType} from "zod";
 import { parse } from "yaml";
 import {basemapProfileRegistrySchema, type BasemapProfileRegistryType} from "../../models/common/basemap-models.js";
 import {basemapConfigSchema, browserMapConfigSchema, featureIdDisplayConfigSchema, iframeAdaptiveConfigSchema, leafletConfigSchema, mcpAppsConfigSchema, outputConfigSchema, toolPromptsConfigSchema, uiConfigSchema, webConfigSchema, type WebConfigType} from "../../models/backend/config-models.js";
@@ -16,7 +16,30 @@ import {AppError} from "../../shared/app-error.js";
  * 读取单个 YAML 文件；raw 数据只用于当次 schema 构建，不进入 loader 缓存。
  */
 function loadYamlFile(filePath: string): unknown {
-  return parse(readFileSync(filePath, "utf8")) as unknown;
+  const yamlConfig = parse(readFileSync(filePath, "utf8")) as unknown;
+  const fileName = path.basename(filePath);
+  const environmentName = fileName === "app.yaml" ? "GEOMCP_APP_CONFIG_JSON" : fileName === "web.yaml" ? "GEOMCP_WEB_CONFIG_JSON" : undefined;
+  const environmentValue = environmentName === undefined ? undefined : process.env[environmentName];
+  if (environmentValue === undefined) return yamlConfig;
+  try {
+    const mappingSchema = z.record(z.string(), z.unknown());
+    const overrides = mappingSchema.parse(JSON.parse(environmentValue));
+    return mergeConfigOverrides(mappingSchema.parse(yamlConfig), overrides);
+  } catch (error) {
+    throw AppError.fromUnknown(error, "invalid_config", `Failed to load ${fileName} overrides from ${environmentName}`);
+  }
+}
+
+function mergeConfigOverrides(base: Record<string, unknown>, overrides: Record<string, unknown>): Record<string, unknown> {
+  // 只合并对象；数组和标量整体替换，保留明确设置的 false、0、空列表和 null，交给消费方 schema 校验。
+  const entries = Object.entries(overrides).map(([key, value]) => {
+    const original = Object.hasOwn(base, key) ? base[key] : undefined;
+    if (original !== null && typeof original === "object" && !Array.isArray(original) && value !== null && typeof value === "object" && !Array.isArray(value)) {
+      return [key, mergeConfigOverrides(original as Record<string, unknown>, value as Record<string, unknown>)];
+    }
+    return [key, value];
+  });
+  return {...base, ...Object.fromEntries(entries)};
 }
 
 export class ConfigLoader {
