@@ -34,6 +34,25 @@ const appFontPlugin: Plugin = {
   },
 };
 
+const appScreenshotWorkerPlugin: Plugin = {
+  name: "geomcp-screenshot-worker-csp",
+  enforce: "pre",
+  transform(source, id) {
+    if (!id.split("?", 1)[0].replaceAll("\\", "/").endsWith("/@zumer/snapdom/dist/snapdom.mjs")) return null;
+    // Blob Worker 继承 Host 的 connect-src；已内联图片必须本地解码，不能再 fetch(data:)。
+    const workerFetch = "const blob = given || await (await fetch(dataURL)).blob()";
+    if (source.split(workerFetch).length !== 2) this.error("SnapDOM Worker implementation changed; review the local data URL decoding before building the App");
+    return source.replace(workerFetch, `const blob = given || (() => {
+      const comma = dataURL.indexOf(',')
+      const metadata = dataURL.slice(5, comma)
+      const value = dataURL.slice(comma + 1)
+      const binary = /;base64/i.test(metadata) ? atob(value) : decodeURIComponent(value)
+      const bytes = Uint8Array.from(binary, character => character.charCodeAt(0))
+      return new Blob([bytes], {type: metadata.split(';')[0]})
+    })()`);
+  },
+};
+
 const inlineAppPlugin: Plugin = {
   name: "geomcp-inline-interactive-app",
   enforce: "post",
@@ -91,7 +110,7 @@ const inlineAppPlugin: Plugin = {
 };
 
 export default defineConfig({
-  plugins: [react(), appFontPlugin, inlineAppPlugin],
+  plugins: [react(), appFontPlugin, appScreenshotWorkerPlugin, inlineAppPlugin],
   css: {transformer: "lightningcss"},
   define: {
     "process.env.NODE_ENV": JSON.stringify("production"),
@@ -104,6 +123,8 @@ export default defineConfig({
     __GEOMCP_MAP_PADDING__: JSON.stringify(iframeConfig.padding),
     __GEOMCP_MAP_READY_TIMEOUT_MS__: JSON.stringify(browserConfig.ready_timeout_seconds * 1000),
     __GEOMCP_SNAPSHOT_MAX_PIXELS__: JSON.stringify(config.getWebConfig().snapshot.max_wrapper_physical_pixels),
+    __GEOMCP_SNAPSHOT_MAX_BASE64_BYTES__: JSON.stringify(config.getWebConfig().snapshot.max_base64_bytes),
+    __GEOMCP_SNAPSHOT_MAX_ENCODE_RETRIES__: JSON.stringify(config.getWebConfig().snapshot.max_encode_retries),
     __GEOMCP_SNAPSHOT_MIN_TILE_SUCCESS_RATIO__: JSON.stringify(basemapConfig.snapshot_min_tile_success_ratio),
     __GEOMCP_DECORATIONS_ENABLED__: JSON.stringify(uiConfig.decorations_enabled),
     __GEOMCP_MAX_SCALE_WIDTH_PX__: JSON.stringify(uiConfig.max_scale_width_px),

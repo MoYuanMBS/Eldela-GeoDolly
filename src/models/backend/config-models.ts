@@ -338,6 +338,10 @@ export const sessionConfigSchema = z.object({
 export const snapshotConfigSchema = z.object({
   // 完整 wrapper 包含 MapSurface 与完成布局后的 Reference UI；当前 DPR 固定为 1。
   max_wrapper_physical_pixels: positiveIntegerSchema,
+  // 最终 image.data 的 Base64 ASCII 字节数必须严格小于此值。
+  max_base64_bytes: positiveIntegerSchema,
+  // 首次编码后的自适应重试次数；耗尽后最多再做一次 640px 最终兜底。
+  max_encode_retries: nonNegativeIntegerSchema,
 }).strict();
 
 /** 独立 web.yaml；所有 HTTP、调度、Session 与 Headless Snapshot 部署值都在启动时严格校验。 */

@@ -42,7 +42,11 @@ session:
   # Node timer 单次 delay 的部署上限；更长的检查间隔按该值封顶。
   max_timer_delay_ms: 2147483647
 
-# Headless Snapshot 执行器的全局资源边界；deviceScaleFactor 固定为 1，不配置。
+# App 截图的资源与编码预算；构建期预载，不改变地图逻辑尺寸。
 snapshot:
   # 完整 MapSurface + Reference UI wrapper 的最大物理像素数。
   max_wrapper_physical_pixels: 64000000
+  # 最终 Base64 必须严格小于 2 MB（十进制字节），不包含 Data URL 前缀。
+  max_base64_bytes: 2000000
+  # 首次编码后最多重试 3 次，再保留一次最长边 640px 的最终兜底。
+  max_encode_retries: 3
