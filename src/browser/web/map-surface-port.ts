@@ -1,12 +1,13 @@
 import type {ComponentType} from "react";
 import type {BrowserWarningReportType} from "../../models/common/browser-warning-models.js";
 import type {CommonVisualMapPayloadType} from "../../models/mapsurface/map-payload-models.js";
-import type {MapFlowReadySummary, SnapshotMapFlowResult, SnapshotTileView} from "../../models/mapsurface/basemap-runtime-models.js";
+import type {MapFlowReadySummary, SnapshotMapFlowResult} from "../../models/mapsurface/basemap-runtime-models.js";
 import type {ActiveMeasurementTargetType, MeasureToolModeType, MeasureToolUiStateType} from "../../models/measure-tools/measure-tool-models.js";
 import type {RenderStylePayload} from "../../models/mapsurface/style/user-css-style-models.js";
 import type {InteractiveSpatialFeatureType} from "../../models/web/interactive-ui-models.js";
 import type {SnapshotRecoverableWarningType} from "../../models/web/snapshot-ui-models.js";
-import type {AiMapBoundsType, AiMapCenterZoomType, AiMapViewType} from "../../models/web/map-app-models.js";
+import type {AiMapBoundsType, AiMapViewCommands} from "../../models/web/map-app-models.js";
+export type {AiMapViewCommands} from "../../models/web/map-app-models.js";
 
 /** UI 事件只携带后端 canonical identity；display_id 必须临时从后端字典查询。 */
 export interface InteractiveFeatureTargetType {
@@ -74,14 +75,6 @@ export interface MapSurfacePortProps {
 
 /** MapPage 依赖 port component，而不是某个 Leaflet React 组件。 */
 export type MapSurfacePortComponentType = ComponentType<MapSurfacePortProps>;
-
-/** Session 绑定由 App 管理；这里的命令只操作所属地图实例。 */
-export interface AiMapViewCommands {
-  getView(): AiMapViewType;
-  waitForScreenshot(signal: AbortSignal): Promise<SnapshotTileView>;
-  fitBounds(bbox: AiMapBoundsType): AiMapViewType;
-  setCenterZoom(input: AiMapCenterZoomType): AiMapViewType;
-}
 
 /** Snapshot Page 与无交互 MapSurface adapter 之间的唯一接线契约。 */
 export interface SnapshotMapSurfacePortProps {

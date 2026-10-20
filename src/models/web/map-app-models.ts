@@ -1,5 +1,5 @@
 /**
- * MCP App 的交付数据与 AI 视口 Tool 的序列化契约。
+ * MCP App 的交付数据与 AI 视口 Tool 的序列化、运行时契约。
  *
  * ToolResult 只交付成功指针；业务数据由 /mapdata 提供。Leaflet 实例、投影检查
  * 和当前会话绑定由运行层负责。
@@ -7,6 +7,8 @@
 
 import {z} from "zod";
 import {finalSessionIdSchema} from "../backend/session-id-models.js";
+import type {SnapshotTileView} from "../mapsurface/basemap-runtime-models.js";
+import type {AiMapScreenshot} from "./snapshot-ui-models.js";
 /** 成功发布的最终 Session 指针；工具错误走 isError，不混入此结构。 */
 export const mapAppResultSchema = z.object({
   session_id: finalSessionIdSchema,
@@ -59,3 +61,19 @@ export type MapAppDeliveryType = Readonly<z.infer<typeof mapAppResultSchema>>;
 export type AiMapBoundsType = z.infer<typeof aiMapBoundsSchema>;
 export type AiMapCenterZoomType = z.infer<typeof aiMapCenterZoomSchema>;
 export type AiMapViewType = z.infer<typeof aiMapViewSchema>;
+
+/** Session 绑定由 App 管理；这里的命令只操作所属地图实例。 */
+export interface AiMapViewCommands {
+  getView(): AiMapViewType;
+  waitForScreenshot(signal: AbortSignal): Promise<SnapshotTileView>;
+  fitBounds(bbox: AiMapBoundsType): AiMapViewType;
+  setCenterZoom(input: AiMapCenterZoomType): AiMapViewType;
+}
+
+export interface AiMapJobResult {
+  view: AiMapViewType;
+  screenshot: AiMapScreenshot | null;
+}
+
+export type AiMapToolKind = "view" | "capture" | "user";
+export type AiMapToolRunner = (sessionId: string, operation: (commands: AiMapViewCommands) => AiMapViewType, signal: AbortSignal, kind: AiMapToolKind) => Promise<AiMapJobResult>;

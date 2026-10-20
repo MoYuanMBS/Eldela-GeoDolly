@@ -30,6 +30,7 @@ interface MapPageProps {
   /** 由 composition root 注入的地图实现；页面本身不导入 Leaflet adapter。 */
   MapSurfaceComponent: MapSurfacePortComponentType;
   onViewBoundsReaderChange?(reader: MapSurfaceBoundsReader | null): void;
+  onMapError?(message: string): void;
 }
 
 interface MapPageStyle extends CSSProperties {
@@ -68,7 +69,7 @@ type StandardUiState =
   | {status: "ready"; measuredHeight: number}
   | {status: "failed"; message: string};
 
-export function MapPage({mapDataUrl, mapData, MapSurfaceComponent, onViewBoundsReaderChange}: MapPageProps) {
+export function MapPage({mapDataUrl, mapData, MapSurfaceComponent, onViewBoundsReaderChange, onMapError}: MapPageProps) {
   const [loadState, setLoadState] = useState<MapLoadState>({status: "loading"});
   const [metricScale, setMetricScale] = useState<MetricScaleViewType | null>(null);
   const [mapRuntimeState, setMapRuntimeState] = useState<MapRuntimeState>({status: "pending"});
@@ -151,14 +152,16 @@ export function MapPage({mapDataUrl, mapData, MapSurfaceComponent, onViewBoundsR
     setMapRuntimeState({status: "ready", runtimeStatus});
   }, []);
   const handleMapRuntimeError = useCallback((message: string): void => {
+    onMapError?.(message);
     setMapRuntimeState({status: "failed", message});
-  }, []);
+  }, [onMapError]);
   const handleStandardUiReady = useCallback((measuredHeight: number): void => {
     setStandardUiState({status: "ready", measuredHeight});
   }, []);
   const handleStandardUiError = useCallback((message: string): void => {
+    onMapError?.(message);
     setStandardUiState({status: "failed", message});
-  }, []);
+  }, [onMapError]);
   const handleCloseTagsPopup = useCallback((): void => {
     if (interactionCommandsRef.current === null) setSelectedFeature(null);
     else interactionCommandsRef.current.clearSelection();

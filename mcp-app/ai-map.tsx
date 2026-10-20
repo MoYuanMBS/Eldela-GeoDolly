@@ -13,10 +13,11 @@ import {captureAiMapWebp, type AiMapCapturePort} from "./ai-map-screenshot.js";
 interface AiMapProps {
   mapData: SnapshotMapDataType;
   onAiViewCommandsChange(port: AiMapCapturePort | null): void;
+  onMapError?(message: string): void;
 }
 
 /** AI 页面只组合独立视觉实例与 Reference UI，不接入 User 详情或测量状态。 */
-export function AiMap({mapData, onAiViewCommandsChange}: AiMapProps) {
+export function AiMap({mapData, onAiViewCommandsChange, onMapError}: AiMapProps) {
   const [metricScale, setMetricScale] = useState<SnapshotMetricScaleViewType | null>(null);
   // null 既可能表示尚未计算，也可能表示可恢复的 Scale omitted；单独记录是否已完成首轮计算。
   const [scaleSettled, setScaleSettled] = useState(false);
@@ -38,8 +39,9 @@ export function AiMap({mapData, onAiViewCommandsChange}: AiMapProps) {
     // 先撤销宿主能调用的命令，再让 React 展示错误并卸载 adapter，避免渲染提交前仍可操作失败实例。
     commandsRef.current = null;
     onAiViewCommandsChange(null);
+    onMapError?.(message);
     setError(message);
-  }, [onAiViewCommandsChange]);
+  }, [onAiViewCommandsChange, onMapError]);
   const handleCommands = useCallback((commands: AiMapViewCommands | null): void => {
     // adapter 的地图 ready 早于 Reference UI ready；命令暂存到页面首屏完整就绪，释放信号则立即透传。
     commandsRef.current = commands;
