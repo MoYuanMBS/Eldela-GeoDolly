@@ -338,8 +338,8 @@ export const sessionConfigSchema = z.object({
 export const snapshotConfigSchema = z.object({
   // 完整 wrapper 包含 MapSurface 与完成布局后的 Reference UI；当前 DPR 固定为 1。
   max_wrapper_physical_pixels: positiveIntegerSchema,
-  // 最终 image.data 的 Base64 ASCII 字节数必须严格小于此值。
-  max_base64_bytes: positiveIntegerSchema,
+  // 最终 WebP 二进制的字节上限；URL 交付不计算 Base64 包装。
+  max_image_bytes: positiveIntegerSchema,
   // 首次编码后的自适应重试次数；耗尽后最多再做一次 640px 最终兜底。
   max_encode_retries: nonNegativeIntegerSchema,
 }).strict();
@@ -349,8 +349,8 @@ export const webConfigSchema = z.object({
   http: z.object({
     /** MCP/地图公开入口与独立 warning service 的监听地址。 */
     listen_host: z.string().trim().min(1),
-    /** 隧道可用公开 HTTPS + 本机 HTTP；省略时沿用公开地址的协议。 */
-    listen_protocol: z.enum(["http", "https"]).optional(),
+    /** Node 固定监听 HTTP；公开 HTTPS 由代理终止，兼容省略此字段。 */
+    listen_protocol: z.literal("http").optional(),
     warning: z.object({
       port: positiveIntegerSchema.max(65535),
       /** 在 JSON 解析前拒绝过大的 warning 请求，避免诊断通道消耗无界内存。 */

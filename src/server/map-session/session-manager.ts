@@ -8,7 +8,7 @@ import {
 } from "../../models/backend/session-manager-models.js";
 import type {IndexSessionIdType} from "../../models/backend/session-id-models.js";
 import {AppError} from "../../shared/app-error.js";
-import {readSessionsJson, sessionFilesAreComplete, writeSessionsJson} from "../utils/file-writer.js";
+import {writeSessionsJson} from "../utils/file-writer.js";
 import {logger} from "../utils/logger.js";
 
 function errorReason(error: unknown): string {
@@ -20,9 +20,8 @@ function timerDelayMilliseconds(seconds: number, maximumDelayMs: number): number
 }
 
 /**
- * Session manager 只管理索引，不判断发布阶段。Tool Flow 可在内部截图期间临时登记，
- * 失败时必须撤销；expiry 只关闭动态服务，不删除 record 或归档。
- * sessions.json 只是 RAM mapping 的低频恢复点，恢复时仍会核验完整文件集。
+ * 业务产物提交与 Session 关闭独立；关闭只撤销访问并通知运行资源所有者。
+ * checkpoint 只保存本进程索引，启动不恢复旧记录，关闭不删除成功归档。
  */
 export class SessionManager {
   private sessions: SessionsJsonType = {};
@@ -31,12 +30,17 @@ export class SessionManager {
   private checkpointPromise: Promise<boolean> | null = null;
   private expiryTimer: ReturnType<typeof setInterval> | null = null;
   private flushTimer: ReturnType<typeof setInterval> | null = null;
+  private deadlineTimer: ReturnType<typeof setTimeout> | null = null;
   private started = false;
   private closing = false;
   private closed = false;
 
   // 临时复用现有 expiry timer 清理入口持有的搜索候选缓存。
-  constructor(private readonly config: SessionConfigType, private readonly onExpiryCheck?: (nowSeconds: number) => void) {}
+  constructor(
+    private readonly config: SessionConfigType,
+    private readonly onExpiryCheck?: (nowSeconds: number) => void,
+    private readonly onSessionClosed?: (sessionId: IndexSessionIdType) => void,
+  ) {}
 
   private requireRunning(): void {
     if (!this.started || this.closing || this.closed) {
@@ -60,27 +64,13 @@ export class SessionManager {
     this.flushTimer.unref();
   }
 
-  /** 用已通过 Zod 校验且归档完整的 checkpoint 记录恢复 RAM mapping，再启动 expiry 与 flush timer。 */
+  /** 每次进程启动使用空索引；旧 checkpoint 和归档均不恢复服务。 */
   async start(): Promise<boolean> {
     if (this.started) return true;
     if (this.closed) throw new AppError("session_manager_closed", "Closed Session manager cannot be restarted");
 
-    const checkpointSessions = await readSessionsJson();
     this.sessions = {};
     this.activeSessionIds.clear();
-    const nowSeconds = Date.now() / 1000;
-
-    for (const [rawSessionId, record] of Object.entries(checkpointSessions)) {
-      const sessionId = rawSessionId as IndexSessionIdType;
-      if (!await sessionFilesAreComplete(sessionId)) {
-        // 不完整目录保持给用户人工处理；RAM 与下一次 checkpoint 只移除失效索引记录。
-        this.markDirty();
-        logger.warning("session_archive_incomplete", {session_id: sessionId, status: "removed_from_index"});
-        continue;
-      }
-      this.sessions[sessionId] = record;
-      if (nowSeconds < record.close_time) this.activeSessionIds.add(sessionId);
-    }
 
     this.started = true;
     this.scheduleTimers();
@@ -108,21 +98,53 @@ export class SessionManager {
     const sessionId = sessionIdInput;
 
     // 保存副本，避免调用方在登记后绕开 manager 原地修改 RAM 真源。
+    this.deactivateSession(sessionId);
     const record = {...recordInput};
     this.sessions[sessionId] = record;
     if (Date.now() / 1000 < recordInput.close_time) this.activeSessionIds.add(sessionId);
     else this.activeSessionIds.delete(sessionId);
     this.markDirty();
+    this.scheduleDeadline();
     return true;
+  }
+
+  /** 自然到期与容量淘汰共用关闭入口；保留 record 供 HTTP 返回 410。 */
+  closeSession(sessionId: IndexSessionIdType): boolean {
+    this.requireRunning();
+    const changed = this.deactivateSession(sessionId);
+    this.scheduleDeadline();
+    return changed;
+  }
+
+  private deactivateSession(sessionId: IndexSessionIdType): boolean {
+    if (!this.activeSessionIds.delete(sessionId)) return false;
+    try {
+      this.onSessionClosed?.(sessionId);
+    } catch (error) {
+      logger.warning("session_close_callback_failed", {session_id: sessionId, reason: errorReason(error)});
+    }
+    return true;
+  }
+
+  private scheduleDeadline(): void {
+    if (this.deadlineTimer !== null) clearTimeout(this.deadlineTimer);
+    this.deadlineTimer = null;
+    let nextCloseTime = Infinity;
+    for (const sessionId of this.activeSessionIds) nextCloseTime = Math.min(nextCloseTime, this.sessions[sessionId].close_time);
+    if (!Number.isFinite(nextCloseTime) || this.closing || this.closed) return;
+    // 一个最近截止 timer 负责资源释放；入口仍核对时钟，避免事件循环延迟延长访问期限。
+    this.deadlineTimer = setTimeout(() => this.sweepExpiredSessions(), timerDelayMilliseconds(nextCloseTime - Date.now() / 1000, this.config.max_timer_delay_ms));
+    this.deadlineTimer.unref();
   }
 
   /** HTTP 发现已登记归档被人工删除时移除 RAM 真源，后续 checkpoint 会持久化该变化。 */
   unregisterSession(sessionId: IndexSessionIdType): boolean {
     this.requireRunning();
     if (!(sessionId in this.sessions)) return false;
+    this.deactivateSession(sessionId);
     delete this.sessions[sessionId];
-    this.activeSessionIds.delete(sessionId);
     this.markDirty();
+    this.scheduleDeadline();
     return true;
   }
 
@@ -132,6 +154,7 @@ export class SessionManager {
     const sessionId = sessionIdInput;
     const record = this.sessions[sessionId];
     if (record === undefined) return {status: "missing"};
+    if (this.activeSessionIds.has(sessionId) && Date.now() / 1000 >= record.close_time) this.closeSession(sessionId);
 
     // 返回副本，避免 HTTP 等消费者绕开 manager 原地修改 RAM 真源。
     const recordCopy = {...record};
@@ -143,8 +166,9 @@ export class SessionManager {
   private sweepExpiredSessions(): void {
     const nowSeconds = Date.now() / 1000;
     for (const [rawSessionId, record] of Object.entries(this.sessions)) {
-      if (nowSeconds >= record.close_time) this.activeSessionIds.delete(rawSessionId as IndexSessionIdType);
+      if (nowSeconds >= record.close_time) this.deactivateSession(rawSessionId as IndexSessionIdType);
     }
+    this.scheduleDeadline();
     try {
       this.onExpiryCheck?.(nowSeconds);
     } catch (error) {
@@ -192,8 +216,11 @@ export class SessionManager {
     this.closing = true;
     if (this.expiryTimer !== null) clearInterval(this.expiryTimer);
     if (this.flushTimer !== null) clearInterval(this.flushTimer);
+    if (this.deadlineTimer !== null) clearTimeout(this.deadlineTimer);
     this.expiryTimer = null;
     this.flushTimer = null;
+    this.deadlineTimer = null;
+    for (const sessionId of this.activeSessionIds) this.deactivateSession(sessionId);
 
     if (this.checkpointPromise !== null) await this.checkpointPromise;
     const saved = this.dirty ? await this.flushCheckpoint() : true;

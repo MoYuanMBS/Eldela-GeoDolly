@@ -15,13 +15,18 @@ if (rootElement === null) {
 
 const mapDataUrl = document.querySelector<HTMLMetaElement>('meta[name="geomcp-map-data-url"]')?.content;
 const browserFlow = document.documentElement.dataset.geomcpBrowserFlow;
-if (browserFlow !== "interactive") {
+if (browserFlow !== "interactive" && browserFlow !== "ai") {
   throw new AppError("invalid_browser_flow", "GeoMCP Browser flow is missing or invalid");
 }
 
 const root = createRoot(rootElement);
-const [{MapPage}, {MapSurfaceView}] = await Promise.all([
-  import("./map-page.js"),
-  import("../browser-map-flow/map-surface-view.js"),
-]);
-root.render(<MapPage mapDataUrl={mapDataUrl ?? null} MapSurfaceComponent={MapSurfaceView} />);
+if (browserFlow === "ai") {
+  const {AiMapPage} = await import("./ai-map-page.js");
+  root.render(<AiMapPage mapDataUrl={mapDataUrl ?? null} />);
+} else {
+  const [{MapPage}, {MapSurfaceView}] = await Promise.all([
+    import("./map-page.js"),
+    import("../browser-map-flow/map-surface-view.js"),
+  ]);
+  root.render(<MapPage mapDataUrl={mapDataUrl ?? null} MapSurfaceComponent={MapSurfaceView} />);
+}

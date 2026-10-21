@@ -33,6 +33,7 @@ import type {
 import type {InteractiveMapArchiveType} from "./map-session-models.js";
 import type {ToolExecutionContextType} from "./tool-execution-models.js";
 import type {MapAppDeliveryType} from "../web/map-app-models.js";
+import type {AppErrorType} from "../common/error-models.js";
 
 /** processToolReply() 生成的公共数据结果；样式与具体 render_mode 不进入该阶段。 */
 export interface ProcessedToolReplyType {
@@ -140,6 +141,9 @@ export type RunToolFlowResultType = Readonly<{
 export type AiPublishedToolFlowResultType = Readonly<{
   /** 与客户端交付相同的最终会话 ID，供 AI 后续命令引用。 */
   session_id: string;
+  interactive_map_url: string;
+  visual_url?: string;
+  warning?: AppErrorType;
   /** Python 的最终查询范围，原样保留 [west, south, east, north]。 */
   bbox: BBoxType;
   /** 业务 AI Output 的 YAML 文本；Basemap-only 无业务记录时省略。 */

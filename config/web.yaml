@@ -2,8 +2,7 @@
 http:
   # MCP/地图公开入口与独立 warning service 的监听地址；远程访问时按部署调整。
   listen_host: "127.0.0.1"
-  # MCP/地图本机监听协议；可选 http/https，省略时沿用 public_origin 的协议。
-  # 隧道或反向代理在外部终止 HTTPS 时设为 http；直连 HTTPS 时设为 https。
+  # Node 固定监听 HTTP；公开 HTTPS 由隧道或反向代理终止。
   listen_protocol: "http"
   warning:
     # Browser 固定同源 POST /browser-warnings，由部署层转发到此内部端口。
@@ -22,7 +21,7 @@ http:
     # 使用隧道时填部署层提供的 HTTPS 域名，不绑定某个服务商；修改后需重建 App。
     public_origin: "http://127.0.0.1:23336"
   tls:
-    # 本机监听 HTTPS 时必须提供服务器证书链和对应私钥；监听 HTTP 时不读取。
+    # 兼容旧部署配置保留；HTTP-only Node 不读取证书文件。
     cert_file: "config/key/fullchain.pem"
     key_file: "config/key/privkey.pem"
 
@@ -42,11 +41,11 @@ session:
   # Node timer 单次 delay 的部署上限；更长的检查间隔按该值封顶。
   max_timer_delay_ms: 2147483647
 
-# App 截图的资源与编码预算；构建期预载，不改变地图逻辑尺寸。
+# Server 截图的资源与编码预算，不改变地图逻辑尺寸。
 snapshot:
   # 完整 MapSurface + Reference UI wrapper 的最大物理像素数。
   max_wrapper_physical_pixels: 64000000
-  # 最终 Base64 必须严格小于 2 MB（十进制字节），不包含 Data URL 前缀。
-  max_base64_bytes: 2000000
+  # 最终 WebP 二进制不超过 20 MiB。
+  max_image_bytes: 20971520
   # 首次编码后最多重试 3 次，再保留一次最长边 640px 的最终兜底。
   max_encode_retries: 3

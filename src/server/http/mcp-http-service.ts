@@ -1,21 +1,20 @@
 /**
- * 常驻 MCP HTTP(S) 入口：分发 MCP 与地图请求，管理每个客户端的 SDK 协议会话。
+ * 常驻 MCP HTTP 入口：分发 MCP 与地图请求，管理每个客户端的 SDK 协议会话。
  * 搜索缓存、工具调度器与地图 SessionManager 由 index 创建并共享；
  * 客户端会话结束只释放本模块登记的 SDK 实例，全局业务服务的关闭由 index 负责。
  */
 
 import {randomUUID} from "node:crypto";
-import {readFileSync} from "node:fs";
 import {createServer, type IncomingMessage, type Server, type ServerResponse} from "node:http";
-import {createServer as createHttpsServer} from "node:https";
 import {NodeStreamableHTTPServerTransport} from "@modelcontextprotocol/node";
 import {isJSONRPCNotification, isJSONRPCRequest, isJSONRPCResponse, validateHostHeader, type McpServer} from "@modelcontextprotocol/server";
 import type {WebConfigType} from "../../models/backend/config-models.js";
 import type {McpHttpSession} from "../../models/backend/mcp-http-models.js";
 import type {SessionManager} from "../map-session/session-manager.js";
+import type {AiMapRuntime} from "../map-session/ai-map-runtime.js";
 import {AppError} from "../../shared/app-error.js";
 import {logger} from "../utils/logger.js";
-import {closeMapHttpService, createMapHttpRequestHandler} from "./map-http-service.js";
+import {closeMapHttpService, createMapHttpRequestHandler, getInternalMapOrigin} from "./map-http-service.js";
 
 /** HTTP 入口错误使用 JSON-RPC envelope；已经开始的 SSE 响应只能结束，不能再写一组响应头。 */
 function writeProtocolError(response: ServerResponse, status: number, message: string): void {
@@ -28,9 +27,10 @@ function writeProtocolError(response: ServerResponse, status: number, message: s
 }
 
 /** 创建共用的公开 listener；index 负责监听端口，并在后端退出时调用返回的 close()。 */
-export function createMcpHttpService(webConfig: WebConfigType, sessionManager: SessionManager, buildServer: () => McpServer) {
+export function createMcpHttpService(webConfig: WebConfigType, sessionManager: SessionManager, buildServer: () => McpServer, aiMapRuntime?: AiMapRuntime) {
   const publicUrl = new URL(webConfig.http.map.public_origin);
   const publicBasePath = publicUrl.pathname.replace(/\/+$/u, "");
+  const internalUrl = new URL(getInternalMapOrigin(webConfig.http));
   // public_origin 的配置路径本身就是 MCP 入口；同一前缀下继续提供 session、assets 和 basemap。
   const mcpPath = publicBasePath || "/mcp";
   const allowedHosts = [publicUrl.hostname];
@@ -38,7 +38,7 @@ export function createMcpHttpService(webConfig: WebConfigType, sessionManager: S
   if (["localhost", "127.0.0.1", "[::1]"].includes(publicUrl.hostname)) allowedHosts.push("localhost", "127.0.0.1", "[::1]");
   // Origin 比较完整的协议、Host 和端口；不包含部署路径。无 Origin 的非浏览器客户端可正常访问。
   const allowedOrigins = new Set(allowedHosts.map((hostname) => `${publicUrl.protocol}//${hostname}${publicUrl.port ? `:${publicUrl.port}` : ""}`));
-  const mapHandler = createMapHttpRequestHandler(webConfig, sessionManager, publicBasePath);
+  const mapHandler = createMapHttpRequestHandler(webConfig, sessionManager, publicBasePath, aiMapRuntime);
   // sessions 按 SDK 已分配的协议 ID 登记实例，供后续 HTTP 请求查找。
   const sessions = new Map<string, McpHttpSession>();
   // connections 还包含正在初始化的实例，确保初始化失败和后端退出时也能完整清理。
@@ -130,10 +130,6 @@ export function createMcpHttpService(webConfig: WebConfigType, sessionManager: S
       return;
     }
     const origin = request.headers.origin;
-    if (!validateHostHeader(request.headers.host, allowedHosts).ok) {
-      writeProtocolError(response, 403, "Host or Origin is not allowed");
-      return;
-    }
     let requestUrl: URL;
     try {
       requestUrl = new URL(request.url ?? "/", publicUrl.origin);
@@ -141,9 +137,26 @@ export function createMcpHttpService(webConfig: WebConfigType, sessionManager: S
       writeProtocolError(response, 400, "Invalid request URL");
       return;
     }
+    const pathname = requestUrl.pathname.slice(publicBasePath.length);
+    const remoteAddress = request.socket.remoteAddress?.replace(/^::ffff:/u, "");
+    const internalHost = internalUrl.hostname.replace(/^\[|\]$/gu, "");
+    // 本机渲染只放行地图 GET，仍核对连接来源、Host 和 Origin；MCP 请求继续走公开校验。
+    const internalMapRequest = request.method === "GET" && requestUrl.search === "" && requestUrl.pathname.startsWith(`${publicBasePath}/`)
+      && (remoteAddress === "127.0.0.1" || remoteAddress === "::1" || remoteAddress === internalHost)
+      && validateHostHeader(request.headers.host, [internalUrl.hostname]).ok
+      && (origin === undefined || origin === internalUrl.origin)
+      && (/^\/session\/[^/]+\/(?:aimap|mapdata)$/u.test(pathname) || pathname.startsWith("/basemap/") || pathname.startsWith("/assets/") || pathname.startsWith("/front/fonts/"));
+    if (internalMapRequest) {
+      mapHandler(request, response);
+      return;
+    }
+    if (!validateHostHeader(request.headers.host, allowedHosts).ok) {
+      writeProtocolError(response, 403, "Host or Origin is not allowed");
+      return;
+    }
     // App 的 opaque iframe 以 Origin: null 读取底图、mapdata 和字体；只放行这些无凭据 GET。
     const appResourceRequest = request.method === "GET" && requestUrl.search === "" && requestUrl.pathname.startsWith(`${publicBasePath}/`) && (
-      requestUrl.pathname.startsWith(`${publicBasePath}/basemap/`) || /^\/session\/[^/]+\/mapdata$/u.test(requestUrl.pathname.slice(publicBasePath.length)) || requestUrl.pathname.startsWith(`${publicBasePath}/front/fonts/`)
+      requestUrl.pathname.startsWith(`${publicBasePath}/basemap/`) || /^\/session\/[^/]+\/mapdata$/u.test(requestUrl.pathname.slice(publicBasePath.length)) || /^\/[^/]+\/aimap\/(?:map_tool_call\/)?webp$/u.test(requestUrl.pathname.slice(publicBasePath.length)) || requestUrl.pathname.startsWith(`${publicBasePath}/front/fonts/`)
     );
     if (origin !== undefined && !allowedOrigins.has(origin) && !appResourceRequest) {
       writeProtocolError(response, 403, "Host or Origin is not allowed");
@@ -160,16 +173,8 @@ export function createMcpHttpService(webConfig: WebConfigType, sessionManager: S
     });
   };
 
-  let server: Server;
-  try {
-    // 隧道在外部终止 TLS 时，本机监听协议可独立选择；省略配置仍沿用公开地址。
-    const listenProtocol = webConfig.http.listen_protocol ?? publicUrl.protocol.slice(0, -1);
-    server = listenProtocol === "https"
-      ? createHttpsServer({cert: readFileSync(webConfig.http.tls.cert_file), key: readFileSync(webConfig.http.tls.key_file)}, handler)
-      : createServer(handler);
-  } catch (error) {
-    throw AppError.fromUnknown(error, "https_configuration", "HTTPS requires a readable server certificate chain and matching private key");
-  }
+  // TLS 统一由外部代理终止；AI 与代理回源共用这个 HTTP listener。
+  const server: Server = createServer(handler);
   server.maxHeadersCount = 32;
   server.on("clientError", (_error, socket) => {
     if (socket.writable) socket.end("HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");

@@ -8,9 +8,6 @@ declare const __GEOMCP_MAP_PADDING__: {
 };
 
 declare const __GEOMCP_MAP_READY_TIMEOUT_MS__: number;
-declare const __GEOMCP_SNAPSHOT_MAX_PIXELS__: number;
-declare const __GEOMCP_SNAPSHOT_MAX_BASE64_BYTES__: number;
-declare const __GEOMCP_SNAPSHOT_MAX_ENCODE_RETRIES__: number;
 declare const __GEOMCP_SNAPSHOT_MIN_TILE_SUCCESS_RATIO__: number;
 declare const __GEOMCP_DECORATIONS_ENABLED__: boolean;
 declare const __GEOMCP_MAX_SCALE_WIDTH_PX__: number;
@@ -22,3 +19,7 @@ declare const __GEOMCP_APP_LEAFLET__: import("../../models/mapsurface/map-config
 declare const __GEOMCP_APP_STYLE__: import("../../models/mapsurface/style/user-css-style-models.js").RenderStylePayload;
 declare const __GEOMCP_IFRAME_MAX_WIDTH_PX__: number;
 declare const __GEOMCP_IFRAME_MAX_HEIGHT_PX__: number;
+
+interface Window {
+  geomcpAiMap?: import("../../models/web/map-app-models.js").AiMapBrowserPort;
+}

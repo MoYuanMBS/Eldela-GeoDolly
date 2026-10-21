@@ -16,6 +16,8 @@ import {McpServer} from "@modelcontextprotocol/server";
 import {listenMapHttpService} from "./server/http/map-http-service.js";
 import {createMcpHttpService} from "./server/http/mcp-http-service.js";
 import {SessionManager} from "./server/map-session/session-manager.js";
+import {AiMapRuntime} from "./server/map-session/ai-map-runtime.js";
+import {createAiMapToolHandler} from "./server/tools/ai-map-tools.js";
 import {INTERACTIVE_MAP_LAUNCHER_URI, registerInteractiveMapLauncherResource} from "./server/interactive-map-launcher-resource.js";
 import {
   type LocSearchReplyRawType,
@@ -23,7 +25,7 @@ import {
   locSearchReplyRawSchema,
   AitoolInputReqSchema,
 } from "./models/backend/bridge-models.js";
-import {mapAppResultSchema} from "./models/web/map-app-models.js";
+import {mapAppResultSchema, fitAiMapBboxInputSchema, setAiMapCenterZoomInputSchema, aiMapToolViewSchema} from "./models/web/map-app-models.js";
 import type {ToolFlowServicesType} from "./server/tools/tool-flow.js";
 import {ToolExecutionScheduler} from "./server/tools/tool-execution-scheduler.js";
 import {createErrorToolResult, createPublishedMapToolHandler, createTextToolResult} from "./server/tools/mcp-tool-handler.js";
@@ -65,6 +67,7 @@ function buildServer(scheduler: ToolExecutionScheduler, services: ToolFlowServic
     version: "0.1.0",
   });
   registerInteractiveMapLauncherResource(server, publicOrigin);
+  const runAiMapTool = createAiMapToolHandler(services.aiMapRuntime, scheduler);
   const mapToolHandlerOptions = {scheduler, services, getCachedSelection: getCachedSearchResponse};
 
   server.registerTool(
@@ -118,6 +121,28 @@ function buildServer(scheduler: ToolExecutionScheduler, services: ToolFlowServic
     createPublishedMapToolHandler(funcToolB, mapToolHandlerOptions),
   );
 
+  server.registerTool(
+    "geomcp_fit_ai_map_bbox",
+    {
+      description: "Fit a target bbox into the specified session's AI map. Returns the actual view and a fresh WebP URL, or a screenshot warning. Changes only the AI map and does not query more geographic data. Expired sessions cannot be restored.",
+      inputSchema: fitAiMapBboxInputSchema,
+      outputSchema: aiMapToolViewSchema,
+      annotations: {readOnlyHint: false, idempotentHint: true},
+    },
+    ({session_id, bbox}, requestContext) => runAiMapTool(session_id, {kind: "fit", bbox}, requestContext.mcpReq.signal),
+  );
+
+  server.registerTool(
+    "geomcp_set_ai_map_center_zoom",
+    {
+      description: "Set the specified session's AI map center and integer Leaflet zoom. Returns the actual view and a fresh WebP URL, or a screenshot warning. Changes only the AI map and does not query more geographic data. Expired sessions cannot be restored.",
+      inputSchema: setAiMapCenterZoomInputSchema,
+      outputSchema: aiMapToolViewSchema,
+      annotations: {readOnlyHint: false, idempotentHint: true},
+    },
+    ({session_id, center, zoom}, requestContext) => runAiMapTool(session_id, {kind: "set", input: {center, zoom}}, requestContext.mcpReq.signal),
+  );
+
   return server;
 }
 
@@ -126,9 +151,11 @@ async function main() {
   config.initialize();
   initializeUserStyle();
   const webConfig = config.getWebConfig();
+  let aiMapRuntime: AiMapRuntime;
   const sessionManager = new SessionManager(webConfig.session, (nowSeconds) => {
     for (const sessionId of searchResultCache.keys()) deleteExpiredSearchResponse(sessionId, nowSeconds);
-  });
+  }, (sessionId) => aiMapRuntime.releaseSession(sessionId));
+  aiMapRuntime = new AiMapRuntime(sessionManager);
   const toolScheduler = new ToolExecutionScheduler(webConfig.tool_execution);
   let mcpHttpService: ReturnType<typeof createMcpHttpService> | null = null;
   let shutdownPromise: Promise<void> | null = null;
@@ -141,6 +168,7 @@ async function main() {
       for (const close of [
         () => mcpHttpService?.close(),
         () => toolScheduler.close(),
+        () => aiMapRuntime.close(),
         () => sessionManager.close(),
       ]) {
         try {
@@ -165,10 +193,11 @@ async function main() {
 
   try {
     await sessionManager.start();
-    const createServer = () => buildServer(toolScheduler, {sessionManager}, webConfig.http.map.public_origin);
+    await aiMapRuntime.start();
+    const createServer = () => buildServer(toolScheduler, {sessionManager, aiMapRuntime}, webConfig.http.map.public_origin);
     // 预先校验 Launcher 构建和 Tool 注册，启动失败时不开放 MCP 入口。
     await createServer().close();
-    mcpHttpService = createMcpHttpService(webConfig, sessionManager, createServer);
+    mcpHttpService = createMcpHttpService(webConfig, sessionManager, createServer, aiMapRuntime);
     await listenMapHttpService(mcpHttpService.server, webConfig.http);
     logger.info("mcp_http_listening", {url: mcpHttpService.endpoint});
   } catch (error) {

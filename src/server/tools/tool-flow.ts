@@ -17,6 +17,8 @@ import {
 import {generateAiOutputYaml} from "../map-data/yaml-output.js";
 import {buildMapRuntimePayloads} from "../map-session/map-runtime.js";
 import type {SessionManager} from "../map-session/session-manager.js";
+import type {AiMapRuntime} from "../map-session/ai-map-runtime.js";
+import type {AiMapJobResult} from "../../models/web/map-app-models.js";
 import {leafletConfigSchema, outputConfigSchema} from "../../models/backend/config-models.js";
 import {
   interactiveMapArchiveSchema,
@@ -51,6 +53,7 @@ import {buildNonCoreMapPayload} from "./non-core-flow.js";
 
 export interface ToolFlowServicesType {
   sessionManager: SessionManager;
+  aiMapRuntime: AiMapRuntime;
 }
 
 interface PreparedBackendFlowType {
@@ -293,9 +296,16 @@ export async function publishToolFlow(
   }, sessionRecord, context, services);
   context.throwIfAborted();
 
+  // 业务文件已成功提交；后续 AI 页面或截图失败不得回到文件清理路径。
+  const aiMap: AiMapJobResult | null = input.toolInput.visual_output === "none" ? null : await services.aiMapRuntime.create(result.session_id, context);
+  context.throwIfAborted();
+
   return Object.freeze({
     ai_output: Object.freeze({
       session_id: result.session_id,
+      interactive_map_url: clientInteractiveUrl,
+      ...(aiMap?.visual_url === undefined ? {} : {visual_url: aiMap.visual_url}),
+      ...(aiMap?.warning === undefined ? {} : {warning: aiMap.warning}),
       bbox: input.toolReply.result.bbox,
       ...(aiOutputYaml === undefined ? {} : {ai_output_yaml: aiOutputYaml}),
       ...(overlayOutputJson === undefined ? {} : {overlay_output_json: overlayOutputJson}),

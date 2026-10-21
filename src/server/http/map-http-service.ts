@@ -6,6 +6,7 @@ import {createServer, type RequestListener, type Server, type ServerResponse} fr
 import path from "node:path";
 import type {WebConfigType} from "../../models/backend/config-models.js";
 import type {SessionManager} from "../map-session/session-manager.js";
+import type {AiMapRuntime} from "../map-session/ai-map-runtime.js";
 import {AppError} from "../../shared/app-error.js";
 import {logger} from "../utils/logger.js";
 import {resolveBasemapTileHttpRoute} from "./basemap-tile-route.js";
@@ -56,11 +57,20 @@ function resolveAssetPath(assetsRootPath: string, encodedPathname: string): stri
   return path.dirname(assetPath) === assetsRootPath ? assetPath : null;
 }
 
+/** 内部渲染固定使用本机 HTTP；wildcard 监听地址换为可连接地址，保留公开部署路径。 */
+export function getInternalMapOrigin(httpConfig: WebConfigType["http"]): string {
+  const configuredHost = httpConfig.listen_host;
+  const connectHost = configuredHost === "0.0.0.0" ? "127.0.0.1" : configuredHost === "::" ? "::1" : configuredHost;
+  const host = connectHost.includes(":") && !connectHost.startsWith("[") ? `[${connectHost}]` : connectHost;
+  const basePath = new URL(httpConfig.map.public_origin).pathname.replace(/\/+$/u, "");
+  return `http://${host}:${httpConfig.map.port}${basePath}`;
+}
+
 /**
  * 创建 Session route 与 Browser 构建资源共用的 handler。
  * 构建资源只允许访问 dist/web/assets 的单层 hash 文件与 App 的 hash 字体，不能读取 cache 或源码。
  */
-export function createMapHttpRequestHandler(webConfig: WebConfigType, sessionManager: SessionManager, publicBasePath = ""): RequestListener {
+export function createMapHttpRequestHandler(webConfig: WebConfigType, sessionManager: SessionManager, publicBasePath = "", aiMapRuntime?: AiMapRuntime): RequestListener {
   const webRootPath = path.resolve(process.cwd(), "dist", "web");
   const assetsRootPath = path.join(webRootPath, "assets");
   const appFontsRootPath = path.resolve(process.cwd(), "dist", "mcp-apps", "front", "fonts");
@@ -79,8 +89,8 @@ export function createMapHttpRequestHandler(webConfig: WebConfigType, sessionMan
         return;
       }
       const pathname = requestUrl.pathname.slice(publicBasePath.length);
-      // 底图、mapdata 和 App 字体没有浏览器凭据；CORS 同样覆盖失败响应。
-      if (request.method === "GET" && (pathname.startsWith("/basemap/") || /^\/session\/[^/]+\/mapdata$/u.test(pathname) || pathname.startsWith("/front/fonts/"))) response.setHeader("access-control-allow-origin", "*");
+      // 底图、mapdata、内存图片和 App 字体没有浏览器凭据；CORS 同样覆盖失败响应。
+      if (request.method === "GET" && (pathname.startsWith("/basemap/") || /^\/session\/[^/]+\/mapdata$/u.test(pathname) || /^\/[^/]+\/aimap\/(?:map_tool_call\/)?webp$/u.test(pathname) || pathname.startsWith("/front/fonts/"))) response.setHeader("access-control-allow-origin", "*");
       if (request.method !== "GET") {
         writeResponse(response, 405, "", {allow: "GET"});
         return;
@@ -111,6 +121,7 @@ export function createMapHttpRequestHandler(webConfig: WebConfigType, sessionMan
         webConfig.session,
         sessionManager,
         publicBasePath,
+        aiMapRuntime,
       );
       if (sessionResponse !== null) {
         writeResponse(response, sessionResponse.statusCode, sessionResponse.body, sessionResponse.headers);

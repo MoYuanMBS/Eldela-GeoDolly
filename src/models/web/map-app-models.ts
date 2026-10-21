@@ -8,7 +8,7 @@
 import {z} from "zod";
 import {finalSessionIdSchema} from "../backend/session-id-models.js";
 import type {SnapshotTileView} from "../mapsurface/basemap-runtime-models.js";
-import type {AiMapScreenshot} from "./snapshot-ui-models.js";
+import type {AppErrorType} from "../common/error-models.js";
 /** 成功发布的最终 Session 指针；工具错误走 isError，不混入此结构。 */
 export const mapAppResultSchema = z.object({
   session_id: finalSessionIdSchema,
@@ -52,7 +52,7 @@ export const aiMapViewSchema = z.object({
   logical_size: z.object({width: z.number().int().positive(), height: z.number().int().positive()}).strict(),
 }).strict();
 /** 成功 Tool Result 的 structuredContent 与 JSON 文本共用此结构；失败走 AppError / isError 路径。 */
-export const aiMapToolViewSchema = aiMapViewSchema.extend({session_id: finalSessionIdSchema});
+export const aiMapToolViewSchema = aiMapViewSchema.extend({session_id: finalSessionIdSchema, visual_url: z.string().url().optional()});
 /** 新工具只交付 AI 实际可见范围，不同时重复返回 center / zoom。 */
 export const aiMapToolBoundsSchema = aiMapToolViewSchema.pick({session_id: true, visible_bounds: true});
 
@@ -62,7 +62,7 @@ export type AiMapBoundsType = z.infer<typeof aiMapBoundsSchema>;
 export type AiMapCenterZoomType = z.infer<typeof aiMapCenterZoomSchema>;
 export type AiMapViewType = z.infer<typeof aiMapViewSchema>;
 
-/** Session 绑定由 App 管理；这里的命令只操作所属地图实例。 */
+/** 命令只操作所属浏览器地图实例；Session 绑定与生命周期由 Server 管理。 */
 export interface AiMapViewCommands {
   getView(): AiMapViewType;
   waitForScreenshot(signal: AbortSignal): Promise<SnapshotTileView>;
@@ -72,8 +72,14 @@ export interface AiMapViewCommands {
 
 export interface AiMapJobResult {
   view: AiMapViewType;
-  screenshot: AiMapScreenshot | null;
+  visual_url?: string;
+  warning?: AppErrorType;
 }
 
-export type AiMapToolKind = "view" | "capture" | "user";
-export type AiMapToolRunner = (sessionId: string, operation: (commands: AiMapViewCommands) => AiMapViewType, signal: AbortSignal, kind: AiMapToolKind) => Promise<AiMapJobResult>;
+/** Playwright 与 AI 页面的纯数据接线；不跨层传递 Leaflet、DOM 或 Node 对象。 */
+export interface AiMapBrowserPort {
+  getView(): AiMapViewType;
+  fitBounds(bbox: AiMapBoundsType): AiMapViewType;
+  setCenterZoom(input: AiMapCenterZoomType): AiMapViewType;
+  waitForScreenshot(): Promise<void>;
+}
