@@ -154,9 +154,9 @@ export function createMcpHttpService(webConfig: WebConfigType, sessionManager: S
       writeProtocolError(response, 403, "Host or Origin is not allowed");
       return;
     }
-    // App 的 opaque iframe 以 Origin: null 读取底图、mapdata 和字体；只放行这些无凭据 GET。
+    // App/Legacy 的 opaque iframe 需要无凭据读取地图资源；Legacy 网页还会以 Origin: null 加载构建 assets。
     const appResourceRequest = request.method === "GET" && requestUrl.search === "" && requestUrl.pathname.startsWith(`${publicBasePath}/`) && (
-      requestUrl.pathname.startsWith(`${publicBasePath}/basemap/`) || /^\/session\/[^/]+\/mapdata$/u.test(requestUrl.pathname.slice(publicBasePath.length)) || /^\/[^/]+\/aimap\/(?:map_tool_call\/)?webp$/u.test(requestUrl.pathname.slice(publicBasePath.length)) || requestUrl.pathname.startsWith(`${publicBasePath}/front/fonts/`)
+      requestUrl.pathname.startsWith(`${publicBasePath}/basemap/`) || /^\/session\/[^/]+\/mapdata$/u.test(pathname) || /^\/[^/]+\/aimap\/(?:map_tool_call\/)?webp$/u.test(pathname) || requestUrl.pathname.startsWith(`${publicBasePath}/front/fonts/`) || /^\/assets\/[^/]+$/u.test(pathname)
     );
     if (origin !== undefined && !allowedOrigins.has(origin) && !appResourceRequest) {
       writeProtocolError(response, 403, "Host or Origin is not allowed");

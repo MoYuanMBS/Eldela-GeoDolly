@@ -89,8 +89,8 @@ export function createMapHttpRequestHandler(webConfig: WebConfigType, sessionMan
         return;
       }
       const pathname = requestUrl.pathname.slice(publicBasePath.length);
-      // 底图、mapdata、内存图片和 App 字体没有浏览器凭据；CORS 同样覆盖失败响应。
-      if (request.method === "GET" && (pathname.startsWith("/basemap/") || /^\/session\/[^/]+\/mapdata$/u.test(pathname) || /^\/[^/]+\/aimap\/(?:map_tool_call\/)?webp$/u.test(pathname) || pathname.startsWith("/front/fonts/"))) response.setHeader("access-control-allow-origin", "*");
+      // Legacy opaque iframe 的模块、CSS 和字体也需要 CORS；仍只读取单层构建 assets，不公开 cache 或源码。
+      if (request.method === "GET" && (pathname.startsWith("/basemap/") || /^\/session\/[^/]+\/mapdata$/u.test(pathname) || /^\/[^/]+\/aimap\/(?:map_tool_call\/)?webp$/u.test(pathname) || pathname.startsWith("/front/fonts/") || /^\/assets\/[^/]+$/u.test(pathname))) response.setHeader("access-control-allow-origin", "*");
       if (request.method !== "GET") {
         writeResponse(response, 405, "", {allow: "GET"});
         return;

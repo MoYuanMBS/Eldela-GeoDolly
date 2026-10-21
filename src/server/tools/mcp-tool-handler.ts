@@ -4,6 +4,7 @@ import type {ServerContext} from "@modelcontextprotocol/server";
 import type {AiToolInputReqType, LocSearchReplyRawType} from "../../models/backend/bridge-models.js";
 import type {PublishedMapToolExecutorType, PublishedToolFlowResultType} from "../../models/backend/tool-flow-models.js";
 import {AppError} from "../../shared/app-error.js";
+import {createLegacyInteractiveMapResource} from "../interactive-map-launcher-resource.js";
 import type {ToolExecutionScheduler} from "./tool-execution-scheduler.js";
 import type {ToolFlowServicesType} from "./tool-flow.js";
 
@@ -20,10 +21,12 @@ export function createTextToolResult(text: string, isError = false) {
   };
 }
 
-/** structuredContent 只交付成功指针，AI-facing JSON 保持独立 content 路径。 */
+/** App 继续读取成功指针；Legacy Host 从业务文字之后的嵌入资源打开同一 User 地图。 */
 function createPublishedToolResult(publication: PublishedToolFlowResultType) {
+  const textResult = createTextToolResult(JSON.stringify(publication.ai_output, null, 2));
   return {
-    ...createTextToolResult(JSON.stringify(publication.ai_output, null, 2)),
+    ...textResult,
+    content: [...textResult.content, createLegacyInteractiveMapResource(publication.ai_output.interactive_map_url)],
     structuredContent: publication.client_output,
   };
 }
