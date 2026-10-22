@@ -30,6 +30,10 @@
 
 `visual_output` 决定 MCP app 中的 AI 视图：`none` 展示 User 地图，`interactive` 增加独立的 AI 地图，`screenshot` 还会交付 WebP 图片。App 提供打开或复制完整互动网页链接的入口；图片交付和四个 App 地图工具取决于宿主支持。详细说明见[地图输出](user_doc/zh/01-getting-started.md#阅读结果)与 [AI 地图工具](user_doc/zh/01-getting-started.md#ai-地图工具)。
 
+> **Host 兼容性**：本 README 介绍正式版。部分 Host 尚不支持 MCP Apps，或对 App 工具注册支持不完整，此类环境可选择 [rollback 兼容分支](https://github.com/MoYuanMBS/Eldela-GeoDolly/tree/rollback)。该分支在后端运行 AI 地图，通过后端 MCP 工具提供视口操作，面向 legacy UI 及不支持 App 工具注册的 MCP Apps Host 提供兼容方案。请单独部署该分支，并阅读 [rollback 分支内的部署与使用文档](https://github.com/MoYuanMBS/Eldela-GeoDolly/blob/rollback/user_doc/zh/00-index.md)。
+>
+> **Rollback release：待发布。**
+
 ## 快速开始与文档
 
 - [快速开始](user_doc/zh/01-getting-started.md)：安装依赖、选择部署方式、构建并制作第一张地图。

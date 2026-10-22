@@ -30,6 +30,10 @@
 
 `visual_output` controls the AI view in the MCP app: `none` shows the User map, `interactive` adds an independent AI map, and `screenshot` also delivers WebP images. The App provides an open/copy link to the full browser map. Image delivery and the four App map tools depend on host support. See [Map Output](user_doc/en/01-getting-started.md#reading-the-result) and [AI Map Tools](user_doc/en/01-getting-started.md#ai-map-tools).
 
+> **Host compatibility:** This README describes the main release. Hosts that do not support MCP Apps, or whose App-tool registration support is incomplete, can use the [rollback compatibility branch](https://github.com/MoYuanMBS/Eldela-GeoDolly/tree/rollback). That branch runs the AI map in the backend and exposes viewport operations through backend MCP tools, supporting legacy UI and MCP Apps without App-tool registration. Deploy it separately and follow the [deployment and usage documentation in the rollback branch](https://github.com/MoYuanMBS/Eldela-GeoDolly/blob/rollback/user_doc/en/00-index.md).
+>
+> **Rollback release:** Pending.
+
 ## Get started
 
 - [Quick Start](user_doc/en/01-getting-started.md) — install dependencies, choose a deployment, build, and make a first map.
