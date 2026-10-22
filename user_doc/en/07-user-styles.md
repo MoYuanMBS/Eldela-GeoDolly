@@ -2,7 +2,7 @@
 
 **English** · [简体中文](../zh/07-user-styles.md)
 
-A GeoDolly user style matches OSM tags with a YAML rule. CSS styles supported map Overlays; a Node Base rule can also render a local SVG or PNG image through `nodeIcon`. The entry points are [`config/style/style-rules.yaml`](../../config/style/style-rules.yaml), [`config/style/style.css`](../../config/style/style.css), and local image files under `assets/leaflet/`. The main CSS file already imports examples from `config/style/layers/`.
+A GeoDolly user style matches OSM tags with a YAML rule. CSS styles supported map Overlays; a Node Base rule can also render a local SVG or PNG image through `nodeIcon`. The entry points are [`config/style/style-rules.yaml`](../../config/style/style-rules.yaml), [`config/style/style.css`](../../config/style/style.css), and local image files under `assets/leaflet/`. The main CSS file already imports examples from `config/style/layers/`. Both the full browser map and MCP App include user CSS, rules, and local assets at build time; rebuild them with `npm run build:web` after a style change.
 
 ## Add a road style
 
@@ -29,7 +29,7 @@ Then add the matching class to [`config/style/layers/roads.css`](../../config/st
 }
 ```
 
-The existing `style.css` already imports `layers/roads.css`. If you create `layers/custom.css` instead, add `@import "./layers/custom.css";` to `style.css`. Restart the service and generate a **new map** to check the result. Existing WebP snapshots are not regenerated when a style changes.
+The existing `style.css` already imports `layers/roads.css`. If you create `layers/custom.css` instead, add `@import "./layers/custom.css";` to `style.css`. Run `npm run build:web`, restart the backend, and reopen the map/App to check the result. Existing map data can use the rebuilt style when reopened; previously delivered images keep their original style.
 
 ## YAML rule fields
 
@@ -39,7 +39,7 @@ The existing `style.css` already imports `layers/roads.css`. If you create `laye
 | `kind` | Always `css`. |
 | `renderLayer` | `base`, `border`, or `translucent`; the latter two also require a nonempty `effectType`. |
 | `featureType` | `node`, `way`, or `area`; user rules do not support relations. |
-| `priority` | A nonnegative integer used when resolving multiple matches. |
+| `priority` | A nonnegative integer; higher values win among user rules. The browser automatically places user rules above built-in priorities. |
 | `key` / `value` | An exact OSM tag key; the value is an exact string or a regex object such as `value: {regex: "^(tertiary|secondary)$"}`. |
 | `className` | Must begin with `geomcp-user-` and exist in the loaded CSS. |
 
@@ -77,6 +77,6 @@ The class styles the SVG `<image>` element, for example its opacity; it does not
 
 User CSS selectors must stay within `.geomcp-user-overlay`. They cannot refer to built-in classes or use ID selectors. For vector map paths, CSS accepts stable SVG presentation properties such as `fill`, `stroke`, `stroke-width`, opacity, and dash patterns. A `nodeIcon` image also accepts applicable outer-element properties such as opacity; CSS does not edit the image content. Geometry, `transform`, animations, `filter`, `mask`, custom properties, and CSS `url()` are unsupported. `@import` can load only local CSS files under `config/style/layers/`.
 
-User styles affect CSS-capable map Overlays. They do not rewrite built-in Canvas features, Core drawing, or fixed page UI. Invalid CSS can prevent startup. An invalid individual YAML rule, a missing class, or an ID collision may instead skip that rule with a warning. Check the logs and compare your changes with the supplied airport, station, road, and area examples.
+A matching user Base rule can select an SVG style in place of a built-in Canvas Base; a Feature uses one winning Base rather than merging all matching Bases. CSS styles the selected SVG elements, not individual pixels inside Canvas. Core drawing, fixed relation membership styling, and page UI remain separate. Invalid CSS can prevent startup. An invalid individual YAML rule, a missing class, or an ID collision may instead skip that rule with a warning. Check the logs and compare your changes with the supplied airport, station, road, and area examples.
 
 [← User Guide](00-index.md) · [Base and Experts](06-base-and-experts.md)

@@ -2,7 +2,7 @@
 
 **English** · [简体中文](../zh/03-app-yaml.md)
 
-[`config/app.yaml`](../../config/app.yaml) controls place search, feature queries, generated IDs, map sizing, and display. The file is shared by multiple components. Edit the keys in their existing sections and restart GeoDolly; `ui.decorations_enabled` also requires `npm run build:web`.
+[`config/app.yaml`](../../config/app.yaml) controls place search, feature queries, generated IDs, map sizing, and display. The file is shared by multiple components. Edit keys in their existing sections and restart the backend. Browser settings such as UI, Leaflet, padding, ready timeout, and tile success threshold also require `npm run build:web`; see [When to rebuild](02-configuration.md#when-to-rebuild).
 
 ## On this page
 
@@ -28,7 +28,7 @@ The `overpass` section in [`config/app.yaml`](../../config/app.yaml) controls wh
 
 ```yaml
 overpass:
-  endpoint: "https://overpass-api.de/api/interpreter"
+  endpoint: "https://overpass.openstreetmap.fr/api/interpreter"
   endpoints: []
   endpoint_strategy: "round_robin"
 ```
@@ -66,14 +66,14 @@ These settings control search extent and geometry size. Distances use the units 
 | --- | --- |
 | `line_buffer_meter` | Buffer around LineString/MultiLineString features, in metres; nonnegative. Increase to include a wider corridor. |
 | `tool_a_bbox_expand_km` | Expansion of Tool A's query bounding box, in kilometres; nonnegative. |
-| `tool_b_bbox_expand_km` | Expansion of Tool B's tile bounding box, in kilometres; nonnegative. |
+| `tool_b_bbox_expand_km` | Expansion of Tool B's surrounding-area bounding box, in kilometres; nonnegative. |
 | `base_tolerance_meter` | Lower bound for geometry simplification tolerance, in metres; nonnegative. |
 | `max_tolerance_meter` | Upper bound for simplification tolerance, in metres; positive; keep it at least as large as `base_tolerance_meter`. Larger values can remove more detail. |
 | `max_node` | Positive cap on exterior ring nodes after simplification. Lower values reduce geometry detail. |
 | `max_retry` | Nonnegative maximum number of simplification corrections after the first attempt. |
 | `tool_a_max_area_km2` | Positive maximum area for Tool A's analysis mode. |
-| `tool_b_max_area_km2` | Positive maximum area for Tool B's core-area analysis; oversized requests may use a broader query or basemap-only preview. |
-| `max_core_area_km2` | Positive independent limit for the Overpass core polygon; it does not set the tile bounding-box area limit. |
+| `tool_b_max_area_km2` | Positive area limit for Tool B's surrounding query box; exceeding it first falls back to Tool A query limits, then to a basemap-only preview if still too large. |
+| `max_core_area_km2` | Positive independent limit for the Overpass core polygon; it is separate from the surrounding-query bounding-box limit. |
 
 ### feature_id
 
@@ -116,7 +116,7 @@ feature_id:
 
 ### iframe_adaptive
 
-These values determine the recommended map canvas size. Adjust them only when the maps are consistently too small, too large, or clipped; bigger screenshots cost more time and memory. The browser may raise inconsistent maximum size or pixel limits to fit required minimums and emit a warning.
+These values determine the recommended map canvas size. Adjust them only when the maps are consistently too small, too large, or clipped; bigger screenshots cost more time and memory. The TypeScript configuration loader may raise inconsistent maximum size or pixel limits to fit required minimums and emit a warning. Initial padding is included in the browser build; other size or content changes affect newly generated maps.
 
 | Field | Meaning and adjustment |
 | --- | --- |
@@ -131,20 +131,22 @@ These values determine the recommended map canvas size. Adjust them only when th
 | `padding.top`, `padding.right`, `padding.bottom`, `padding.left` | Positive logical-pixel space around the initial map bounds. Left and right must match; top and bottom must match. Padding must leave usable canvas space. |
 | `min_map_display_width`, `min_map_display_height` | Positive minimum readable MapSurface dimensions in logical pixels; they can raise the effective screenshot minimums. |
 
-The Snapshot reference bar is measured separately from MapSurface height; the final wrapper also has a limit in [web.yaml](04-web-yaml.md#snapshot).
+The Snapshot reference bar is measured separately from MapSurface height; the original capture wrapper has a pixel limit in [web.yaml](04-web-yaml.md#snapshot). Final WebP encoding can resize that captured image proportionally to fit its separate byte budget without changing the map canvas or viewport.
 
 ### browser_map
 
 | Field | Meaning and adjustment |
 | --- | --- |
-| `ready_timeout_seconds` | Positive upper bound, in seconds, for the initial browser map and visual parts to become ready. Increase only when startup consistently needs more time; the overall tool timeout in `web.yaml` still applies. |
+| `ready_timeout_seconds` | Positive browser initialization budget in seconds; also the total budget of an App AI operation, including readiness waiting, viewport work, and any screenshot encoding. It is independent of the backend tool timeout and is frozen at browser build time. |
 
 ### mcp_apps
 
-| Field | Meaning and adjustment |
+Keep these required configuration fields. They are still validated, but the current App uses [`ui.iframe_max_width_px/iframe_max_height_px`](#ui) and the host's actual dimensions for layout. It offers open/copy controls as soon as a valid map result is received.
+
+| Field | Current effect |
 | --- | --- |
-| `interactive_map_launcher.preferred_height_px` | Positive preferred CSS height for the full interactive map when the MCP host does not specify one; the host can still cap the height. |
-| `interactive_map_launcher.load_notice_delay_ms` | Nonnegative delay in milliseconds before the launcher updates its manual-open or copy-link hint when the iframe has not become available. |
+| `interactive_map_launcher.preferred_height_px` | Retained positive-integer field; it no longer sets the current App's preferred height. |
+| `interactive_map_launcher.load_notice_delay_ms` | Retained nonnegative-integer field, at most 2147483647; it no longer delays the current App's open/copy controls. |
 
 ### basemap
 
@@ -154,7 +156,7 @@ These are service requests for the selected basemap. Provider URLs, names and at
 | --- | --- |
 | `user_agent` | Nonempty identifier sent by GeoDolly when requesting upstream tiles. |
 | `upstream_timeout_seconds` | Positive timeout, in seconds, for each upstream tile request. |
-| `snapshot_min_tile_success_ratio` | Required fraction of initial Snapshot tiles that load successfully, from `0` to `1`. `1` requires every needed tile; `0` permits an empty basemap. Missing tiles that still meet the threshold produce a warning. |
+| `snapshot_min_tile_success_ratio` | Required loaded-tile fraction for the AI map's first view and each later capture, from `0` to `1`. `1` requires every needed tile; `0` permits all tile loads to fail when the required count is nonzero. Partial failure that meets the threshold can continue with a warning. Rebuild after changing it. |
 
 ### output
 
@@ -166,6 +168,7 @@ These are service requests for the selected basemap. Provider URLs, names and at
 
 | Field | Meaning and adjustment |
 | --- | --- |
+| `iframe_max_width_px`, `iframe_max_height_px` | Positive total display-area limits for the MCP App, in CSS pixels; the host may provide less space. These do not change MapSurface dimensions or initial zoom. |
 | `decorations_enabled` | Boolean switch for optional Interactive decorations. Run `npm run build:web` after changing it; the switch is read at build time. |
 | `max_scale_width_px` | Positive maximum logical-pixel width of the metric scale. |
 | `feature_ui_max_height_px` | Positive maximum logical-pixel height of expanded Feature UI before its content scrolls internally. |
@@ -173,7 +176,7 @@ These are service requests for the selected basemap. Provider URLs, names and at
 
 ### leaflet
 
-These settings control the visible map and interaction sizes. Pixel units here are screen logical pixels; changing hit areas affects how easily nearby features can be selected.
+These settings control the visible map and interaction sizes. Pixel units here are screen logical pixels; changing hit areas affects how easily nearby features can be selected. Rebuild with `npm run build:web` and restart after changing this section.
 
 | Field | Meaning and adjustment |
 | --- | --- |

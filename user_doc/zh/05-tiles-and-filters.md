@@ -19,7 +19,11 @@ my_tiles:
   full_attribution:
 ```
 
-ID 只能使用小写字母、数字、`_` 和 `-`，并以字母或数字开头、结尾。`upstream` 必须是 HTTP(S) 模板，包含 `{z}`、`{x}`、`{y}`；`crs` 当前只支持 `EPSG:3857`。`max_native_zoom` 表示提供商的原生瓦片最高级别。填写真实服务时，请核对其授权与署名要求。修改后重启，再在工具请求中选择新 ID。
+ID 只能使用小写字母、数字、`_` 和 `-`，并以字母或数字开头、结尾。`upstream` 必须是 HTTP(S) 模板，在请求路径或 query 中包含 `{z}`、`{x}`、`{y}`；可选 `{s}` 展开为 `a`/`b`/`c` 子域，`{r}` 展开为空字符串，未知占位符会校验失败。`crs` 当前只支持 `EPSG:3857`。填写真实服务时，请核对其授权与署名要求。修改后重启，再在工具请求中选择新 ID。
+
+`max_native_zoom` 限制提供商原生瓦片层级，[`leaflet.viewport.max_zoom`](03-app-yaml.md#leaflet) 独立控制地图视口；超过原生层级时放大已有瓦片，Overlay 仍按地图 zoom 绘制。`attribution` 用于 User 地图的紧凑署名，AI 截图优先展示非空的 `full_attribution`，应完整保留所需署名。
+
+浏览器通过 GeoDolly 后端请求瓦片，提供商模板由后端消费。从 registry 删除 ID 可能使使用该 ID 的已有地图无法加载。底图选择不改变地理分析或 Overlay 选择。
 
 ## 修改输出 Filter
 

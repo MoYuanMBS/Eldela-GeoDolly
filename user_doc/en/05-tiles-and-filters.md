@@ -19,7 +19,11 @@ my_tiles:
   full_attribution:
 ```
 
-IDs may contain lowercase letters, digits, `_`, and `-`, and must begin and end with a letter or digit. `upstream` must be an HTTP(S) template containing `{z}`, `{x}`, and `{y}`; the current CRS is `EPSG:3857`. `max_native_zoom` is the provider's highest native tile zoom. Check the provider's use and attribution terms before using a real service. Restart after editing, then select the new ID in a tool request.
+IDs may contain lowercase letters, digits, `_`, and `-`, and must begin and end with a letter or digit. `upstream` must be an HTTP(S) template with `{z}`, `{x}`, and `{y}` in the request path or query; optional `{s}` is expanded to an `a`/`b`/`c` subdomain and `{r}` to an empty string. Unknown placeholders fail validation. The current CRS is `EPSG:3857`. Check the provider's use and attribution terms before using a real service. Restart after editing, then select the new ID in a tool request.
+
+`max_native_zoom` limits the provider's native tiles, while [`leaflet.viewport.max_zoom`](03-app-yaml.md#leaflet) controls the map view independently. Above the native limit, tiles are enlarged while Overlay geometry still follows the map zoom. `attribution` is the compact User-map credit; the AI screenshot displays `full_attribution` when present. Keep the required credit text intact.
+
+Browsers fetch tiles through the GeoDolly backend; the provider template is consumed there. Removing an ID from the registry can make existing maps using that ID fail to load. The choice of basemap does not change the geographic analysis or Overlay selection.
 
 ## Edit output Filters
 

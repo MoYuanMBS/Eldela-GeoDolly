@@ -2,7 +2,7 @@
 
 [English](../en/07-user-styles.md) · **简体中文**
 
-GeoDolly 用 YAML 规则匹配 OSM tag。CSS 可以设置地图 Overlay 的外观；Node Base 规则还可以通过 `nodeIcon` 显示本地 SVG 或 PNG 图片。配置入口包括 [`config/style/style-rules.yaml`](../../config/style/style-rules.yaml)、[`config/style/style.css`](../../config/style/style.css)，以及 `assets/leaflet/` 下的本地图片。主 CSS 已导入 `config/style/layers/` 下的示例文件。
+GeoDolly 用 YAML 规则匹配 OSM tag。CSS 可以设置地图 Overlay 的外观；Node Base 规则还可以通过 `nodeIcon` 显示本地 SVG 或 PNG 图片。配置入口包括 [`config/style/style-rules.yaml`](../../config/style/style-rules.yaml)、[`config/style/style.css`](../../config/style/style.css)，以及 `assets/leaflet/` 下的本地图片。主 CSS 已导入 `config/style/layers/` 下的示例文件。完整互动网页与 MCP App 都在构建期打包用户 CSS、规则和本地素材；修改样式后需执行 `npm run build:web`。
 
 ## 为道路添加一种样式
 
@@ -29,7 +29,7 @@ GeoDolly 用 YAML 规则匹配 OSM tag。CSS 可以设置地图 Overlay 的外�
 }
 ```
 
-现有 `style.css` 已导入 `layers/roads.css`。如果改为新建 `layers/custom.css`，还需在 `style.css` 添加 `@import "./layers/custom.css";`。保存后重启服务，生成一张**新地图**检查效果；已有 WebP 截图不会因样式改动自动重做。
+现有 `style.css` 已导入 `layers/roads.css`。如果改为新建 `layers/custom.css`，还需在 `style.css` 添加 `@import "./layers/custom.css";`。保存后执行 `npm run build:web`、重启后端，并重新打开地图/App 检查。已有地图数据重新打开时可使用新构建的样式，已经交付的图片保持原样式。
 
 ## YAML 规则要点
 
@@ -39,7 +39,7 @@ GeoDolly 用 YAML 规则匹配 OSM tag。CSS 可以设置地图 Overlay 的外�
 | `kind` | 固定填写 `css`。 |
 | `renderLayer` | `base`、`border` 或 `translucent`；后两种还必须提供非空 `effectType`。 |
 | `featureType` | `node`、`way` 或 `area`；用户规则不支持 relation。 |
-| `priority` | 非负整数，用于多条匹配规则的优先级处理。 |
+| `priority` | 非负整数，用户规则之间数值越高越优先；浏览器会自动将用户规则放入高于内置规则的优先级分区。 |
 | `key` / `value` | 精确的 OSM tag key；value 可以是精确字符串，也可以写成 `value: {regex: "^(tertiary|secondary)$"}`。 |
 | `className` | 以 `geomcp-user-` 开头，并且必须在已加载的 CSS 中实际出现。 |
 
@@ -77,6 +77,6 @@ GeoDolly 用 YAML 规则匹配 OSM tag。CSS 可以设置地图 Overlay 的外�
 
 用户 CSS selector 必须位于 `.geomcp-user-overlay` 作用域内，且不能引用内置 class 或使用 ID selector。矢量地图路径可以使用 `fill`、`stroke`、`stroke-width`、透明度与虚线等稳定的 SVG 外观属性；`nodeIcon` 图片还可使用透明度等适用的外层属性，但 CSS 不会改写图片内容。几何、`transform`、动画、`filter`、`mask`、自定义属性及 CSS `url()` 等不受支持。`@import` 只允许指向 `config/style/layers/` 内的本地 CSS 文件。
 
-用户样式作用于支持 CSS 的地图 Overlay；它不改写内置 Canvas 要素、Core 绘制或固定页面 UI。若 CSS 不合法，服务可能无法启动；若 YAML 单条规则无效、class 缺失或 ID 冲突，规则可能被跳过并记录 warning。检查日志，并对照仓库已有机场、车站、道路和区域样式逐项修改。
+匹配的用户 Base 规则可以选择 SVG 样式替代内置 Canvas Base；一个 Feature 只使用胜出的一个 Base，不合并所有匹配 Base。CSS 作用于选中的 SVG 元素，不能通过 selector 修改 Canvas 内部的单个要素。Core 绘制、固定 relation membership 样式和页面 UI 保持独立。若 CSS 不合法，服务可能无法启动；若 YAML 单条规则无效、class 缺失或 ID 冲突，规则可能被跳过并记录 warning。检查日志，并对照仓库已有机场、车站、道路和区域样式逐项修改。
 
 [← 用户指南](00-index.md) · [Base & Expert](06-base-and-experts.md)

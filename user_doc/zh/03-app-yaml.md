@@ -2,7 +2,7 @@
 
 [English](../en/03-app-yaml.md) · **简体中文**
 
-[`config/app.yaml`](../../config/app.yaml) 控制地点搜索、要素查询、编号、地图尺寸与显示。多个组件共用这份文件。请在原有 section 内修改字段，并重启 GeoDolly；`ui.decorations_enabled` 还需要重新运行 `npm run build:web`。
+[`config/app.yaml`](../../config/app.yaml) 控制地点搜索、要素查询、编号、地图尺寸与显示。多个组件共用这份文件。请在原有 section 内修改字段，并重启后端；UI、Leaflet、padding、ready 超时和瓦片成功率等浏览器设置还需要执行 `npm run build:web`，详见[何时需要重新构建](02-configuration.md#何时需要重新构建)。
 
 ## 本页目录
 
@@ -28,7 +28,7 @@
 
 ```yaml
 overpass:
-  endpoint: "https://overpass-api.de/api/interpreter"
+  endpoint: "https://overpass.openstreetmap.fr/api/interpreter"
   endpoints: []
   endpoint_strategy: "round_robin"
 ```
@@ -66,14 +66,14 @@ overpass:
 | --- | --- |
 | `line_buffer_meter` | LineString/MultiLineString 周围的缓冲距离，单位米，非负；调大可覆盖更宽的走廊。 |
 | `tool_a_bbox_expand_km` | Tool A 查询 bbox 的扩展距离，单位千米，非负。 |
-| `tool_b_bbox_expand_km` | Tool B 瓦片 bbox 的扩展距离，单位千米，非负。 |
+| `tool_b_bbox_expand_km` | Tool B 周边 bbox 的扩展距离，单位千米，非负。 |
 | `base_tolerance_meter` | 几何简化 tolerance 的下界，单位米，非负。 |
 | `max_tolerance_meter` | 简化 tolerance 上界，单位米，正数；建议保持不小于 `base_tolerance_meter`；调大可能减少细节。 |
 | `max_node` | 简化后外环节点数的正整数上限；调小会减少几何细节。 |
 | `max_retry` | 初次尝试后最多进行的反馈修正次数，非负整数。 |
 | `tool_a_max_area_km2` | Tool A 分析模式允许的正数面积上限。 |
-| `tool_b_max_area_km2` | Tool B 核心区域分析的正数面积上限；超限时可能改为更广的 bbox 查询或纯底图预览。 |
-| `max_core_area_km2` | Overpass core polygon 的独立正数面积上限，不等同于瓦片 bbox 面积限制。 |
+| `tool_b_max_area_km2` | Tool B 周边查询 bbox 的正数面积上限；超限后先使用 Tool A 查询限制，若仍超限再进入纯底图预览。 |
+| `max_core_area_km2` | Overpass core polygon 的独立正数面积上限，与周边查询 bbox 的面积限制独立。 |
 
 ### feature_id
 
@@ -116,7 +116,7 @@ feature_id:
 
 ### iframe_adaptive
 
-这些参数决定地图画布的建议尺寸。地图持续过小、过大或被裁切时再调整；大截图通常需要更多时间和内存。如果最大尺寸或像素预算不足以满足最小约束，浏览器侧可能自动提高有效上限并记录 warning。
+这些参数决定地图画布的建议尺寸。地图持续过小、过大或被裁切时再调整；大截图通常需要更多时间和内存。如果最大尺寸或像素预算不足以满足最小约束，TypeScript 配置 loader 可能提高有效上限并记录 warning。初始 padding 会进入浏览器构建，其他尺寸或内容参数影响新生成地图。
 
 | 字段 | 用途与调整 |
 | --- | --- |
@@ -131,20 +131,22 @@ feature_id:
 | `padding.top`、`padding.right`、`padding.bottom`、`padding.left` | 初始视口 bbox 四周的正数逻辑像素留白；左右相等、上下相等，且须为画布留下可用空间。 |
 | `min_map_display_width`、`min_map_display_height` | MapSurface 最小可读尺寸，正整数逻辑像素；可能提高有效截图下限。 |
 
-Snapshot 参考栏高度单独测量；完整截图 wrapper 还受 [web.yaml](04-web-yaml.md#snapshot) 限制。
+Snapshot 参考栏高度单独测量；原始捕获 wrapper 还受 [web.yaml](04-web-yaml.md#snapshot) 的像素预算限制；最终 WebP 编码可为满足独立字节预算对已捕获图等比缩小，不改变地图画布或视口。
 
 ### browser_map
 
 | 字段 | 用途与调整 |
 | --- | --- |
-| `ready_timeout_seconds` | 等待浏览器初始地图及视觉部分就绪的正数总时限，单位秒；只在经常超时时调大，仍受 `web.yaml` 工具总时限约束。 |
+| `ready_timeout_seconds` | 浏览器初始化的正数预算，单位秒；也作为每次 App AI 操作等待 ready、调整视口及截图编码的总预算。它与后端工具超时独立，并在浏览器构建期冻结。 |
 
 ### mcp_apps
 
-| 字段 | 用途与调整 |
+这两个必填字段仍需保留并接受配置校验。当前 App 使用 [`ui.iframe_max_width_px/iframe_max_height_px`](#ui) 与宿主实际尺寸进行布局，收到合法地图结果后即提供打开/复制入口。
+
+| 字段 | 当前作用 |
 | --- | --- |
-| `interactive_map_launcher.preferred_height_px` | MCP Host 没有指定固定高度时，完整互动地图请求的首选 CSS 高度，正整数；Host 仍可限制高度。 |
-| `interactive_map_launcher.load_notice_delay_ms` | iframe 尚未可用时，更新手动打开/复制链接提示的非负等待时长，单位毫秒。 |
+| `interactive_map_launcher.preferred_height_px` | 保留的正整数字段，已不决定当前 App 的首选高度。 |
+| `interactive_map_launcher.load_notice_delay_ms` | 保留的非负整数字段，上限 2147483647，已不控制当前 App 打开/复制入口的延迟。 |
 
 ### basemap
 
@@ -154,7 +156,7 @@ Snapshot 参考栏高度单独测量；完整截图 wrapper 还受 [web.yaml](04
 | --- | --- |
 | `user_agent` | GeoDolly 请求上游瓦片时发送的非空部署标识。 |
 | `upstream_timeout_seconds` | 单次上游瓦片请求的正数超时，单位秒。 |
-| `snapshot_min_tile_success_ratio` | Snapshot 首屏所需瓦片的最低成功比例，范围 `0`–`1`。`1` 要求全部成功；`0` 允许空底图。缺失瓦片但达到阈值时会记录 warning。 |
+| `snapshot_min_tile_success_ratio` | AI 地图首屏及每次后续截图所需瓦片的最低成功比例，范围 `0`–`1`。`1` 要求全部成功；所需瓦片数非零时，`0` 允许全部加载失败。部分缺失但达到阈值时可 warning 后继续；修改后重新构建。 |
 
 ### output
 
@@ -166,6 +168,7 @@ Snapshot 参考栏高度单独测量；完整截图 wrapper 还受 [web.yaml](04
 
 | 字段 | 用途与调整 |
 | --- | --- |
+| `iframe_max_width_px`、`iframe_max_height_px` | MCP App 外层展示区域的正整数总尺寸上限，单位 CSS 像素；宿主可提供更小空间，不改变 MapSurface 尺寸或初始 zoom。 |
 | `decorations_enabled` | 是否挂载 Interactive 可选装饰的布尔开关；修改后运行 `npm run build:web`，因为它在构建期读取。 |
 | `max_scale_width_px` | 公制 Scale 的正整数最大逻辑像素宽度。 |
 | `feature_ui_max_height_px` | Feature UI 展开内容的正整数最大逻辑像素高度；超过时在内部滚动。 |
@@ -173,7 +176,7 @@ Snapshot 参考栏高度单独测量；完整截图 wrapper 还受 [web.yaml](04
 
 ### leaflet
 
-这些字段控制可见地图与交互尺寸。这里的像素均指屏幕逻辑像素；修改命中尺寸会影响相邻要素的选取难易。
+这些字段控制可见地图与交互尺寸。这里的像素均指屏幕逻辑像素；修改命中尺寸会影响相邻要素的选取难易。修改本 section 后执行 `npm run build:web` 并重启。
 
 | 字段 | 用途与调整 |
 | --- | --- |
