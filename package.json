@@ -48,5 +48,9 @@
     "tsx": "^4.19.4",
     "typescript": "^5.8.3",
     "vite": "^8.2.0"
+  },
+  "allowScripts": {
+    "canvas@3.2.3": true,
+    "esbuild@0.28.1": true
   }
 }
