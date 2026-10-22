@@ -6,7 +6,7 @@ Choose a deployment address, configure `deploy/geomcp.env`, build and start the 
 
 ## Requirements
 
-- Node.js **22.22.2**, recorded in `.nvmrc`.
+- Node.js **24.22.1**, the current Node 24 deployment baseline, with npm **11.19.1**.
 - Python **3.12**, with `venv` and `pip`.
 - A Host/client supporting **Streamable HTTP**; embedded maps also require **MCP Apps**. App tools and message/image delivery require corresponding Host support.
 - Network access for dependencies, place search, map features, and basemap tiles.
@@ -14,6 +14,17 @@ Choose a deployment address, configure `deploy/geomcp.env`, build and start the 
 Run project commands from the **repository root**. The MCP connection and the App's browser requests must both reach the backend. A hosted client cannot reach your computer through its own `localhost`. Some Hosts require a public HTTPS URL for remote MCP/App use, and an HTTPS Host may block HTTP resources; local HTTP acceptance depends on the Host. Use the HTTPS routes below when required, and check the [MCP Apps Host guidance](https://apps.extensions.modelcontextprotocol.io/api/documents/testing-mcp-apps.html).
 
 ## Install dependencies and prepare configuration
+
+The runtime baseline includes the [October 2026 Node.js security and CA updates](https://nodejs.org/en/blog/vulnerability/october-2026-security-releases). On Linux or macOS with nvm, select the repository's `.nvmrc` version from the repository root before installing dependencies:
+
+```sh
+nvm install
+nvm use
+node --version
+npm --version
+```
+
+Check for `v24.22.1` and npm `11.19.1`; `.nvmrc` pins Node to `24.22.1`. Updating nvm's default alias does not switch an existing terminal's active version: run `nvm use` there before building or starting the backend. On Windows or without nvm, install this Node/npm version pair and verify the versions in the terminal used to build and start the server.
 
 On Linux or macOS:
 
@@ -27,6 +38,22 @@ cp -n deploy/geomcp.env.example deploy/geomcp.env
 On Windows, use `py -3.12 -m venv .venv` and `.\.venv\Scripts\python.exe -m pip install -r requirements.txt`, run `npm ci`, and copy the template with your shell or file manager. Preserve any existing `geomcp.env`.
 
 The server uses the repository's `.venv` automatically. Set `PYTHON_PATH` in the environment file only when using another Python executable. Review all copied overrides, and edit the existing `GEOMCP_WEB_CONFIG_JSON` line for the route below. Keep the JSON on one line; see [environment-file format and precedence](02-configuration.md#environment-overrides).
+
+## Runtime upgrades and CA certificates
+
+For an existing installation, switch Node first, then refresh dependencies from the repository root:
+
+```sh
+.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/python -m pip show certifi
+npm ci
+```
+
+On Windows, replace `.venv/bin/python` with `.\.venv\Scripts\python.exe`. Confirm `certifi` is **2026.10.19 or newer**, as required by [`requirements.txt`](../../requirements.txt). Then repeat [Build and start](#build-and-start), including both browser builds, and restart the backend or its service. A running process keeps its old runtime and loaded dependencies until restarted.
+
+The repository's [`package.json`](../../package.json) declares npm `allowScripts` approvals for the locked `canvas@3.2.3` and `esbuild@0.28.1` installation scripts. Use npm 11.19.1 for `npm ci` so these declarations are recognized and the native/build dependencies are installed under the selected Node runtime. See [npm's installation-script policy](https://docs.npmjs.com/cli/v11/commands/npm-ci/#allow-scripts).
+
+Node's security/CA updates and Python's `certifi` dependency must both be applied. [HTTPX uses the certifi CA bundle by default](https://www.python-httpx.org/advanced/ssl/#configuring-client-instances) to verify upstream HTTPS; updating Node alone does not update the Python bundle. Keep certificate verification enabled. The public-domain certificate chain and private key in [`http.tls`](04-web-yaml.md#direct-node-https) serve a separate purpose: they let the backend provide HTTPS when Node terminates TLS directly.
 
 ## Choose a deployment route
 
@@ -242,6 +269,7 @@ Map access has a configured lifetime: the bundled default is 24 hours, checked e
 | Symptom | Check |
 | --- | --- |
 | The MCP client cannot connect | Start with `node --env-file=deploy/geomcp.env dist/index.js`, confirm both browser builds completed, and check the working directory, public URL, proxy/tunnel, and Streamable HTTP endpoint. |
+| HTTPS requests report certificate verification failures | Confirm the active Node version, update `certifi` through `requirements.txt`, and check the system clock, upstream certificate chain, and any proxy/private CA configuration; keep verification enabled. See [Runtime upgrades and CA certificates](#runtime-upgrades-and-ca-certificates). |
 | Python cannot be started | Confirm `.venv` exists, or set `PYTHON_PATH` in the backend environment. |
 | The backend reports an App address mismatch | Repeat both Vite builds in [Build and start](#build-and-start), using the same environment file as the backend. |
 | The App or browser map cannot load | Check that the browser or host sandbox can reach the public address and that the host permits map-data, tile, and font requests. Loopback refers to the machine making the request. |

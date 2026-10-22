@@ -6,7 +6,7 @@
 
 ## 环境要求
 
-- Node.js **22.22.2**，对应仓库 `.nvmrc`。
+- Node.js **24.22.1**，当前 Node 24 部署基线，配套 npm **11.19.1**。
 - Python **3.12**，包含 `venv` 和 `pip`。
 - 支持 **Streamable HTTP** 的 Host/客户端；内嵌地图还需要 **MCP Apps**，App 工具和消息/图片交付需要宿主提供相应能力。
 - 可以访问依赖下载、地点搜索、地图要素和底图瓦片服务的网络。
@@ -14,6 +14,17 @@
 项目命令均在**仓库根目录**执行。MCP 连接与 App 浏览器请求都必须能访问后端。托管客户端的 `localhost` 指向托管端自身，不能访问你的电脑。部分 Host 对远程 MCP/App 要求公开 HTTPS 地址，HTTPS 宿主也可能阻止 HTTP 资源；是否接受本地 HTTP 以具体 Host 为准。有此限制时使用下文 HTTPS 方案，另见 [MCP Apps 宿主接入说明](https://apps.extensions.modelcontextprotocol.io/api/documents/testing-mcp-apps.html)。
 
 ## 安装依赖与准备配置
+
+该运行时基线包含 [Node.js 2026 年 10 月安全与 CA 更新](https://nodejs.org/en/blog/vulnerability/october-2026-security-releases)。Linux/macOS 使用 nvm 时，先在仓库根目录按 `.nvmrc` 选择版本，再安装依赖：
+
+```sh
+nvm install
+nvm use
+node --version
+npm --version
+```
+
+确认输出为 `v24.22.1` 和 npm `11.19.1`；`.nvmrc` 已固定 Node 为 `24.22.1`。修改 nvm 默认别名不会切换已有终端的当前版本，请在构建或启动后端前重新执行 `nvm use`。Windows 或不使用 nvm 时，安装该 Node/npm 版本组合，并在实际构建、启动后端的终端检查版本。
 
 Linux 或 macOS：
 
@@ -27,6 +38,22 @@ cp -n deploy/geomcp.env.example deploy/geomcp.env
 Windows 使用 `py -3.12 -m venv .venv`、`.\.venv\Scripts\python.exe -m pip install -r requirements.txt`，再执行 `npm ci`，用对应 shell 或文件管理器复制模板。已有 `geomcp.env` 时保留原文件。
 
 后端自动使用仓库 `.venv`；仅使用其他 Python 时才在环境文件中设置 `PYTHON_PATH`。检查复制出的全部覆盖项，按下文部署场景修改已有的 `GEOMCP_WEB_CONFIG_JSON` 行。JSON 保持单行；格式和优先级见[环境变量覆盖](02-configuration.md#环境变量覆盖)。
+
+## 运行环境升级与 CA 证书
+
+已有部署先切换 Node，再在仓库根目录更新依赖：
+
+```sh
+.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/python -m pip show certifi
+npm ci
+```
+
+Windows 将 `.venv/bin/python` 替换为 `.\.venv\Scripts\python.exe`。确认 `certifi` 为 **2026.10.19 或更新版本**，与 [`requirements.txt`](../../requirements.txt) 一致。随后重做[构建与启动](#构建与启动)，包括两次浏览器构建，并重启后端或对应服务；已运行进程在重启前仍使用旧运行时和已加载的依赖。
+
+仓库 [`package.json`](../../package.json) 已通过 npm `allowScripts` 声明锁定版本 `canvas@3.2.3`、`esbuild@0.28.1` 的安装脚本许可。使用 npm 11.19.1 执行 `npm ci`，让这些声明生效，并在选定的 Node 环境下安装原生/构建依赖。参见 [npm 安装脚本策略](https://docs.npmjs.com/cli/v11/commands/npm-ci/#allow-scripts)。
+
+Node 的安全/CA 更新与 Python 的 `certifi` 依赖需要分别更新。[HTTPX 默认使用 certifi CA bundle](https://www.python-httpx.org/advanced/ssl/#configuring-client-instances)校验上游 HTTPS，仅升级 Node 不会更新 Python 的证书包；保持证书校验开启。[`http.tls`](04-web-yaml.md#node-直接提供-https) 中的域名证书链和私钥则用于 Node 直接对外提供 HTTPS，与上游 CA 信任用途不同。
 
 ## 选择部署方式
 
@@ -242,6 +269,7 @@ User 地图与完整互动网页提供以下测量工具：
 | 现象 | 检查方法 |
 | --- | --- |
 | MCP 客户端无法连接 | 使用 `node --env-file=deploy/geomcp.env dist/index.js` 启动，确认两次浏览器构建完成，并检查工作目录、公开 URL、代理/隧道与 Streamable HTTP 入口。 |
+| HTTPS 请求提示证书校验失败 | 检查实际 Node 版本，按 `requirements.txt` 更新 `certifi`，并核对系统时间、上游证书链和代理/私有 CA 配置；保持校验开启。见[运行环境升级与 CA 证书](#运行环境升级与-ca-证书)。 |
 | Python 无法启动 | 确认 `.venv` 已创建，或在后端环境中设置 `PYTHON_PATH`。 |
 | 后端启动提示 App 地址不匹配 | 按[构建与启动](#构建与启动)重做两次 Vite 构建，与后端使用同一环境文件。 |
 | App 或浏览器地图无法加载 | 检查浏览器或宿主沙箱能否访问公开地址，以及宿主是否允许地图数据、瓦片和字体请求；回环地址指向发起请求的机器。 |

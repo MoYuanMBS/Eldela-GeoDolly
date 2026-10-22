@@ -87,7 +87,9 @@ Forward the **whole public site**, including MCP, `/session/...`, `/basemap/...`
 
 ##### Keep the backend running
 
-For a Linux server using systemd, the following example assumes an existing service account `geomcp`, a repository with installed dependencies at `/opt/geomcp`, and Node 22.22.2 at `/usr/bin/node`. Replace those values with your actual paths/account (`command -v node` shows your Node path). The service account needs access to the Python environment and write access to the project's runtime directories.
+For a Linux server using systemd, the following example assumes an existing service account `geomcp`, a repository with installed dependencies at `/opt/geomcp`, and Node 24.22.1 at `/usr/bin/node`. Replace those values with your actual paths/account (`command -v node` shows your Node path). The service account needs access to the Python environment and write access to the project's runtime directories.
+
+Set `ExecStart` below to the actual Node 24 executable path. For upgrades, follow [Runtime upgrades and CA certificates](01-getting-started.md#runtime-upgrades-and-ca-certificates) to update dependencies and builds; after changing the unit, run `sudo systemctl daemon-reload` and `sudo systemctl restart geomcp`.
 
 Create `/etc/systemd/system/geomcp.service`:
 

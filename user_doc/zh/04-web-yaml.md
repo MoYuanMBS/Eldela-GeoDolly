@@ -87,7 +87,9 @@ node --env-file=deploy/geomcp.env dist/server/http/browser-warning-service-main.
 
 ##### 保持后端常驻运行
 
-Linux systemd 示例假定已有服务账号 `geomcp`，仓库及已安装依赖位于 `/opt/geomcp`，Node 22.22.2 位于 `/usr/bin/node`。按实际账号和路径替换；`command -v node` 可查看当前 Node 路径。服务账号需能访问 Python 环境，并对项目运行时目录具有写权限。
+Linux systemd 示例假定已有服务账号 `geomcp`，仓库及已安装依赖位于 `/opt/geomcp`，Node 24.22.1 位于 `/usr/bin/node`。按实际账号和路径替换；`command -v node` 可查看当前 Node 路径。服务账号需能访问 Python 环境，并对项目运行时目录具有写权限。
+
+将下方 `ExecStart` 设置为实际 Node 24 可执行文件路径。升级时按[运行环境升级与 CA 证书](01-getting-started.md#运行环境升级与-ca-证书)更新依赖和构建；修改 unit 后执行 `sudo systemctl daemon-reload`、`sudo systemctl restart geomcp`。
 
 创建 `/etc/systemd/system/geomcp.service`：
 
